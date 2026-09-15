@@ -1,5 +1,5 @@
-// Virtuo PWA Service Worker (v1.0.0-prod)
-const CACHE_NAME = "virtuo-v1.0.0";
+// Virtuo PWA Service Worker (v2.1.0-prod)
+const CACHE_NAME = "virtuo-v2.1.0";
 
 const APP_SHELL_FILES = [
   "./",
@@ -14,8 +14,11 @@ const APP_SHELL_FILES = [
   "./src/music/transposer.js",
   "./src/music/chord-parser.js",
   "./src/music/easy-play.js",
+  "./src/music/smart-key.js",
+  "./src/music/study-plan.js",
   "./src/music/demo-songs.js",
   "./src/music/music-intelligence.js",
+  "./src/features/ai/virtuo-ai-view.js",
   "./src/audio/index.js",
   "./src/audio/metronome.js",
   "./src/audio/metronome-controller.js",
@@ -34,7 +37,13 @@ const APP_SHELL_FILES = [
   "./songs-service.js",
   "./src/database/index.js",
   "./src/features/tuner/tuner-view.js",
+  "./src/features/vocal/index.js",
   "./src/features/vocal/vocal-view.js",
+  "./src/features/vocal/vocal-trainer.js",
+  "./src/features/performance/index.js",
+  "./src/features/performance/performance-engine.js",
+  "./src/features/performance/performance-view.js",
+  "./src/features/performance/performance-history.js",
   "./src/features/guitar-coach/coach-view.js",
   "./src/features/diagnostics/diagnostics-view.js",
   "./src/performance/performance-monitor.js",

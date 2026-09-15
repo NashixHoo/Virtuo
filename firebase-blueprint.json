@@ -237,9 +237,61 @@
         "authorName": { "type": "string" },
         "content": { "type": "string" },
         "imageUrl": { "type": "string" },
+        "type": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["authorId", "content"]
+    },
+    "Comment": {
+      "title": "Comment",
+      "type": "object",
+      "properties": {
+        "postId": { "type": "string" },
+        "authorId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "authorPhoto": { "type": "string" },
+        "content": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["postId", "authorId", "content"]
+    },
+    "Follow": {
+      "title": "Follow",
+      "type": "object",
+      "properties": {
+        "followerId": { "type": "string" },
+        "followingId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["followerId", "followingId"]
+    },
+    "BandInvite": {
+      "title": "BandInvite",
+      "type": "object",
+      "properties": {
+        "bandId": { "type": "string" },
+        "bandName": { "type": "string" },
+        "senderUid": { "type": "string" },
+        "targetUid": { "type": "string" },
+        "role": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "accepted", "rejected"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["bandId", "senderUid", "targetUid"]
+    },
+    "Report": {
+      "title": "Report",
+      "type": "object",
+      "properties": {
+        "targetType": { "type": "string" },
+        "targetId": { "type": "string" },
+        "reason": { "type": "string" },
+        "details": { "type": "string" },
+        "reporterId": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "resolved", "dismissed"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["targetType", "targetId", "reason", "reporterId"]
     },
     "Rehearsal": {
       "title": "Rehearsal",
@@ -316,6 +368,22 @@
     "/posts/{postId}": {
       "schema": "Post",
       "description": "Community and band feed posts controlled by author"
+    },
+    "/comments/{commentId}": {
+      "schema": "Comment",
+      "description": "Comments attached to community posts"
+    },
+    "/follows/{followId}": {
+      "schema": "Follow",
+      "description": "Musician follow relations"
+    },
+    "/bandInvites/{inviteId}": {
+      "schema": "BandInvite",
+      "description": "Invitations sent to musicians to join a band"
+    },
+    "/reports/{reportId}": {
+      "schema": "Report",
+      "description": "Reports and content moderation flags for administrative review"
     },
     "/rehearsals/{rehearsalId}": {
       "schema": "Rehearsal",

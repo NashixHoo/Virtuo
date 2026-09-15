@@ -28,3 +28,20 @@ export {
   BAND_PRESETS
 } from "./band-engine.js";
 
+export {
+  BAND_STYLE_PATTERNS,
+  BAND_SECTIONS
+} from "./band-patterns.js";
+
+export {
+  BandSynths
+} from "./band-synths.js";
+
+export {
+  BandHarmony
+} from "./band-harmony.js";
+
+export {
+  CultoModeController,
+  virtuoCulto
+} from "./culto-mode.js";

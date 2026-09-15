@@ -10,6 +10,8 @@
 
 import { SUBDIVISIONS } from "./metronome.js";
 import { virtuoBand, BAND_PRESETS } from "./band-engine.js";
+import { BAND_SECTIONS, BAND_STYLE_PATTERNS } from "./band-patterns.js";
+import { virtuoCulto } from "./culto-mode.js";
 
 /**
  * Renderiza o indicador de batidas (● 1  ○ 2  ○ 3  ○ 4)
@@ -285,44 +287,270 @@ export function renderBandScreenComponent(state) {
         </div>
       </div>
 
-      <!-- SESSÃO MULTI-TRACK MODO BANDA (BATERIA, BAIXO, TECLADO) -->
-      <div class="band-mixer-container" style="margin-top:24px; padding:18px; background:rgba(255,255,255,0.03); border:1px solid rgba(126,231,255,0.18); border-radius:20px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
+      <!-- SESSÃO BANDA VIRTUAL MULTI-TRACK INTELIGENTE -->
+      <div class="band-mixer-container" style="margin-top:24px; padding:20px; background:rgba(255,255,255,0.03); border:1px solid rgba(126,231,255,0.2); border-radius:24px;">
+        
+        <!-- Header da Banda Virtual -->
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
           <div>
-            <span class="pill" style="background:rgba(126,231,255,0.15); border-color:#7EE7FF; color:#7EE7FF;">SINTETIZADOR MULTI-TRACK</span>
-            <h3 style="margin-top:6px; font-size:17px;">Banda Virtual Virtuo</h3>
-            <p style="font-size:12px; color:#94a3b8; margin-top:2px;">Bateria, Baixo e Pad Celestial sincronizados ao BPM.</p>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="pill" style="background:rgba(126,231,255,0.15); border-color:#7EE7FF; color:#7EE7FF;">BANDA VIRTUAL INTELIGENTE</span>
+              ${virtuoBand.getState().isEasyBand ? `<span class="pill" style="background:rgba(16,185,129,0.15); border-color:#10b981; color:#6ee7b7;">EASY BAND</span>` : ''}
+              ${virtuoBand.getState().isTransitioning ? `<span class="pill" style="background:rgba(245,158,11,0.15); border-color:#f59e0b; color:#fbbf24;">TRANSIÇÃO NO COMPASSO</span>` : ''}
+            </div>
+            <h3 style="margin-top:6px; font-size:18px; letter-spacing:-0.02em;">Acompanhamento Musical Virtuo</h3>
+            <p style="font-size:12px; color:#94a3b8; margin-top:2px;">Bateria, Baixo, Teclado e Guitarra sincronizados com harmonia e dinâmica real.</p>
           </div>
-          <div style="display:flex; gap:8px; align-items:center;">
+
+          <!-- Controles de Reprodução Primários -->
+          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
             <button 
               id="band-master-play-btn"
               class="button primary" 
-              style="padding:8px 18px; font-size:13px; font-weight:700; display:inline-flex; align-items:center; gap:6px;"
+              style="padding:9px 20px; font-size:13px; font-weight:700; display:inline-flex; align-items:center; gap:6px;"
               onclick="window.toggleBandEnginePlayback()"
             >
-              <span id="band-play-icon">▶</span>
-              <span id="band-play-label">Tocar Banda</span>
+              <span id="band-play-icon">${virtuoBand.getState().isPlaying ? '⏸' : '▶'}</span>
+              <span id="band-play-label">${virtuoBand.getState().isPlaying ? 'Pausar Banda' : 'Tocar Banda'}</span>
             </button>
             <button 
               class="button secondary" 
-              style="padding:8px 14px; font-size:13px;"
+              style="padding:9px 14px; font-size:13px;"
               onclick="window.stopBandEnginePlayback()"
               title="Interromper todos os instrumentos virtuais"
             >
               ⏹ Parar
             </button>
+            <button 
+              id="band-countin-btn"
+              class="tag-btn ${virtuoBand.getState().hasCountIn ? 'active' : ''}" 
+              style="padding:8px 12px; font-size:11px; display:inline-flex; align-items:center; gap:4px; ${virtuoBand.getState().hasCountIn ? 'background:rgba(126,231,255,0.2); border-color:#7EE7FF; color:#7EE7FF;' : ''}"
+              onclick="window.toggleCountIn()"
+              title="Contagem prévia de 1 compasso antes da banda tocar"
+            >
+              <span>⏱ Contagem</span>
+            </button>
+            <button 
+              id="band-easy-toggle-btn"
+              class="tag-btn ${virtuoBand.getState().isEasyBand ? 'active' : ''}" 
+              style="padding:8px 12px; font-size:11px; display:inline-flex; align-items:center; gap:4px; ${virtuoBand.getState().isEasyBand ? 'background:rgba(16,185,129,0.2); border-color:#10b981; color:#6ee7b7;' : ''}"
+              onclick="window.toggleEasyBand()"
+              title="Modo Simplificado para Músicos Iniciantes"
+            >
+              <span>🌱 Easy Band</span>
+            </button>
           </div>
         </div>
 
-        <!-- Seletor de Presets Musicais Locais (Worship, Congregacional, Pop, Balada, Rock, Corinho, Lento, Médio, Rápido) -->
-        <div style="margin-bottom:14px; padding:12px; background:rgba(0,0,0,0.25); border-radius:14px;">
+        <!-- MIXER DE 4 CANAIS (BATERIA, BAIXO, TECLADO, GUITARRA) -->
+        <div style="margin-bottom:16px; background:rgba(0,0,0,0.3); border-radius:18px; padding:14px; border:1px solid rgba(255,255,255,0.06);">
+          <div style="font-size:11px; font-weight:700; color:#7EE7FF; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:10px;">
+            Mixer da Banda Virtual
+          </div>
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:10px;">
+            ${[
+              { id: "drums", name: "BATERIA", icon: "🥁", desc: "Kick, Snare, HiHat, Toms", hasOptions: false },
+              { id: "bass", name: "BAIXO", icon: "🎸", desc: "Fundamental & Quinta Harmônica", hasOptions: false },
+              { id: "keyboard", name: "TECLADO", icon: "🎹", desc: "Pad Celestial, Piano, Keys", hasOptions: "mode", options: ["pad", "piano", "keys"] },
+              { id: "guitar", name: "GUITARRA", icon: "🎸", desc: "Arpejo, Batida, Shimmer", hasOptions: "pattern", options: ["arpeggio", "strum", "ambient", "worship"] }
+            ].map(trk => {
+              const trackState = virtuoBand.getState().tracks[trk.id] || { volume: 0.7, muted: false, solo: false, active: true };
+              const volPct = Math.round(trackState.volume * 100);
+              return `
+                <div class="band-channel-card" id="track-channel-${trk.id}" style="padding:12px; background:rgba(255,255,255,0.02); border:1px solid ${trackState.solo ? 'rgba(126,231,255,0.4)' : (trackState.muted ? 'rgba(239,68,68,0.3)' : 'rgba(255,255,255,0.08)')}; border-radius:14px;">
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                      <span style="font-size:18px;">${trk.icon}</span>
+                      <div>
+                        <strong style="font-size:12px; display:block; letter-spacing:0.02em;">${trk.name}</strong>
+                        <span style="font-size:10px; color:#94a3b8;">${trk.desc}</span>
+                      </div>
+                    </div>
+                    <div style="display:flex; gap:4px;">
+                      <button 
+                        id="btn-solo-${trk.id}"
+                        class="tag-btn ${trackState.solo ? 'active' : ''}" 
+                        style="padding:3px 8px; font-size:10px; font-weight:700; ${trackState.solo ? 'background:#7EE7FF; color:#07101F; border-color:#7EE7FF;' : ''}"
+                        onclick="window.toggleTrackSolo('${trk.id}')"
+                        title="Isolar este instrumento"
+                      >
+                        SOLO
+                      </button>
+                      <button 
+                        id="btn-mute-${trk.id}"
+                        class="tag-btn ${trackState.muted ? 'active' : ''}" 
+                        style="padding:3px 8px; font-size:10px; font-weight:700; ${trackState.muted ? 'background:rgba(239,68,68,0.25); color:#f87171; border-color:#ef4444;' : ''}"
+                        onclick="window.toggleTrackMute('${trk.id}')"
+                        title="Silenciar instrumento"
+                      >
+                        MUTE
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Fader de Volume & Indicador % -->
+                  <div style="display:flex; align-items:center; gap:8px;">
+                    <span style="font-size:11px; color:#94a3b8;">🔊</span>
+                    <input 
+                      type="range" 
+                      class="metro-volume-slider" 
+                      min="0" 
+                      max="1" 
+                      step="0.05" 
+                      value="${trackState.volume}" 
+                      id="slider-vol-${trk.id}"
+                      oninput="window.setTrackVolume('${trk.id}', this.value)" 
+                    />
+                    <span style="font-size:11px; color:#7EE7FF; font-weight:700; width:34px; text-align:right;" id="val-vol-${trk.id}">${volPct}%</span>
+                  </div>
+
+                  <!-- Seletores de Estilo/Modo Específico (Teclado e Guitarra) -->
+                  ${trk.hasOptions === "mode" ? `
+                    <div style="display:flex; gap:4px; margin-top:8px;">
+                      ${trk.options.map(opt => `
+                        <button 
+                          class="tag-btn ${trackState.mode === opt ? 'active' : ''}" 
+                          style="padding:2px 8px; font-size:10px; text-transform:capitalize;"
+                          onclick="window.setKeyboardMode('${opt}')"
+                        >
+                          ${opt}
+                        </button>
+                      `).join("")}
+                    </div>
+                  ` : ''}
+                  ${trk.hasOptions === "pattern" ? `
+                    <div style="display:flex; gap:4px; margin-top:8px;">
+                      ${trk.options.map(opt => `
+                        <button 
+                          class="tag-btn ${trackState.pattern === opt ? 'active' : ''}" 
+                          style="padding:2px 8px; font-size:10px; text-transform:capitalize;"
+                          onclick="window.setGuitarPattern('${opt}')"
+                        >
+                          ${opt}
+                        </button>
+                      `).join("")}
+                    </div>
+                  ` : ''}
+                </div>
+              `;
+            }).join("")}
+          </div>
+        </div>
+
+        <!-- CONTROLES DE BPM, COMPASSO & AJUSTES RÁPIDOS -->
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:16px; padding:12px 16px; background:rgba(0,0,0,0.2); border-radius:16px;">
+          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+            <span style="font-size:12px; color:#94a3b8;">BPM da Banda: <strong style="color:#7EE7FF; font-size:14px;">${virtuoBand.getState().bpm}</strong></span>
+            <div style="display:flex; gap:4px;">
+              <button class="tag-btn" style="padding:4px 8px; font-size:11px;" onclick="window.adjustBandBpm(-1)">-1</button>
+              <button class="tag-btn" style="padding:4px 8px; font-size:11px;" onclick="window.adjustBandBpm(1)">+1</button>
+              <button class="tag-btn" style="padding:4px 8px; font-size:11px;" onclick="window.setHalfBandBpm()" title="Metade do BPM (Half-time)">/2</button>
+              <button class="tag-btn" style="padding:4px 8px; font-size:11px;" onclick="window.setDoubleBandBpm()" title="Dobro do BPM (Double-time)">x2</button>
+            </div>
+          </div>
+
+          <!-- Controle de Intensidade Visual (0 a 5) -->
+          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+            <span style="font-size:12px; color:#94a3b8;">INTENSIDADE:</span>
+            <div style="display:flex; gap:4px; align-items:center;">
+              ${[
+                { level: 0, label: "0", name: "Silencioso" },
+                { level: 1, label: "1", name: "Muito suave" },
+                { level: 2, label: "2", name: "Suave" },
+                { level: 3, label: "3", name: "Médio" },
+                { level: 4, label: "4", name: "Forte" },
+                { level: 5, label: "5", name: "Muito forte" }
+              ].map(item => {
+                const isAct = virtuoBand.getState().intensity === item.level;
+                return `
+                  <button 
+                    class="band-intensity-btn ${isAct ? 'active' : ''}" 
+                    id="band-int-${item.level}"
+                    onclick="window.setBandIntensity(${item.level})"
+                    title="${item.name}"
+                    style="padding:3px 8px; font-size:11px; border-radius:6px; background:${isAct ? '#7EE7FF' : 'rgba(255,255,255,0.05)'}; color:${isAct ? '#07101F' : '#E2E8F0'}; border:1px solid ${isAct ? '#7EE7FF' : 'rgba(255,255,255,0.1)'}; font-weight:${isAct ? '700' : '400'}; cursor:pointer;"
+                  >
+                    ${item.label}
+                  </button>
+                `;
+              }).join("")}
+            </div>
+            <!-- Barra gráfica de intensidade -->
+            <div style="font-size:11px; color:#7EE7FF; font-family:monospace; letter-spacing:1px; margin-left:4px;">
+              ${"█".repeat(virtuoBand.getState().intensity)}${"░".repeat(5 - virtuoBand.getState().intensity)}
+            </div>
+          </div>
+
+          <!-- Loop e Repetições -->
+          <div style="display:flex; align-items:center; gap:8px;">
+            <button 
+              id="band-loop-btn"
+              class="tag-btn ${virtuoBand.getState().isLooping ? 'active' : ''}" 
+              style="padding:4px 12px; font-size:11px; display:inline-flex; align-items:center; gap:6px; ${virtuoBand.getState().isLooping ? 'background:rgba(16,185,129,0.15); border-color:#10b981; color:#6ee7b7;' : ''}"
+              onclick="window.toggleBandLoop()"
+            >
+              <span>🔁 Loop</span>
+            </button>
+            <div style="display:flex; gap:3px;">
+              ${[
+                { val: 1, label: "1x" },
+                { val: 2, label: "2x" },
+                { val: 4, label: "4x" },
+                { val: 0, label: "∞" }
+              ].map(rep => {
+                const isSelected = virtuoBand.getState().loopRepeatTarget === rep.val;
+                return `
+                  <button 
+                    class="tag-btn ${isSelected ? 'active' : ''}" 
+                    style="padding:3px 7px; font-size:10px; ${isSelected ? 'background:rgba(126,231,255,0.2); border-color:#7EE7FF; color:#7EE7FF;' : ''}"
+                    onclick="window.setLoopRepeatTarget(${rep.val})"
+                  >
+                    ${rep.label}
+                  </button>
+                `;
+              }).join("")}
+            </div>
+          </div>
+        </div>
+
+        <!-- ESTRUTURA DA MÚSICA & SEÇÕES COM TRANSIÇÕES -->
+        <div style="margin-bottom:16px; padding:12px 14px; background:rgba(0,0,0,0.25); border-radius:16px;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:6px;">
-            <span style="font-size:12px; color:#7EE7FF; font-weight:700;">Estilo / Preset da Banda:</span>
+            <span style="font-size:12px; color:#7EE7FF; font-weight:700;">Seção Estrutural da Música:</span>
+            <span style="font-size:11px; color:#94a3b8;">
+              ${virtuoBand.getState().nextQueuedSection 
+                ? `Transição para <strong>${virtuoBand.getState().nextQueuedSection.toUpperCase()}</strong> no próximo compasso...` 
+                : `Seção atual: <strong>${virtuoBand.getState().currentSection.toUpperCase()}</strong>`}
+            </span>
+          </div>
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            ${BAND_SECTIONS.map(sec => {
+              const isCurrent = virtuoBand.getState().currentSection === sec.id;
+              const isQueued = virtuoBand.getState().nextQueuedSection === sec.id;
+              return `
+                <button 
+                  class="tag-btn ${isCurrent ? 'active' : ''}" 
+                  id="band-sec-${sec.id}"
+                  onclick="window.setBandSection('${sec.id}')"
+                  style="padding:6px 12px; font-size:11px; border-radius:10px; ${isCurrent ? 'background:#7EE7FF; color:#07101F; font-weight:700; border-color:#7EE7FF;' : (isQueued ? 'background:rgba(245,158,11,0.25); color:#fbbf24; border-color:#f59e0b;' : '')}"
+                >
+                  <span>${sec.label}</span>
+                  ${isQueued ? '⏳' : ''}
+                </button>
+              `;
+            }).join("")}
+          </div>
+        </div>
+
+        <!-- SELETOR DE ESTILOS & CATEGORIAS (Worship, Pop, Rock, Congregacional, Balada, 4/4 simples, 6/8) -->
+        <div style="margin-bottom:16px; padding:12px 14px; background:rgba(0,0,0,0.25); border-radius:16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:6px;">
+            <span style="font-size:12px; color:#7EE7FF; font-weight:700;">Estilo Rítmico da Banda:</span>
             <span style="font-size:11px; color:#94a3b8;" id="band-preset-desc">${BAND_PRESETS[virtuoBand.getState().currentPreset]?.description || ""}</span>
           </div>
           <div style="display:flex; gap:6px; flex-wrap:wrap;">
-            ${Object.keys(BAND_PRESETS).map(pKey => {
-              const p = BAND_PRESETS[pKey];
+            ${Object.keys(BAND_STYLE_PATTERNS).map(pKey => {
+              const p = BAND_STYLE_PATTERNS[pKey];
               const isSelected = virtuoBand.getState().currentPreset === pKey;
               return `
                 <button 
@@ -339,172 +567,81 @@ export function renderBandScreenComponent(state) {
           </div>
         </div>
 
-        <!-- Controles de Dinâmica: Intensidade e Loop -->
-        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:14px; padding:10px 14px; background:rgba(255,255,255,0.02); border-radius:14px; border:1px solid rgba(255,255,255,0.06);">
-          <!-- Intensidade -->
-          <div style="display:flex; align-items:center; gap:8px;">
-            <span style="font-size:12px; color:#94a3b8;">Intensidade:</span>
-            <div style="display:flex; gap:4px;">
-              ${[
-                { level: 1, label: "1 Suave" },
-                { level: 2, label: "2 Médio" },
-                { level: 3, label: "3 Clímax" }
-              ].map(item => {
-                const isAct = virtuoBand.getState().intensity === item.level;
-                return `
-                  <button 
-                    class="band-intensity-btn ${isAct ? 'active' : ''}" 
-                    id="band-int-${item.level}"
-                    onclick="window.setBandIntensity(${item.level})"
-                    style="padding:3px 10px; font-size:11px; border-radius:8px; background:${isAct ? 'rgba(126,231,255,0.2)' : 'rgba(255,255,255,0.04)'}; border:1px solid ${isAct ? '#7EE7FF' : 'rgba(255,255,255,0.1)'}; color:${isAct ? '#7EE7FF' : '#94a3b8'}; cursor:pointer;"
-                  >
-                    ${item.label}
-                  </button>
-                `;
-              }).join("")}
-            </div>
-          </div>
-
-          <!-- Loop Toggle -->
-          <div style="display:flex; align-items:center; gap:8px;">
-            <button 
-              id="band-loop-btn"
-              class="tag-btn ${virtuoBand.getState().isLooping ? 'active' : ''}" 
-              style="padding:4px 12px; font-size:11px; display:inline-flex; align-items:center; gap:6px; ${virtuoBand.getState().isLooping ? 'background:rgba(16,185,129,0.15); border-color:#10b981; color:#6ee7b7;' : ''}"
-              onclick="window.toggleBandLoop()"
-            >
-              <span>🔁</span>
-              <span>Loop: <strong>${virtuoBand.getState().isLooping ? 'Ligado' : '1x Compassos'}</strong></span>
-            </button>
-          </div>
-        </div>
-
-        <!-- Seletor de Tonalidade da Banda -->
-        <div style="display:flex; align-items:center; gap:10px; margin-bottom:16px; padding:10px 14px; background:rgba(0,0,0,0.2); border-radius:14px;">
+        <!-- SELETOR DE TONALIDADE & TRANSPOSIÇÃO AUTOMÁTICA -->
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:16px; padding:10px 14px; background:rgba(0,0,0,0.2); border-radius:14px; flex-wrap:wrap;">
           <span style="font-size:12px; color:#94a3b8;">Tom Harmônico da Banda:</span>
           <div class="band-key-selector" style="display:flex; gap:6px; flex-wrap:wrap;">
-            ${["C", "D", "E", "F", "G", "A", "B", "Em"].map(k => `
-              <button 
-                class="band-key-chip" 
-                id="band-key-${k}"
-                onclick="window.setBandKey('${k}')"
-                style="padding:4px 10px; font-size:12px; border-radius:999px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:#E2E8F0; cursor:pointer;"
-              >
-                ${k}
-              </button>
-            `).join("")}
+            ${["C", "D", "E", "F", "G", "A", "B", "Em", "Am", "F#m"].map(k => {
+              const isKey = virtuoBand.getState().currentKey === k;
+              return `
+                <button 
+                  class="band-key-chip ${isKey ? 'active' : ''}" 
+                  id="band-key-${k}"
+                  onclick="window.setBandKey('${k}')"
+                  style="padding:4px 10px; font-size:12px; border-radius:999px; background:${isKey ? '#7EE7FF' : 'rgba(255,255,255,0.06)'}; border:1px solid ${isKey ? '#7EE7FF' : 'rgba(255,255,255,0.12)'}; color:${isKey ? '#07101F' : '#E2E8F0'}; font-weight:${isKey ? '700' : '400'}; cursor:pointer;"
+                >
+                  ${k}
+                </button>
+              `;
+            }).join("")}
           </div>
         </div>
 
-        <!-- Trilhas Individuais: Bateria, Baixo, Teclado -->
-        <div class="band-tracks-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:12px;">
+        <!-- PAINEL SMART BAND & MODO CULTO -->
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:12px; margin-top:16px;">
           
-          <!-- Trilha 1: Bateria -->
-          <div class="band-track-card" id="track-card-drums" style="padding:14px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.07); border-radius:16px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-              <div style="display:flex; align-items:center; gap:8px;">
-                <span style="font-size:20px;">🥁</span>
-                <div>
-                  <strong style="font-size:13px; display:block;">Bateria</strong>
-                  <span style="font-size:10px; color:#94a3b8;">Kick • Snare • Hi-Hat</span>
-                </div>
-              </div>
-              <button 
-                id="btn-mute-drums"
-                class="tag-btn" 
-                style="padding:4px 10px; font-size:11px;"
-                onclick="window.toggleTrackMute('drums')"
-              >
-                Mute
-              </button>
+          <!-- Card Smart Band -->
+          <div style="padding:14px; background:rgba(126,231,255,0.04); border:1px solid rgba(126,231,255,0.15); border-radius:16px;">
+            <div style="display:flex; align-items:center; gap:6px; margin-bottom:8px;">
+              <span style="font-size:16px;">✨</span>
+              <strong style="font-size:13px; color:#7EE7FF;">Virtuo Smart Band</strong>
             </div>
-            <div style="display:flex; align-items:center; gap:10px;">
-              <span style="font-size:11px; color:#94a3b8; width:28px;">Vol</span>
-              <input 
-                type="range" 
-                class="metro-volume-slider" 
-                min="0" 
-                max="1" 
-                step="0.05" 
-                value="0.8" 
-                id="slider-vol-drums"
-                oninput="window.setTrackVolume('drums', this.value)" 
-              />
-              <span style="font-size:11px; color:#7EE7FF; width:34px; text-align:right;" id="val-vol-drums">80%</span>
-            </div>
+            <p style="font-size:12px; color:#94a3b8; line-height:1.5; margin-bottom:10px;">
+              ${virtuoBand.getState().smartRecommendation 
+                ? virtuoBand.getState().smartRecommendation.summary 
+                : "A inteligência musical analisa a canção e sugere instrumentos, dinâmica e intensidades por seção."}
+            </p>
+            <button 
+              class="button secondary" 
+              style="padding:6px 12px; font-size:11px; width:100%;"
+              onclick="window.applySmartBand()"
+            >
+              Aplicar Sugestão da Canção Ativa
+            </button>
           </div>
 
-          <!-- Trilha 2: Baixo -->
-          <div class="band-track-card" id="track-card-bass" style="padding:14px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.07); border-radius:16px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-              <div style="display:flex; align-items:center; gap:8px;">
-                <span style="font-size:20px;">🎸</span>
-                <div>
-                  <strong style="font-size:13px; display:block;">Baixo</strong>
-                  <span style="font-size:10px; color:#94a3b8;">Sub-Bass Analógico</span>
-                </div>
+          <!-- Card Modo Culto (Sequência de Louvores) -->
+          <div style="padding:14px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.08); border-radius:16px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+              <div style="display:flex; align-items:center; gap:6px;">
+                <span style="font-size:16px;">⛪</span>
+                <strong style="font-size:13px; color:#f1f5f9;">Modo Culto (Setlist)</strong>
               </div>
-              <button 
-                id="btn-mute-bass"
-                class="tag-btn" 
-                style="padding:4px 10px; font-size:11px;"
-                onclick="window.toggleTrackMute('bass')"
-              >
-                Mute
-              </button>
-            </div>
-            <div style="display:flex; align-items:center; gap:10px;">
-              <span style="font-size:11px; color:#94a3b8; width:28px;">Vol</span>
-              <input 
-                type="range" 
-                class="metro-volume-slider" 
-                min="0" 
-                max="1" 
-                step="0.05" 
-                value="0.75" 
-                id="slider-vol-bass"
-                oninput="window.setTrackVolume('bass', this.value)" 
-              />
-              <span style="font-size:11px; color:#7EE7FF; width:34px; text-align:right;" id="val-vol-bass">75%</span>
-            </div>
-          </div>
-
-          <!-- Trilha 3: Teclado -->
-          <div class="band-track-card" id="track-card-keyboard" style="padding:14px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.07); border-radius:16px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-              <div style="display:flex; align-items:center; gap:8px;">
-                <span style="font-size:20px;">🎹</span>
-                <div>
-                  <strong style="font-size:13px; display:block;">Teclado</strong>
-                  <span style="font-size:10px; color:#94a3b8;">Pad Celestial Worship</span>
-                </div>
+              <div style="display:flex; gap:4px;">
+                <button class="tag-btn" style="padding:2px 8px; font-size:10px;" onclick="window.prevCultoSong()" title="Louvor Anterior">◀</button>
+                <button class="tag-btn" style="padding:2px 8px; font-size:10px;" onclick="window.nextCultoSong()" title="Próximo Louvor">▶</button>
               </div>
-              <button 
-                id="btn-mute-keyboard"
-                class="tag-btn" 
-                style="padding:4px 10px; font-size:11px;"
-                onclick="window.toggleTrackMute('keyboard')"
-              >
-                Mute
-              </button>
             </div>
-            <div style="display:flex; align-items:center; gap:10px;">
-              <span style="font-size:11px; color:#94a3b8; width:28px;">Vol</span>
-              <input 
-                type="range" 
-                class="metro-volume-slider" 
-                min="0" 
-                max="1" 
-                step="0.05" 
-                value="0.7" 
-                id="slider-vol-keyboard"
-                oninput="window.setTrackVolume('keyboard', this.value)" 
-              />
-              <span style="font-size:11px; color:#7EE7FF; width:34px; text-align:right;" id="val-vol-keyboard">70%</span>
+            <div style="font-size:11px; color:#94a3b8; margin-bottom:8px;">
+              ${virtuoCulto.getState().currentSong ? `
+                Tocando: <strong style="color:#7EE7FF;">${virtuoCulto.getState().currentSong.title}</strong> (${virtuoCulto.getState().currentSong.key} • ${virtuoCulto.getState().currentSong.bpm} BPM • ${virtuoCulto.getState().currentSong.style})
+              ` : "Nenhum louvor configurado no setlist."}
+            </div>
+            <div style="display:flex; gap:4px; flex-direction:column; max-height:85px; overflow-y:auto;">
+              ${virtuoCulto.getState().songs.map((cs, idx) => `
+                <div 
+                  onclick="window.selectCultoSong(${idx})"
+                  style="padding:4px 8px; font-size:11px; border-radius:6px; background:${virtuoCulto.getState().currentIndex === idx ? 'rgba(126,231,255,0.15)' : 'rgba(255,255,255,0.02)'}; color:${virtuoCulto.getState().currentIndex === idx ? '#7EE7FF' : '#94a3b8'}; cursor:pointer; display:flex; justify-content:space-between;"
+                >
+                  <span>0${idx + 1} — ${cs.title}</span>
+                  <span>${cs.key} • ${cs.bpm} BPM</span>
+                </div>
+              `).join("")}
             </div>
           </div>
 
         </div>
+
       </div>
 
       <!-- Atalhos Rápidos de Worship & Louvor -->

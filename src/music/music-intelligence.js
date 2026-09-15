@@ -1,15 +1,19 @@
 // =============================================================
-// VIRTUO MUSIC INTELLIGENCE ENGINE
+// VIRTUO MUSIC INTELLIGENCE ENGINE 2.0
 // src/music/music-intelligence.js
-// Local deterministic musical intelligence - 100% offline
-// Zero external API calls, instant execution (< 2ms)
+// Análise musical determinística avançada - 100% offline
+// Zero chamadas a APIs externas, execução imediata (< 2ms)
 // =============================================================
 
-import { simplifyChord, getSemitoneDistance, calculateKey, transposeChord } from "./index.js";
+import { simplifyChord, identifySubstitutableChords } from "./easy-play.js";
+import { transposeChord, calculateKey, getSemitoneDistance } from "./transposer.js";
+import { suggestSmartKey } from "./smart-key.js";
+import { generateStudyPlan } from "./study-plan.js";
+import { parseChord, CHORD_FINDER_REGEX } from "./chord-parser.js";
 
-const CHROMATIC_SCALE = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
-const PREFERRED_OPEN_KEYS_MAJOR = ["G", "C", "D", "E", "A"];
-const PREFERRED_OPEN_KEYS_MINOR = ["Em", "Am", "Dm"];
+export const CHROMATIC_SCALE = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+export const PREFERRED_OPEN_KEYS_MAJOR = ["G", "C", "D", "E", "A"];
+export const PREFERRED_OPEN_KEYS_MINOR = ["Em", "Am", "Dm"];
 
 const MAJOR_SCALE_DEGREES = {
   0: { roman: "I", quality: "maj" },
@@ -31,27 +35,314 @@ const MINOR_SCALE_DEGREES = {
   10: { roman: "VII", quality: "maj" }
 };
 
+// Tabela de equivalências harmônicas diretas para relativos maiores e menores
+const RELATIVE_KEYS_MAP = {
+  // Menores -> Relativas Maiores
+  "Am": "C", "Em": "G", "Bm": "D", "F#m": "A", "C#m": "E", "G#m": "B",
+  "Dm": "F", "Gm": "Bb", "Cm": "Eb", "Fm": "Ab", "Bbm": "Db", "D#m": "F#",
+  "A#m": "C#", "Ebm": "Gb",
+  // Maiores -> Relativas Menores
+  "C": "Am", "G": "Em", "D": "Bm", "A": "F#m", "E": "C#m", "B": "G#m",
+  "F": "Dm", "Bb": "Gm", "Eb": "Cm", "Ab": "Fm", "Db": "Bbm", "F#": "D#m",
+  "C#": "A#m", "Gb": "Ebm"
+};
+
 export class VirtuoMusicIntelligence {
   /**
-   * Extrai lista única de acordes a partir de string ou array
+   * Obtém a tonalidade relativa direta (maior <-> menor)
+   */
+  static getRelativeKey(key = "G") {
+    if (!key) return "Em";
+    const clean = key.trim();
+    if (RELATIVE_KEYS_MAP[clean]) {
+      return RELATIVE_KEYS_MAP[clean];
+    }
+    const isMinor = clean.endsWith("m");
+    const root = clean.replace("m", "")
+      .replace("Db", "C#").replace("Eb", "D#").replace("Gb", "F#").replace("Ab", "G#").replace("Bb", "A#");
+    const idx = CHROMATIC_SCALE.indexOf(root);
+    if (idx === -1) return isMinor ? "C" : "Am";
+
+    if (isMinor) {
+      // Menor -> Maior (+3 semitons)
+      const majorIdx = (idx + 3) % 12;
+      const target = CHROMATIC_SCALE[majorIdx];
+      // Ajuste enarmônico usual para tonalidades com bemóis
+      const flatEquivalents = { "D#": "Eb", "G#": "Ab", "A#": "Bb", "C#": "Db" };
+      return flatEquivalents[target] || target;
+    } else {
+      // Maior -> Menor (-3 semitons = +9)
+      const minorIdx = (idx + 9) % 12;
+      const target = CHROMATIC_SCALE[minorIdx];
+      return `${target}m`;
+    }
+  }
+
+  /**
+   * Extrai lista sequencial e total de acordes da partitura/cifra
    */
   static extractChords(input) {
     if (!input) return [];
     if (Array.isArray(input)) return [...new Set(input.map(c => String(c).trim()).filter(Boolean))];
-    // Aceita acordes incluindo sustenido/bemol na fundamental e no baixo invertido (ex: D/F#)
-    const matches = String(input).match(/[A-G][b#]?(?:m|maj|min|dim|aug|sus[24]?|add[29]?|[0-9]+)*(?:\/[A-G][b#]*)?/g);
+    const text = String(input);
+    const matches = text.match(CHORD_FINDER_REGEX);
     if (!matches) return [];
-    return [...new Set(matches.map(c => c.trim()).filter(c => /^[A-G]/.test(c)))];
+    return [...new Set(matches.map(c => c.trim()).filter(c => parseChord(c) !== null))];
   }
 
   /**
-   * Sugestão inteligente de Capotraste para violão
+   * Extrai todos os tokens de acordes preservando repetições e ordem sequencial
+   */
+  static extractSequentialChords(input) {
+    if (!input) return [];
+    if (Array.isArray(input)) return input.map(c => String(c).trim()).filter(Boolean);
+    const text = String(input);
+    const matches = text.match(CHORD_FINDER_REGEX);
+    if (!matches) return [];
+    return matches.map(c => c.trim()).filter(c => parseChord(c) !== null);
+  }
+
+  /**
+   * Extrai seções estruturais de uma música
+   */
+  static extractSections(song) {
+    const sections = [];
+    if (song?.structure && typeof song.structure === "string") {
+      const parts = song.structure.split(/•|-|\/|,/).map(s => s.trim()).filter(Boolean);
+      if (parts.length > 0) return parts;
+    }
+
+    const chordsText = typeof song?.chords === "string" ? song.chords : (song?.chordSheet || "");
+    const tagMatches = chordsText.match(/\[([^\]]+)\]/g);
+    if (tagMatches && tagMatches.length > 0) {
+      tagMatches.forEach(tag => {
+        const clean = tag.replace(/\[|\]/g, "").trim();
+        if (clean && !sections.includes(clean)) {
+          sections.push(clean);
+        }
+      });
+    }
+
+    if (sections.length > 0) return sections;
+    return ["Intro", "Verso", "Refrão", "Final"];
+  }
+
+  /**
+   * Cálculo determinístico e transparente de dificuldade
+   */
+  static calculateDeterministicDifficulty(chordsInput, bpm = 74, structureInput = "") {
+    const uniqueChords = this.extractChords(chordsInput);
+    const sequentialChords = this.extractSequentialChords(chordsInput);
+    let score = 0;
+    const reasons = [];
+
+    const barreChords = ["F", "B", "Bb", "F#", "F#m", "Bm", "G#m", "C#m", "D#m", "Ab", "Eb", "Cm", "Fm"];
+    const slashChords = uniqueChords.filter(c => c.includes("/"));
+    const seventhChords = uniqueChords.filter(c => /(?:7|7M|maj7|m7)/i.test(c));
+    const complexExtensions = uniqueChords.filter(c => /(?:9|11|13|dim|aug|m7b5|sus|add|°|\+)/i.test(c));
+    const foundBarres = uniqueChords.filter(c => barreChords.some(b => c === b || c.startsWith(b)));
+
+    // 1. Quantidade de acordes
+    if (uniqueChords.length >= 9) {
+      score += 4;
+      reasons.push(`${uniqueChords.length} acordes diferentes na harmonia`);
+    } else if (uniqueChords.length >= 6) {
+      score += 2;
+      reasons.push(`${uniqueChords.length} acordes diferentes`);
+    }
+
+    // 2. Acordes com pestana
+    if (foundBarres.length > 0) {
+      score += foundBarres.length * 2;
+      reasons.push(`${foundBarres.length} acorde(s) com pestana (${foundBarres.slice(0, 3).join(", ")})`);
+    }
+
+    // 3. Baixos invertidos
+    if (slashChords.length > 0) {
+      score += slashChords.length * 1.5;
+      reasons.push(`${slashChords.length} baixo(s) invertido(s) (${slashChords.slice(0, 3).join(", ")})`);
+    }
+
+    // 4. Extensões e dissonâncias
+    if (complexExtensions.length > 0) {
+      score += complexExtensions.length * 1.5;
+      reasons.push(`${complexExtensions.length} acorde(s) com extensão (${complexExtensions.slice(0, 3).join(", ")})`);
+    }
+
+    // 5. Acordes com sétima
+    if (seventhChords.length > 0 && complexExtensions.length === 0) {
+      score += seventhChords.length * 0.8;
+      reasons.push(`${seventhChords.length} acorde(s) com sétima (${seventhChords.slice(0, 3).join(", ")})`);
+    }
+
+    // 6. Andamento (BPM)
+    const numericBpm = Number(bpm) || 74;
+    if (numericBpm > 125) {
+      score += 3;
+      reasons.push(`Andamento acelerado (${numericBpm} BPM)`);
+    } else if (numericBpm < 55) {
+      score += 1.5;
+      reasons.push(`Andamento lento que exige sustentação de tempo (${numericBpm} BPM)`);
+    }
+
+    // 7. Mudanças rápidas de acordes
+    const chordsText = typeof chordsInput === "string" ? chordsInput : "";
+    let hasFastChanges = false;
+    const lines = chordsText.split("\n");
+    for (const line of lines) {
+      const lineChords = line.match(/[A-G][b#]?(?:m|maj|min|dim|aug|sus[24]?|add[29]?|[0-9]+)*(?:\/[A-G][b#]*)?/g) || [];
+      if (lineChords.length >= 4) {
+        hasFastChanges = true;
+        break;
+      }
+    }
+    if (hasFastChanges) {
+      score += 2;
+      reasons.push("Mudanças rápidas de acordes entre os compassos");
+    }
+
+    // 8. Seções da estrutura
+    const sectionsCount = structureInput ? structureInput.split(/•|-|\/|,/).length : 4;
+    if (sectionsCount > 5) {
+      score += 2;
+      reasons.push(`Estrutura longa com ${sectionsCount} seções`);
+    }
+
+    // Classificação estrita conforme especificação V2
+    let difficulty = "Fácil";
+    if (score >= 14) {
+      difficulty = "Avançado";
+    } else if (score >= 8) {
+      difficulty = "Difícil";
+    } else if (score >= 3.5) {
+      difficulty = "Médio";
+    }
+
+    if (reasons.length === 0) {
+      reasons.push("Harmonia direta com digitações abertas e progressão estável");
+    }
+
+    return {
+      difficulty,
+      score: parseFloat(score.toFixed(1)),
+      reasons,
+      totalChords: sequentialChords.length,
+      uniqueCount: uniqueChords.length
+    };
+  }
+
+  /**
+   * Análise completa estruturada de uma música (VIRTUO MUSIC INTELLIGENCE 2.0)
+   * 
+   * @param {Object} song - Canção com título, tom, bpm, acordes e estrutura
+   * @returns {Object} Análise estruturada completa
+   */
+  static analyzeSong(song) {
+    const chordsText = typeof song?.chords === "string" ? song.chords : (song?.chordSheet || "");
+    const key = song?.key || song?.originalKey || "G";
+    const bpm = Number(song?.bpm) || 74;
+    const timeSignature = song?.timeSignature || "4/4";
+
+    const uniqueChords = this.extractChords(chordsText);
+    const sequentialChords = this.extractSequentialChords(chordsText);
+    const relativeKey = this.getRelativeKey(key);
+    const sections = this.extractSections(song);
+
+    // Dificuldade determinística
+    const diffAnalysis = this.calculateDeterministicDifficulty(chordsText, bpm, song?.structure || sections.join(" • "));
+    const difficulty = diffAnalysis.difficulty;
+    const difficultyReasons = diffAnalysis.reasons;
+
+    // Detecção de acordes com sétima, extensões e slash chords
+    const seventhChords = uniqueChords.filter(c => /(?:7|7M|maj7|m7)/i.test(c));
+    const extendedChords = uniqueChords.filter(c => /(?:9|11|13|dim|aug|m7b5|sus|add|°|\+)/i.test(c));
+    const slashChords = uniqueChords.filter(c => c.includes("/"));
+
+    // Mudanças rápidas de acordes
+    const fastChanges = diffAnalysis.reasons.some(r => r.toLowerCase().includes("mudanças rápidas"));
+
+    // Progressão harmônica e graus
+    const progressionAnalysis = this.analyzeProgression(uniqueChords, key);
+
+    // Repetições de progressões
+    const repeatingProgressions = this.detectProgressionLoops(sequentialChords);
+
+    // Capotraste inteligente
+    const capoSuggestion = this.suggestCapo(key, song?.originalKey);
+
+    // Smart Key
+    const smartKeySuggestion = suggestSmartKey(song, key);
+
+    // Simplificação e Easy Play
+    const substitutableChords = identifySubstitutableChords(uniqueChords, key);
+    const easyPlayAvailable = substitutableChords.some(s => s.canSimplify);
+
+    const simplificationSuggestions = substitutableChords
+      .filter(s => s.canSimplify)
+      .map(s => ({
+        original: s.original,
+        easy: s.easy,
+        harmonicFunction: s.harmonicFunction,
+        reason: s.reason
+      }));
+
+    // Plano de estudo estruturado em 7 dias
+    const studyPlan = generateStudyPlan(song, { uniqueChords, difficulty, bpm });
+
+    return {
+      key,
+      relativeKey,
+      bpm,
+      timeSignature,
+      difficulty,
+      chordCount: sequentialChords.length,
+      uniqueChords,
+      progression: progressionAnalysis.progressionDegrees || [],
+      progressionDetails: progressionAnalysis.progression || [],
+      cadence: progressionAnalysis.cadence,
+      sections,
+      capoSuggestion,
+      smartKeySuggestion,
+      easyPlayAvailable,
+      difficultyReasons,
+      seventhChords,
+      extendedChords,
+      slashChords,
+      fastChanges,
+      repeatingProgressions,
+      simplificationSuggestions,
+      studyPlan,
+      score: diffAnalysis.score
+    };
+  }
+
+  /**
+   * Detecta loops ou ciclos repetitivos de progressão
+   */
+  static detectProgressionLoops(chords) {
+    if (!Array.isArray(chords) || chords.length < 6) return [];
+    const loops = [];
+    const windowSize = 4;
+
+    for (let i = 0; i <= chords.length - (windowSize * 2); i++) {
+      const pattern = chords.slice(i, i + windowSize).join(" - ");
+      const nextPattern = chords.slice(i + windowSize, i + (windowSize * 2)).join(" - ");
+      if (pattern === nextPattern && !loops.includes(pattern)) {
+        loops.push(pattern);
+      }
+    }
+    return loops;
+  }
+
+  /**
+   * Sugestão inteligente de Capotraste para violão (Compatível V1)
    */
   static suggestCapo(key, originalKey = null, preferredTargetKey = null) {
     const rootKey = key || originalKey || "G";
     const isMinor = rootKey.endsWith("m");
-    const cleanRoot = rootKey.replace("m", "");
-    const rootIndex = CHROMATIC_SCALE.indexOf(cleanRoot.replace("Db", "C#").replace("Eb", "D#").replace("Gb", "F#").replace("Ab", "G#").replace("Bb", "A#"));
+    const cleanRoot = rootKey.replace("m", "")
+      .replace("Db", "C#").replace("Eb", "D#").replace("Gb", "F#").replace("Ab", "G#").replace("Bb", "A#");
+    const rootIndex = CHROMATIC_SCALE.indexOf(cleanRoot);
 
     if (rootIndex === -1) {
       return { suggestedCapo: 0, capoFret: 0, shapeKey: rootKey, explanation: "Tom padrão sem capotraste necessário." };
@@ -74,8 +365,9 @@ export class VirtuoMusicIntelligence {
     let minCapo = 12;
 
     for (const shape of preferredShapes) {
-      const shapeClean = shape.replace("m", "");
-      const shapeIdx = CHROMATIC_SCALE.indexOf(shapeClean.replace("Db", "C#").replace("Eb", "D#").replace("Gb", "F#").replace("Ab", "G#").replace("Bb", "A#"));
+      const shapeClean = shape.replace("m", "")
+        .replace("Db", "C#").replace("Eb", "D#").replace("Gb", "F#").replace("Ab", "G#").replace("Bb", "A#");
+      const shapeIdx = CHROMATIC_SCALE.indexOf(shapeClean);
       if (shapeIdx === -1) continue;
 
       let capoFret = (rootIndex - shapeIdx + 12) % 12;
@@ -104,7 +396,22 @@ export class VirtuoMusicIntelligence {
   }
 
   /**
-   * Simplificação inteligente de lista ou partitura de acordes (Easy Play)
+   * Estimativa de dificuldade musical (Compatibilidade V1)
+   */
+  static estimateDifficulty(chordsInput, bpm = 74, structure = "") {
+    const result = this.calculateDeterministicDifficulty(chordsInput, bpm, structure);
+    const level = result.difficulty === "Fácil" ? "Iniciante" : result.difficulty === "Médio" ? "Intermediário" : "Avançado";
+    return {
+      difficulty: result.difficulty,
+      level,
+      score: result.score,
+      reasons: result.reasons,
+      totalChords: result.totalChords
+    };
+  }
+
+  /**
+   * Simplificação inteligente de lista de acordes (Compatibilidade V1)
    */
   static suggestEasyChords(chordsInput, key = "G") {
     const list = this.extractChords(chordsInput);
@@ -128,69 +435,7 @@ export class VirtuoMusicIntelligence {
   }
 
   /**
-   * Estimativa de dificuldade musical determinística
-   */
-  static estimateDifficulty(chordsInput, bpm = 74, structure = "") {
-    const chords = this.extractChords(chordsInput);
-    let score = 0;
-    const reasons = [];
-
-    const barreChords = ["F", "B", "Bb", "F#", "F#m", "Bm", "G#m", "C#m", "D#m", "Ab", "Eb"];
-    const slashChords = chords.filter(c => c.includes("/"));
-    const complexExtensions = chords.filter(c => /(?:maj7|7M|9|11|13|dim|aug|m7b5|sus)/i.test(c));
-    const foundBarres = chords.filter(c => barreChords.some(b => c.startsWith(b)));
-
-    if (foundBarres.length > 0) {
-      score += foundBarres.length * 2;
-      reasons.push(`${foundBarres.length} acorde(s) com pestana (${foundBarres.slice(0, 3).join(", ")})`);
-    }
-
-    if (slashChords.length > 0) {
-      score += slashChords.length * 1.5;
-      reasons.push(`${slashChords.length} baixo(s) invertido(s) (${slashChords.slice(0, 3).join(", ")})`);
-    }
-
-    if (complexExtensions.length > 0) {
-      score += complexExtensions.length * 1.2;
-      reasons.push(`${complexExtensions.length} dissonância(s) ou extensão(ões) (${complexExtensions.slice(0, 3).join(", ")})`);
-    }
-
-    if (bpm > 125) {
-      score += 3;
-      reasons.push(`Andamento acelerado (${bpm} BPM)`);
-    } else if (bpm < 55) {
-      score += 1.5;
-      reasons.push(`Andamento lento que exige sustentação de tempo (${bpm} BPM)`);
-    }
-
-    const structureSections = structure ? structure.split(/•|-|\//).length : 4;
-    if (structureSections > 6) {
-      score += 2;
-      reasons.push(`Estrutura longa com ${structureSections} seções`);
-    }
-
-    let difficulty = "Fácil";
-    if (score >= 12) {
-      difficulty = "Avançado";
-    } else if (score >= 7) {
-      difficulty = "Difícil";
-    } else if (score >= 3.5) {
-      difficulty = "Médio";
-    }
-
-    const level = difficulty === "Fácil" ? "Iniciante" : difficulty === "Médio" ? "Intermediário" : "Avançado";
-
-    return {
-      difficulty,
-      level,
-      score: parseFloat(score.toFixed(1)),
-      reasons,
-      totalChords: chords.length
-    };
-  }
-
-  /**
-   * Análise harmônica determinística e progressão por graus
+   * Análise harmônica determinística e progressão por graus (Compatibilidade V1)
    */
   static analyzeProgression(chordsInput, key = "G") {
     const chords = this.extractChords(chordsInput);
@@ -236,6 +481,8 @@ export class VirtuoMusicIntelligence {
       cadence = "Cadência Autêntica Clássica (ii - V - I)";
     } else if (degreesStr.includes("I - IV - I")) {
       cadence = "Cadência Plagal de Adoração (I - IV - I)";
+    } else if (degreesStr.includes("i - VII - VI - v") || degreesStr.includes("i - VI - III - VII")) {
+      cadence = "Cadência Menor Worship (i - VI - III - VII)";
     }
 
     return {
@@ -249,7 +496,7 @@ export class VirtuoMusicIntelligence {
   }
 
   /**
-   * Sequência de treino com metrônomo para transições de acordes
+   * Sequência de treino com metrônomo para transições de acordes (Compatibilidade V1)
    */
   static suggestPracticeSequence(chordsInput, bpm = 74, difficulty = "Médio") {
     const chords = this.extractChords(chordsInput);
@@ -285,7 +532,7 @@ export class VirtuoMusicIntelligence {
   }
 
   /**
-   * Transpõe uma progressão por semitons
+   * Transpõe uma progressão por semitons (Compatibilidade V1)
    */
   static transposeProgression(progression, semitones) {
     if (!Array.isArray(progression)) return [];
@@ -293,7 +540,7 @@ export class VirtuoMusicIntelligence {
   }
 
   /**
-   * Sugestão determinística de arranjo da banda
+   * Sugestão determinística de arranjo da banda (Compatibilidade V1)
    */
   static suggestBandArrangement(song, preset = "Worship", instruments = []) {
     const title = song?.title || "Louvor";

@@ -25,8 +25,13 @@ export {
   simplifyChord,
   generateEasyPlaySheet,
   getEasyPlayCifra,
-  hasEasyPlay
+  hasEasyPlay,
+  identifySubstitutableChords,
+  compareOriginalAndEasyPlay
 } from "./easy-play.js";
+
+export { suggestSmartKey } from "./smart-key.js";
+export { generateStudyPlan } from "./study-plan.js";
 
 export { DEMO_SONGS } from "./demo-songs.js";
 

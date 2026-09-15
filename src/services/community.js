@@ -1,8 +1,10 @@
 // =============================================================
-// VIRTUO COMMUNITY SERVICE
+// VIRTUO COMMUNITY SERVICE 2.0 (ETAPA 4/5)
 // src/services/community.js
-// Gestão de postagens e interações da comunidade com Cloud Firestore
+// Gestão de postagens ricas, tipos multimídia e Feed 2.0 com Cloud Firestore
 // =============================================================
+
+import { POST_TYPES } from "../community/community-constants.js";
 
 let firestoreCtx = null;
 
@@ -24,7 +26,9 @@ async function getFirestoreCtx() {
         updateDoc: firestoreMod.updateDoc,
         deleteDoc: firestoreMod.deleteDoc,
         query: firestoreMod.query,
+        where: firestoreMod.where,
         orderBy: firestoreMod.orderBy,
+        limit: firestoreMod.limit,
         serverTimestamp: firestoreMod.serverTimestamp
       };
       return firestoreCtx;
@@ -35,30 +39,68 @@ async function getFirestoreCtx() {
   return null;
 }
 
-const LOCAL_POSTS_STORAGE_KEY = "virtuo_community_posts_v1";
+const LOCAL_POSTS_STORAGE_KEY = "virtuo_community_posts_v2";
 
 const DEFAULT_DEMO_POSTS = [
   {
     id: "demo-post-1",
     authorId: "virtuo-master",
     authorName: "Nashix Hoo",
-    authorRole: "Fundador",
+    authorRole: "Fundador & Líder",
     authorPhoto: "",
-    content: "Bem-vindos ao Virtuo! O Modo Ministro e o Metrônomo Acústico já estão calibrados para o próximo culto. Experimentem a transposição com Easy Play!",
+    type: "dica_musical",
+    instrument: "guitarra",
+    content: "Bem-vindos à Comunidade Virtuo 2.0! O Modo Ministro e o Metrônomo com Banda Virtual agora estão sincronizados com as cifras da comunidade. Experimentem criar repertórios e agendar ensaios colaborativos.",
     imageUrl: "",
-    likes: ["user-demo-1", "user-demo-2"],
+    mediaUrl: "",
+    songId: "demo-misterio-olaria",
+    songTitle: "Mistério na Olaria",
+    likes: ["user-demo-1", "user-demo-2", "demo-minister-1"],
+    likesCount: 3,
+    commentsCount: 1,
+    savesCount: 2,
+    visibility: "public",
     createdAt: new Date(Date.now() - 3600000 * 4).toISOString()
   },
   {
     id: "demo-post-2",
     authorId: "demo-minister-1",
-    authorName: "Ministério Aliança",
-    authorRole: "Líder de Louvor",
+    authorName: "Lucas Rocha",
+    authorRole: "Membro Celestial",
     authorPhoto: "",
-    content: "Acabamos de ensaiar 'Mistério na Olaria' subindo 1 tom para a voz da solista (em G#). O fluxo com o metrônomo a 74 BPM ficou impecável!",
+    type: "ensaio",
+    instrument: "teclado",
+    content: "Acabamos de realizar o ensaio de Santa Ceia no Ministério Aliança. Subimos 1 tom para a voz da solista em 'Mistério na Olaria' (em G#m) e o Smart Key facilitou as aberturas harmônicas!",
     imageUrl: "",
-    likes: ["virtuo-master"],
+    mediaUrl: "",
+    songId: "demo-misterio-olaria",
+    songTitle: "Mistério na Olaria",
+    likes: ["virtuo-master", "demo-bassist-1"],
+    likesCount: 2,
+    commentsCount: 0,
+    savesCount: 1,
+    visibility: "public",
     createdAt: new Date(Date.now() - 3600000 * 12).toISOString()
+  },
+  {
+    id: "demo-post-3",
+    authorId: "demo-bassist-1",
+    authorName: "André Silva",
+    authorRole: "Baixista",
+    authorPhoto: "",
+    type: "performance",
+    instrument: "baixo",
+    content: "Gravando as linhas de baixo na nova seção de estúdio do Virtuo Band Engine. O metrônomo acústico nos fones deu uma estabilidade inacreditável!",
+    imageUrl: "",
+    mediaUrl: "",
+    songId: "demo-o-escudo",
+    songTitle: "O Escudo",
+    likes: ["virtuo-master"],
+    likesCount: 1,
+    commentsCount: 0,
+    savesCount: 0,
+    visibility: "public",
+    createdAt: new Date(Date.now() - 3600000 * 24).toISOString()
   }
 ];
 
@@ -70,6 +112,12 @@ export const CommunityService = {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       }
+      // Fallback v1 se existir
+      const v1 = localStorage.getItem("virtuo_community_posts_v1");
+      if (v1) {
+        const parsedV1 = JSON.parse(v1);
+        if (Array.isArray(parsedV1) && parsedV1.length > 0) return parsedV1;
+      }
     } catch {}
     return DEFAULT_DEMO_POSTS;
   },
@@ -80,12 +128,15 @@ export const CommunityService = {
     } catch {}
   },
 
-  async getAllPosts() {
+  async getAllPosts({ filterType = null, limitCount = 30 } = {}) {
     const ctx = await getFirestoreCtx();
     if (ctx && ctx.db) {
       try {
         const postsCol = ctx.collection(ctx.db, "posts");
-        const q = ctx.query(postsCol, ctx.orderBy("createdAt", "desc"));
+        let q = ctx.query(postsCol, ctx.orderBy("createdAt", "desc"), ctx.limit(limitCount));
+        if (filterType && filterType !== "todos") {
+          q = ctx.query(postsCol, ctx.where("type", "==", filterType), ctx.orderBy("createdAt", "desc"), ctx.limit(limitCount));
+        }
         const snap = await ctx.getDocs(q);
         if (!snap.empty) {
           return snap.docs.map(docSnap => ({
@@ -97,10 +148,27 @@ export const CommunityService = {
         console.warn("[CommunityService.getAllPosts] Firestore error, using local:", err.message);
       }
     }
-    return this.getLocalPosts();
+
+    let posts = this.getLocalPosts();
+    if (filterType && filterType !== "todos") {
+      posts = posts.filter(p => p.type === filterType);
+    }
+    return posts.slice(0, limitCount);
   },
 
-  async createPost({ content, imageUrl, authorName, authorRole, authorPhoto }, userUid) {
+  async createPost({
+    content,
+    imageUrl,
+    mediaUrl,
+    type = "texto",
+    instrument = "",
+    songId = null,
+    songTitle = null,
+    visibility = "public",
+    authorName,
+    authorRole,
+    authorPhoto
+  }, userUid) {
     const ctx = await getFirestoreCtx();
     const currentUid = userUid || (ctx && ctx.auth && ctx.auth.currentUser ? ctx.auth.currentUser.uid : "guest-musician");
     
@@ -109,9 +177,18 @@ export const CommunityService = {
       authorName: authorName || "Músico Virtuoso",
       authorRole: authorRole || "Membro",
       authorPhoto: authorPhoto || "",
+      type: type || "texto",
+      instrument: instrument || "",
       content: (content || "").trim(),
       imageUrl: (imageUrl || "").trim(),
+      mediaUrl: (mediaUrl || "").trim(),
+      songId: songId || null,
+      songTitle: songTitle || null,
+      visibility: visibility || "public",
       likes: [],
+      likesCount: 0,
+      commentsCount: 0,
+      savesCount: 0,
       createdAt: ctx && ctx.serverTimestamp ? ctx.serverTimestamp() : new Date().toISOString(),
       updatedAt: ctx && ctx.serverTimestamp ? ctx.serverTimestamp() : new Date().toISOString()
     };
@@ -135,7 +212,7 @@ export const CommunityService = {
   },
 
   async toggleLike(postId, userUid) {
-    if (!postId) return { success: false, likes: [] };
+    if (!postId) return { success: false, likes: [], likesCount: 0 };
     const ctx = await getFirestoreCtx();
     const currentUid = userUid || (ctx && ctx.auth && ctx.auth.currentUser ? ctx.auth.currentUser.uid : "local-user");
 
@@ -151,6 +228,7 @@ export const CommunityService = {
       } else {
         found.likes.push(currentUid);
       }
+      found.likesCount = found.likes.length;
       updatedLikes = [...found.likes];
       this.saveLocalPosts(localPosts);
     }
@@ -172,6 +250,7 @@ export const CommunityService = {
           updatedLikes = likes;
           await ctx.updateDoc(postRef, {
             likes,
+            likesCount: likes.length,
             updatedAt: ctx.serverTimestamp()
           });
         }
@@ -180,16 +259,21 @@ export const CommunityService = {
       }
     }
 
-    return { success: true, likes: updatedLikes };
+    return { success: true, likes: updatedLikes, likesCount: updatedLikes.length };
   },
 
-  async deletePost(postId, userUid) {
+  async deletePost(postId, userUid, isAdmin = false) {
     if (!postId) return false;
     const ctx = await getFirestoreCtx();
     const currentUid = userUid || (ctx && ctx.auth && ctx.auth.currentUser ? ctx.auth.currentUser.uid : null);
 
     // Local delete
     let localPosts = this.getLocalPosts();
+    const target = localPosts.find(p => p.id === postId);
+    if (target && target.authorId !== currentUid && !isAdmin) {
+      throw new Error("Você não tem autorização para excluir esta publicação.");
+    }
+
     localPosts = localPosts.filter(p => p.id !== postId);
     this.saveLocalPosts(localPosts);
 

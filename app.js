@@ -30,19 +30,42 @@ import {
   simplifyChord,
   getEasyPlayCifra,
   hasEasyPlay,
-  isChordLine
+  isChordLine,
+  VirtuoMusicIntelligence,
+  suggestSmartKey,
+  generateStudyPlan
 } from "./src/music/index.js";
+import { renderVirtuoAiScreen } from "./src/features/ai/virtuo-ai-view.js";
 import { virtuoMinister } from "./src/features/minister/index.js";
-import { virtuoMetronome, renderBandScreenComponent, virtuoBand } from "./src/audio/index.js";
+import { virtuoMetronome, renderBandScreenComponent, virtuoBand, virtuoCulto } from "./src/audio/index.js";
 import { virtuoRehearsal, renderRehearsalScreen } from "./src/features/rehearsal/index.js";
 import { virtuoTuner, renderTunerScreen } from "./src/features/tuner/tuner-view.js";
 import { virtuoVocal, renderVocalScreen } from "./src/features/vocal/vocal-view.js";
+import { virtuoPerformance, renderPerformanceScreen } from "./src/features/performance/index.js";
 import { virtuoGuitarCoach, renderGuitarCoachScreen } from "./src/features/guitar-coach/coach-view.js";
 import { virtuoDiagnostics, renderDiagnosticsScreen } from "./src/features/diagnostics/diagnostics-view.js";
 import { perfMonitor } from "./src/performance/performance-monitor.js";
 import { adminSongManager } from "./src/features/admin/index.js";
 import { CANONICAL_INSTRUMENTS } from "./src/services/rehearsals.js";
 import { CommunityService } from "./src/services/community.js";
+import { 
+  ProfileService, 
+  SocialService, 
+  BandService, 
+  renderCommunityView, 
+  renderCreateBandModal,
+  renderInviteMemberModal,
+  renderAddSongToRepertoireModal,
+  renderCreateRehearsalModal,
+  renderReportModal,
+  renderEditProfileModal,
+  renderUserProfileModal,
+  MUSICAL_INSTRUMENTS, 
+  EXPERIENCE_LEVELS, 
+  MUSICAL_STYLES, 
+  POST_TYPES, 
+  REPORT_REASONS 
+} from "./src/community/index.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 // Conecta o repositório musical profissional ao painel administrativo
@@ -60,9 +83,35 @@ let liveSongs = DEMO_SONGS;
 let isMetronomePlaying = false;
 let firebaseStatus = { connected: true, label: "virtuo-7e01b Conectado" };
 
-// Community State
+// Community 2.0 State
 let communityPosts = [];
 let isCreatingPost = false;
+let communitySubTab = "feed"; // 'feed' | 'descobrir' | 'bandas' | 'perfil' | 'moderacao'
+let filterPostType = "todos";
+let selectedPostTypeForCreate = "texto";
+let bandsList = [];
+let activeBand = null;
+let commentsMap = {};
+let expandedCommentsPostId = null;
+let communitySearchQuery = "";
+let communitySearchResults = null;
+let selectedDiscoverCategory = null;
+let discoverResults = [];
+let pendingReportsList = [];
+let savedPostIdsList = JSON.parse(localStorage.getItem("virtuo_saved_posts") || "[]");
+let bandInvitesList = [];
+let isCreateBandModalOpen = false;
+let isInviteMemberModalOpen = false;
+let activeBandForInvite = null;
+let isAddSongToRepModalOpen = false;
+let activeBandForSong = null;
+let isCreateRehearsalModalOpen = false;
+let activeBandForRehearsal = null;
+let isReportModalOpen = false;
+let activeReportTarget = null;
+let isEditProfileModalOpen = false;
+let isUserProfileModalOpen = false;
+let activePublicUserProfile = null;
 
 // Library Search State
 let songSearchQuery = "";
@@ -246,9 +295,10 @@ window.shareRepertoireWhatsApp = () => {
 };
 
 // -------------------------------------------------------------
-// BAND MULTI-TRACK SYNTHESIZER INTEGRATION
+// BAND MULTI-TRACK SYNTHESIZER INTEGRATION (VIRTUO BAND 2.0)
 // -------------------------------------------------------------
 window.virtuoBand = virtuoBand;
+window.virtuoCulto = virtuoCulto;
 
 virtuoBand.onStateChange((bandState) => {
   if (currentScreen === "band") {
@@ -281,21 +331,33 @@ virtuoBand.onStateChange((bandState) => {
       }
     });
 
-    // Tracks Mute and Volume indicators
+    // Tracks Mute, Solo and Volume indicators
     Object.keys(bandState.tracks).forEach(trackId => {
       const track = bandState.tracks[trackId];
       const muteBtn = document.getElementById(`btn-mute-${trackId}`);
       if (muteBtn) {
         if (track.muted) {
-          muteBtn.style.background = "rgba(239,68,68,0.2)";
+          muteBtn.style.background = "rgba(239,68,68,0.25)";
           muteBtn.style.color = "#f87171";
           muteBtn.style.borderColor = "#ef4444";
-          muteBtn.textContent = "Muted";
+          muteBtn.textContent = "MUTED";
         } else {
           muteBtn.style.background = "rgba(255,255,255,0.05)";
           muteBtn.style.color = "#f1f5f9";
           muteBtn.style.borderColor = "rgba(255,255,255,0.15)";
-          muteBtn.textContent = "Mute";
+          muteBtn.textContent = "MUTE";
+        }
+      }
+      const soloBtn = document.getElementById(`btn-solo-${trackId}`);
+      if (soloBtn) {
+        if (track.solo) {
+          soloBtn.style.background = "#7EE7FF";
+          soloBtn.style.color = "#07101F";
+          soloBtn.style.borderColor = "#7EE7FF";
+        } else {
+          soloBtn.style.background = "rgba(255,255,255,0.05)";
+          soloBtn.style.color = "#f1f5f9";
+          soloBtn.style.borderColor = "rgba(255,255,255,0.15)";
         }
       }
       const volVal = document.getElementById(`val-vol-${trackId}`);
@@ -303,6 +365,12 @@ virtuoBand.onStateChange((bandState) => {
         volVal.textContent = `${Math.round(track.volume * 100)}%`;
       }
     });
+  }
+});
+
+virtuoCulto.subscribe(() => {
+  if (currentScreen === "band") {
+    renderCurrentScreen();
   }
 });
 
@@ -314,8 +382,44 @@ window.stopBandEnginePlayback = () => {
   virtuoBand.stop();
 };
 
+window.setBandPreset = (presetName) => {
+  virtuoBand.setPreset(presetName);
+  if (currentScreen === "band") renderCurrentScreen();
+};
+
 window.setBandKey = (key) => {
   virtuoBand.setKey(key);
+  if (currentScreen === "band") renderCurrentScreen();
+};
+
+window.setBandIntensity = (level) => {
+  virtuoBand.setIntensity(level);
+  if (currentScreen === "band") renderCurrentScreen();
+};
+
+window.setBandSection = (sectionId) => {
+  virtuoBand.setSection(sectionId, true);
+  if (currentScreen === "band") renderCurrentScreen();
+};
+
+window.toggleBandLoop = () => {
+  virtuoBand.toggleLoop();
+  if (currentScreen === "band") renderCurrentScreen();
+};
+
+window.setLoopRepeatTarget = (times) => {
+  virtuoBand.setLoopRepeatTarget(times);
+  if (currentScreen === "band") renderCurrentScreen();
+};
+
+window.toggleCountIn = () => {
+  virtuoBand.toggleCountIn();
+  if (currentScreen === "band") renderCurrentScreen();
+};
+
+window.toggleEasyBand = () => {
+  virtuoBand.toggleEasyBand();
+  if (currentScreen === "band") renderCurrentScreen();
 };
 
 window.setTrackVolume = (trackId, val) => {
@@ -324,45 +428,178 @@ window.setTrackVolume = (trackId, val) => {
 
 window.toggleTrackMute = (trackId) => {
   virtuoBand.toggleTrackMute(trackId);
+  if (currentScreen === "band") renderCurrentScreen();
+};
+
+window.toggleTrackSolo = (trackId) => {
+  virtuoBand.toggleTrackSolo(trackId);
+  if (currentScreen === "band") renderCurrentScreen();
+};
+
+window.setKeyboardMode = (mode) => {
+  virtuoBand.setKeyboardMode(mode);
+  if (currentScreen === "band") renderCurrentScreen();
+};
+
+window.setGuitarPattern = (pattern) => {
+  virtuoBand.setGuitarPattern(pattern);
+  if (currentScreen === "band") renderCurrentScreen();
+};
+
+window.adjustBandBpm = (delta) => {
+  virtuoBand.adjustBpm(delta);
+  if (currentScreen === "band") renderCurrentScreen();
+};
+
+window.setHalfBandBpm = () => {
+  virtuoBand.setHalfBpm();
+  if (currentScreen === "band") renderCurrentScreen();
+};
+
+window.setDoubleBandBpm = () => {
+  virtuoBand.setDoubleBpm();
+  if (currentScreen === "band") renderCurrentScreen();
+};
+
+window.applySmartBand = () => {
+  const song = currentSong || (songs && songs.length > 0 ? songs[0] : null);
+  if (song) {
+    virtuoBand.applySmartBandRecommendation(song);
+  }
+  if (currentScreen === "band") renderCurrentScreen();
+};
+
+window.selectCultoSong = (idx) => {
+  const s = virtuoCulto.selectSong(idx);
+  if (s) {
+    virtuoBand.setPreset(s.style, false);
+    virtuoBand.setBpm(s.bpm);
+    virtuoBand.setKey(s.key);
+    virtuoBand.setIntensity(s.intensity);
+    virtuoBand.setSection(s.section || "intro", false);
+  }
+  if (currentScreen === "band") renderCurrentScreen();
+};
+
+window.nextCultoSong = () => {
+  const s = virtuoCulto.nextSong();
+  if (s) {
+    virtuoBand.setPreset(s.style, false);
+    virtuoBand.setBpm(s.bpm);
+    virtuoBand.setKey(s.key);
+    virtuoBand.setIntensity(s.intensity);
+    virtuoBand.setSection(s.section || "intro", false);
+  }
+  if (currentScreen === "band") renderCurrentScreen();
+};
+
+window.prevCultoSong = () => {
+  const s = virtuoCulto.previousSong();
+  if (s) {
+    virtuoBand.setPreset(s.style, false);
+    virtuoBand.setBpm(s.bpm);
+    virtuoBand.setKey(s.key);
+    virtuoBand.setIntensity(s.intensity);
+    virtuoBand.setSection(s.section || "intro", false);
+  }
+  if (currentScreen === "band") renderCurrentScreen();
 };
 
 // -------------------------------------------------------------
-// COMMUNITY INTEGRATION
+// COMMUNITY 2.0 INTEGRATION (ETAPA 4/5)
 // -------------------------------------------------------------
 async function loadCommunityPosts() {
-  communityPosts = await CommunityService.getAllPosts();
+  try {
+    communityPosts = await CommunityService.getAllPosts({ type: filterPostType });
+  } catch (err) {
+    console.warn("Falha ao carregar posts:", err);
+  }
+  if (currentScreen === "comunidade") {
+    renderCurrentScreen();
+  }
+}
+
+async function loadCommunityDataV2() {
+  try {
+    communityPosts = await CommunityService.getAllPosts({ type: filterPostType });
+    bandsList = await BandService.getAllBands();
+    
+    if (currentUser) {
+      bandInvitesList = await BandService.getUserPendingInvites(currentUser.uid);
+      if (isUserAdmin(currentUser, userProfile)) {
+        pendingReportsList = await SocialService.getPendingReports();
+      }
+    }
+  } catch (e) {
+    console.warn("Aviso ao carregar dados da Comunidade 2.0:", e);
+  }
   if (currentScreen === "comunidade") {
     renderCurrentScreen();
   }
 }
 
 window.refreshCommunityPosts = async () => {
+  await loadCommunityDataV2();
+};
+
+window.refreshCommunityData = async () => {
+  await loadCommunityDataV2();
+};
+
+window.setCommunitySubTab = (subTab) => {
+  communitySubTab = subTab;
+  if (subTab === "bandas" && bandsList.length === 0) {
+    BandService.getAllBands().then(b => { bandsList = b; renderCurrentScreen(); });
+  }
+  if (subTab === "moderacao" && currentUser) {
+    SocialService.getPendingReports().then(r => { pendingReportsList = r; renderCurrentScreen(); });
+  }
+  renderCurrentScreen();
+};
+
+window.filterFeedByType = async (type) => {
+  filterPostType = type;
   await loadCommunityPosts();
 };
 
+window.selectPostType = (type) => {
+  selectedPostTypeForCreate = type;
+  renderCurrentScreen();
+};
+
 window.handleCreatePost = async () => {
+  await window.handleCreatePostV2();
+};
+
+window.handleCreatePostV2 = async () => {
   const contentEl = document.getElementById("community-post-text");
-  const imgEl = document.getElementById("community-post-img-url");
+  const titleEl = document.getElementById("community-post-title");
   const fileInput = document.getElementById("community-post-file");
   const submitBtn = document.getElementById("community-submit-btn");
+  const chordsPreviewEl = document.getElementById("community-post-chords-preview");
+  const audioDemoEl = document.getElementById("community-post-audio-url");
+
   const content = contentEl ? contentEl.value.trim() : "";
-  let imageUrl = imgEl ? imgEl.value.trim() : "";
+  const title = titleEl ? titleEl.value.trim() : "";
+  const chordsPreview = chordsPreviewEl ? chordsPreviewEl.value.trim() : "";
+  const audioDemoUrl = audioDemoEl ? audioDemoEl.value.trim() : "";
+  let imageUrl = "";
 
   const hasFile = fileInput && fileInput.files && fileInput.files.length > 0;
-  if (!content && !hasFile) {
-    alert("Por favor, escreva uma mensagem ou anexe uma foto da câmera/galeria.");
+  if (!content && !hasFile && !chordsPreview) {
+    alert("Por favor, escreva uma mensagem, anexe uma foto ou insira uma cifra.");
     return;
   }
 
-  // Upload direto de imagem para Firebase Storage se arquivo selecionado
+  // Upload de mídia se houver
   if (hasFile) {
     const file = fileInput.files[0];
     try {
-      if (submitBtn) submitBtn.textContent = "Enviando foto...";
+      if (submitBtn) submitBtn.textContent = "Enviando arquivo...";
       imageUrl = await uploadImageFile(file, `community/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`);
     } catch (uploadErr) {
       console.warn("Aviso upload de imagem no Storage:", uploadErr);
-      alert("Aviso: Falha ao enviar foto para o Storage. A publicação continuará.");
+      alert("Aviso: Falha ao enviar mídia para o Storage. A publicação continuará.");
     } finally {
       if (submitBtn) submitBtn.textContent = "Publicar no Feed";
     }
@@ -370,32 +607,483 @@ window.handleCreatePost = async () => {
 
   const isCelestial = !!(userProfile?.isCelestial || localStorage.getItem('virtuo_celestial_member') === 'true');
   const role = isCelestial ? "Membro Celestial" : (currentUser ? "Membro" : "Músico Virtuoso");
-  const authorName = (userProfile && userProfile.displayName) || (currentUser && currentUser.displayName) || "Músico Virtuoso";
-  const authorPhoto = currentUser && currentUser.photoURL ? currentUser.photoURL : "";
+  const authorName = (userProfile && (userProfile.artisticName || userProfile.displayName)) || 
+                     (currentUser && currentUser.displayName) || "Músico Virtuoso";
+  const authorPhoto = currentUser && currentUser.photoURL ? currentUser.photoURL : (userProfile?.photoURL || "");
 
-  await CommunityService.createPost({
-    content: content || "Compartilhou uma foto com a comunidade.",
+  const postPayload = {
+    content: content || (title ? title : "Compartilhou uma atualização no Virtuo Feed."),
+    title: title || null,
+    type: selectedPostTypeForCreate || "texto",
     imageUrl,
+    chordsPreview: chordsPreview || null,
+    audioDemoUrl: audioDemoUrl || null,
     authorName,
     authorRole: role,
     authorPhoto
-  }, currentUser ? currentUser.uid : null);
+  };
+
+  await CommunityService.createPost(postPayload, currentUser ? currentUser.uid : null);
 
   if (contentEl) contentEl.value = "";
-  if (imgEl) imgEl.value = "";
+  if (titleEl) titleEl.value = "";
   if (fileInput) fileInput.value = "";
+  if (chordsPreviewEl) chordsPreviewEl.value = "";
+  if (audioDemoEl) audioDemoEl.value = "";
+
   await loadCommunityPosts();
 };
 
 window.togglePostLike = async (postId) => {
-  await CommunityService.toggleLike(postId, currentUser ? currentUser.uid : "guest-user");
+  await window.togglePostLikeV2(postId);
+};
+
+window.togglePostLikeV2 = async (postId) => {
+  const uid = currentUser ? currentUser.uid : "guest-user";
+  await CommunityService.toggleLike(postId, uid);
+  await loadCommunityPosts();
+};
+
+window.toggleSavePostV2 = (postId) => {
+  if (savedPostIdsList.includes(postId)) {
+    savedPostIdsList = savedPostIdsList.filter(id => id !== postId);
+  } else {
+    savedPostIdsList.push(postId);
+  }
+  localStorage.setItem("virtuo_saved_posts", JSON.stringify(savedPostIdsList));
+  renderCurrentScreen();
+};
+
+window.sharePostLink = async (postId, authorName) => {
+  const url = `${window.location.origin}${window.location.pathname}#post-${postId}`;
+  const shareText = `Confira a publicação de ${authorName || "um músico"} na Comunidade Virtuo!`;
+  const shareSuccess = await SocialService.shareContent({
+    title: "Comunidade Virtuo",
+    text: shareText,
+    url
+  });
+  if (shareSuccess) {
+    alert("Link da publicação copiado para a área de transferência!");
+  }
+};
+
+window.toggleCommentsView = async (postId) => {
+  if (expandedCommentsPostId === postId) {
+    expandedCommentsPostId = null;
+  } else {
+    expandedCommentsPostId = postId;
+    if (!commentsMap[postId]) {
+      commentsMap[postId] = await SocialService.getCommentsForPost(postId);
+    }
+  }
+  renderCurrentScreen();
+};
+
+window.handleAddComment = async (postId) => {
+  const input = document.getElementById(`comment-input-${postId}`);
+  if (!input) return;
+  const content = input.value.trim();
+  if (!content) return;
+
+  const authorName = (userProfile && (userProfile.artisticName || userProfile.displayName)) || 
+                     (currentUser && currentUser.displayName) || "Músico";
+  const authorPhoto = currentUser?.photoURL || userProfile?.photoURL || "";
+
+  await SocialService.addComment({
+    postId,
+    content,
+    authorId: currentUser ? currentUser.uid : "guest-musician",
+    authorName,
+    authorPhoto
+  });
+
+  input.value = "";
+  commentsMap[postId] = await SocialService.getCommentsForPost(postId);
+  await loadCommunityPosts();
+};
+
+window.handleDeleteComment = async (commentId, postId) => {
+  if (!confirm("Deseja excluir este comentário?")) return;
+  await SocialService.deleteComment(commentId, postId);
+  commentsMap[postId] = await SocialService.getCommentsForPost(postId);
   await loadCommunityPosts();
 };
 
 window.handleDeletePost = async (postId) => {
+  await window.handleDeletePostV2(postId);
+};
+
+window.handleDeletePostV2 = async (postId) => {
   if (!confirm("Tem certeza de que deseja excluir esta publicação?")) return;
   await CommunityService.deletePost(postId, currentUser ? currentUser.uid : null);
   await loadCommunityPosts();
+};
+
+// Busca e Descoberta
+window.executeGlobalSearch = async () => {
+  const input = document.getElementById("community-search-input");
+  if (!input) return;
+  const query = input.value.trim();
+  communitySearchQuery = query;
+  if (!query) {
+    communitySearchResults = null;
+  } else {
+    communitySearchResults = await SocialService.searchMusiciansAndBands(query);
+  }
+  renderCurrentScreen();
+};
+
+window.clearSearch = () => {
+  communitySearchQuery = "";
+  communitySearchResults = null;
+  renderCurrentScreen();
+};
+
+window.selectDiscoverCategory = async (catId) => {
+  selectedDiscoverCategory = catId;
+  discoverResults = await SocialService.getMusiciansByCategory(catId);
+  renderCurrentScreen();
+};
+
+// Bandas & Ministérios
+window.selectBandDetails = async (bandId) => {
+  if (!bandId) {
+    activeBand = null;
+  } else {
+    activeBand = await BandService.getBandById(bandId);
+  }
+  renderCurrentScreen();
+};
+
+window.openCreateBandModal = () => {
+  isCreateBandModalOpen = true;
+  renderCurrentScreen();
+};
+
+window.submitCreateBand = async () => {
+  const nameEl = document.getElementById("new-band-name");
+  const styleEl = document.getElementById("new-band-style");
+  const instEl = document.getElementById("new-band-admin-instrument");
+  const descEl = document.getElementById("new-band-desc");
+
+  const name = nameEl ? nameEl.value.trim() : "";
+  if (!name) {
+    alert("Por favor, digite o nome da banda ou ministério.");
+    return;
+  }
+
+  const bandData = {
+    name,
+    style: styleEl ? styleEl.value : "Worship",
+    description: descEl ? descEl.value.trim() : "",
+    adminInstrument: instEl ? instEl.value : "violao",
+    leaderName: (userProfile && (userProfile.artisticName || userProfile.displayName)) || 
+                (currentUser && currentUser.displayName) || "Líder de Louvor"
+  };
+
+  const created = await BandService.createBand(bandData, currentUser ? currentUser.uid : "offline-user");
+  isCreateBandModalOpen = false;
+  bandsList = await BandService.getAllBands();
+  activeBand = created;
+  renderCurrentScreen();
+};
+
+window.openInviteMemberModal = (bandId) => {
+  const b = bandsList.find(x => x.id === bandId) || activeBand;
+  if (!b) return;
+  activeBandForInvite = b;
+  isInviteMemberModalOpen = true;
+  renderCurrentScreen();
+};
+
+window.submitInviteMember = async (bandId) => {
+  const nameEl = document.getElementById("invite-member-name");
+  const roleEl = document.getElementById("invite-member-role");
+  const instEl = document.getElementById("invite-member-instrument");
+
+  const targetNameOrEmail = nameEl ? nameEl.value.trim() : "";
+  if (!targetNameOrEmail) {
+    alert("Informe o nome ou e-mail do músico para enviar o convite.");
+    return;
+  }
+
+  const b = activeBandForInvite || bandsList.find(x => x.id === bandId);
+  await BandService.sendBandInvite({
+    bandId,
+    bandName: b?.name || "Ministério Virtuo",
+    senderUid: currentUser ? currentUser.uid : "admin",
+    targetUid: targetNameOrEmail,
+    role: roleEl ? roleEl.value : "musico",
+    instrument: instEl ? instEl.value : "violao"
+  });
+
+  alert(`Convite enviado com sucesso para ${targetNameOrEmail}!`);
+  isInviteMemberModalOpen = false;
+  activeBandForInvite = null;
+  renderCurrentScreen();
+};
+
+window.respondBandInvite = async (inviteId, accept) => {
+  await BandService.respondToInvite(inviteId, accept, currentUser ? currentUser.uid : "user");
+  if (currentUser) {
+    bandInvitesList = await BandService.getUserPendingInvites(currentUser.uid);
+  }
+  bandsList = await BandService.getAllBands();
+  renderCurrentScreen();
+};
+
+window.handleRemoveMember = async (bandId, memberUid) => {
+  if (!confirm("Tem certeza de que deseja remover este integrante da banda?")) return;
+  const updated = await BandService.removeMemberFromBand(bandId, memberUid);
+  activeBand = updated;
+  bandsList = await BandService.getAllBands();
+  renderCurrentScreen();
+};
+
+window.openAddSongToRepertoireModal = (bandId) => {
+  const b = bandsList.find(x => x.id === bandId) || activeBand;
+  if (!b) return;
+  activeBandForSong = b;
+  isAddSongToRepModalOpen = true;
+  renderCurrentScreen();
+};
+
+window.handleSongSelectForRep = (songId) => {
+  const s = liveSongs.find(x => x.id === songId);
+  if (!s) return;
+  const titleEl = document.getElementById("rep-song-title");
+  const artistEl = document.getElementById("rep-song-artist");
+  const keyEl = document.getElementById("rep-song-key");
+  const bpmEl = document.getElementById("rep-song-bpm");
+
+  if (titleEl) titleEl.value = s.title || "";
+  if (artistEl) artistEl.value = s.artist || "";
+  if (keyEl) keyEl.value = s.originalKey || s.key || "G";
+  if (bpmEl) bpmEl.value = s.bpm || 74;
+};
+
+window.submitAddSongToRepertoire = async (bandId) => {
+  const titleEl = document.getElementById("rep-song-title");
+  const artistEl = document.getElementById("rep-song-artist");
+  const keyEl = document.getElementById("rep-song-key");
+  const bpmEl = document.getElementById("rep-song-bpm");
+  const modeEl = document.getElementById("rep-song-mode");
+
+  const title = titleEl ? titleEl.value.trim() : "";
+  if (!title) {
+    alert("Informe o título do louvor.");
+    return;
+  }
+
+  const songData = {
+    title,
+    artist: artistEl ? artistEl.value.trim() : "Artista",
+    key: keyEl ? keyEl.value.trim() : "G",
+    bpm: bpmEl ? Number(bpmEl.value) || 74 : 74,
+    mode: modeEl ? modeEl.value : "original"
+  };
+
+  const updated = await BandService.addSongToRepertoire(bandId, songData);
+  activeBand = updated;
+  isAddSongToRepModalOpen = false;
+  activeBandForSong = null;
+  renderCurrentScreen();
+};
+
+window.handleRemoveSongFromRepertoire = async (bandId, songId) => {
+  if (!confirm("Deseja remover esta música do repertório da banda?")) return;
+  const updated = await BandService.removeSongFromRepertoire(bandId, songId);
+  activeBand = updated;
+  renderCurrentScreen();
+};
+
+window.openCreateRehearsalModal = (bandId) => {
+  const b = bandsList.find(x => x.id === bandId) || activeBand;
+  if (!b) return;
+  activeBandForRehearsal = b;
+  isCreateRehearsalModalOpen = true;
+  renderCurrentScreen();
+};
+
+window.submitCreateRehearsal = async (bandId) => {
+  const titleEl = document.getElementById("reh-title-input");
+  const dateEl = document.getElementById("reh-date-input");
+  const timeEl = document.getElementById("reh-time-input");
+  const locEl = document.getElementById("reh-location-input");
+  const notesEl = document.getElementById("reh-notes-input");
+
+  const title = titleEl ? titleEl.value.trim() : "";
+  if (!title) {
+    alert("Informe o título do ensaio.");
+    return;
+  }
+
+  const b = activeBandForRehearsal || bandsList.find(x => x.id === bandId);
+  const rehearsalData = {
+    title,
+    date: dateEl ? dateEl.value : new Date().toISOString().split("T")[0],
+    time: timeEl ? timeEl.value : "19:30",
+    location: locEl ? locEl.value.trim() : "Templo Principal",
+    notes: notesEl ? notesEl.value.trim() : "",
+    repertoire: b?.repertoire || []
+  };
+
+  const updated = await BandService.createCollaborativeRehearsal(bandId, rehearsalData, currentUser ? currentUser.uid : "admin");
+  activeBand = updated;
+  isCreateRehearsalModalOpen = false;
+  activeBandForRehearsal = null;
+  renderCurrentScreen();
+};
+
+window.updateRehearsalStatus = async (bandId, rehearsalId, status) => {
+  const updated = await BandService.updateRehearsalStatus(bandId, rehearsalId, status);
+  activeBand = updated;
+  renderCurrentScreen();
+};
+
+window.toggleChecklist = async (bandId, rehearsalId, memberUid) => {
+  const updated = await BandService.toggleRehearsalChecklist(bandId, rehearsalId, memberUid);
+  activeBand = updated;
+  renderCurrentScreen();
+};
+
+window.startBandForSong = (songId, songBpm) => {
+  if (songBpm) {
+    virtuoBand.setBpm(Number(songBpm));
+  }
+  show("band");
+};
+
+window.shareRehearsal = async (rehearsalId, title) => {
+  const url = `${window.location.origin}${window.location.pathname}#rehearsal-${rehearsalId}`;
+  await SocialService.shareContent({
+    title: "Ensaio da Banda",
+    text: `Confira a escala e repertório do ensaio: ${title}`,
+    url
+  });
+  alert("Link do ensaio copiado para a área de transferência!");
+};
+
+// Perfis & Moderação
+window.viewUserProfile = async (uid) => {
+  activePublicUserProfile = await ProfileService.getMusicianProfile(uid);
+  isUserProfileModalOpen = true;
+  renderCurrentScreen();
+};
+
+window.openEditProfileModal = () => {
+  isEditProfileModalOpen = true;
+  renderCurrentScreen();
+};
+
+window.submitEditProfile = async () => {
+  const nameEl = document.getElementById("prof-artistic-name");
+  const levelEl = document.getElementById("prof-level-select");
+  const photoEl = document.getElementById("prof-photo-url");
+  const bioEl = document.getElementById("prof-bio-text");
+  const locEl = document.getElementById("prof-location");
+  const bandEl = document.getElementById("prof-band");
+  const igEl = document.getElementById("prof-link-ig");
+  const ytEl = document.getElementById("prof-link-yt");
+  const spEl = document.getElementById("prof-link-sp");
+
+  const selectedInst = Array.from(document.querySelectorAll(".inst-toggle-btn.active"))
+    .map(btn => btn.getAttribute("data-id"));
+  const selectedStyles = Array.from(document.querySelectorAll(".style-toggle-btn.active"))
+    .map(btn => btn.getAttribute("data-id"));
+
+  const updates = {
+    artisticName: nameEl ? nameEl.value.trim() : (userProfile?.displayName || ""),
+    level: levelEl ? levelEl.value : "intermediario",
+    photoURL: photoEl ? photoEl.value.trim() : "",
+    bio: bioEl ? bioEl.value.trim() : "",
+    instruments: selectedInst.length > 0 ? selectedInst : ["violao"],
+    styles: selectedStyles.length > 0 ? selectedStyles : ["worship"],
+    location: locEl ? locEl.value.trim() : "",
+    currentBand: bandEl ? bandEl.value.trim() : "",
+    externalLinks: {
+      instagram: igEl ? igEl.value.trim() : "",
+      youtube: ytEl ? ytEl.value.trim() : "",
+      spotify: spEl ? spEl.value.trim() : ""
+    }
+  };
+
+  const saved = await ProfileService.updateProfile(currentUser ? currentUser.uid : "local-musician", updates);
+  userProfile = { ...(userProfile || {}), ...saved };
+  isEditProfileModalOpen = false;
+  renderCurrentScreen();
+};
+
+window.toggleFollowUser = async (targetUid) => {
+  const myUid = currentUser ? currentUser.uid : "guest-musician";
+  const result = await SocialService.toggleFollow(myUid, targetUid);
+  if (activePublicUserProfile && activePublicUserProfile.uid === targetUid) {
+    activePublicUserProfile.followers = result.isFollowing 
+      ? [...(activePublicUserProfile.followers || []), myUid]
+      : (activePublicUserProfile.followers || []).filter(id => id !== myUid);
+  }
+  renderCurrentScreen();
+};
+
+window.shareProfileLink = async (uid) => {
+  const url = `${window.location.origin}${window.location.pathname}#musician-${uid}`;
+  await SocialService.shareContent({
+    title: "Perfil de Músico Virtuo",
+    text: "Confira meu perfil musical no Virtuo!",
+    url
+  });
+  alert("Link do perfil copiado!");
+};
+
+window.openReportModal = (targetType, targetId) => {
+  activeReportTarget = { type: targetType, id: targetId };
+  isReportModalOpen = true;
+  renderCurrentScreen();
+};
+
+window.submitReport = async (targetType, targetId) => {
+  const reasonEl = document.getElementById("report-reason-select");
+  const detailsEl = document.getElementById("report-details-input");
+
+  await SocialService.reportContent({
+    targetType,
+    targetId,
+    reason: reasonEl ? reasonEl.value : "inapropriado",
+    details: detailsEl ? detailsEl.value.trim() : "",
+    reporterId: currentUser ? currentUser.uid : "anonymous"
+  });
+
+  alert("Denúncia registrada. Agradecemos por manter nossa comunidade segura!");
+  isReportModalOpen = false;
+  activeReportTarget = null;
+  renderCurrentScreen();
+};
+
+window.resolveReportAction = async (reportId, action, targetType, targetId) => {
+  await SocialService.resolveReport(reportId, action);
+  if (action === "excluir_conteudo") {
+    if (targetType === "post") {
+      await CommunityService.deletePost(targetId, currentUser?.uid);
+    }
+  }
+  pendingReportsList = await SocialService.getPendingReports();
+  renderCurrentScreen();
+};
+
+window.closeCommunityModals = () => {
+  isCreateBandModalOpen = false;
+  isInviteMemberModalOpen = false;
+  activeBandForInvite = null;
+  isAddSongToRepModalOpen = false;
+  activeBandForSong = null;
+  isCreateRehearsalModalOpen = false;
+  activeBandForRehearsal = null;
+  isReportModalOpen = false;
+  activeReportTarget = null;
+  isEditProfileModalOpen = false;
+  isUserProfileModalOpen = false;
+  activePublicUserProfile = null;
+  renderCurrentScreen();
 };
 
 // -------------------------------------------------------------
@@ -456,8 +1144,27 @@ window.closeAiHarmonicAnalysis = () => {
 };
 
 // -------------------------------------------------------------
-// VIRTUO AI INTERACTIVE ASSISTANT (DIRETOR MUSICAL & CHAT)
+// VIRTUO AI 2.0 & MUSICAL CONTEXT INTEGRATION
 // -------------------------------------------------------------
+function getActiveMusicalContext() {
+  const song = activeSong || (liveSongs && liveSongs[0]) || DEMO_SONGS[0];
+  if (!song) return null;
+  const currentKey = calculateKey(song.originalKey || song.key || "G", transposeOffset);
+  const chords = VirtuoMusicIntelligence.extractChords(song.chords || song.chordSheet || "");
+  return {
+    songTitle: song.title || "Louvor Selecionado",
+    artist: song.artist || "Ministério de Louvor",
+    key: currentKey,
+    originalKey: song.originalKey || song.key || "G",
+    bpm: Number(song.bpm) || 74,
+    difficulty: song.difficulty || "Médio",
+    chords,
+    structure: song.structure || "Intro • Verso • Refrão • Final",
+    currentMode: isEasyPlay ? "easy-play" : currentScreen
+  };
+}
+window.getActiveMusicalContext = getActiveMusicalContext;
+
 window.openVirtuoAiModal = (optionalPrompt) => {
   isAiModalOpen = true;
   renderVirtuoAiModal();
@@ -473,15 +1180,50 @@ window.closeVirtuoAiModal = () => {
 };
 
 window.insertAiQuickPrompt = (promptText) => {
-  const inputEl = document.getElementById("ai-user-message-input");
+  const inputEl = document.getElementById("ai-user-message-input") || document.getElementById("ai-view-chat-input");
   if (inputEl) {
     inputEl.value = promptText;
     inputEl.focus();
   }
 };
 
+window.sendContextualPrompt = (promptText) => {
+  window.sendVirtuoAiChatMessage(promptText);
+};
+
+window.sendVirtuoAiViewMessage = () => {
+  const inputEl = document.getElementById("ai-view-chat-input");
+  const text = inputEl ? inputEl.value.trim() : "";
+  if (!text) return;
+  inputEl.value = "";
+  window.sendVirtuoAiChatMessage(text);
+};
+
+window.openVirtuoAiForCurrentSong = () => {
+  show("ai");
+};
+
+window.applySmartKeyToActiveSong = (semitoneOffset) => {
+  transposeOffset = semitoneOffset || 0;
+  show("songDetail");
+};
+
+window.toggleEasyPlayFromAi = (enable) => {
+  isEasyPlay = enable;
+  show("songDetail");
+};
+
+window.selectAiTargetSong = (songId) => {
+  const song = liveSongs.find(s => s.id === songId) || DEMO_SONGS.find(s => s.id === songId);
+  if (song) {
+    activeSong = song;
+    transposeOffset = 0;
+    renderCurrentScreen();
+  }
+};
+
 window.sendVirtuoAiChatMessage = async (customText) => {
-  const inputEl = document.getElementById("ai-user-message-input");
+  const inputEl = document.getElementById("ai-user-message-input") || document.getElementById("ai-view-chat-input");
   const message = customText || (inputEl ? inputEl.value.trim() : "");
   if (!message || isAiReplying) return;
 
@@ -489,12 +1231,17 @@ window.sendVirtuoAiChatMessage = async (customText) => {
   aiChatHistory.push({ role: "user", text: message });
   isAiReplying = true;
   renderVirtuoAiModal();
+  if (currentScreen === "ai") {
+    renderCurrentScreen();
+  }
+
+  const musicalContext = getActiveMusicalContext();
 
   try {
     const response = await fetch('/api/ai/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message })
+      body: JSON.stringify({ message, musicalContext })
     });
     if (response.ok) {
       const data = await response.json();
@@ -507,12 +1254,15 @@ window.sendVirtuoAiChatMessage = async (customText) => {
       aiChatHistory.push({ role: "assistant", text: "Como Diretor Musical Virtuo, recomendo priorizar a clareza harmônica e a dinâmica suave nos versos, crescendo com firmeza no refrão." });
     }
   } catch (err) {
-    aiChatHistory.push({ role: "assistant", text: "Dica do Virtuo AI: Mantenha os acordes firmes na base, usando notas adicionadas (como 9ª ou sus4) para enriquecer o espaço harmônico da equipe." });
+    aiChatHistory.push({ role: "assistant", text: "Dica do Virtuo AI: Mantenha os acordes firmes na base, usando o Easy Play e o Smart Key para otimizar as digitações no instrumento." });
   }
 
   isAiReplying = false;
   renderVirtuoAiModal();
-  const bodyEl = document.getElementById("ai-chat-body");
+  if (currentScreen === "ai") {
+    renderCurrentScreen();
+  }
+  const bodyEl = document.getElementById("ai-chat-body") || document.getElementById("ai-view-chat-history");
   if (bodyEl) bodyEl.scrollTop = bodyEl.scrollHeight;
 };
 
@@ -529,6 +1279,9 @@ function renderVirtuoAiModal() {
     document.body.appendChild(modalRoot);
   }
 
+  const context = getActiveMusicalContext();
+  const contextSongTitle = context?.songTitle || "Música Ativa";
+
   modalRoot.className = "ai-modal-backdrop";
   modalRoot.innerHTML = `
     <div class="ai-modal" role="dialog" aria-modal="true" aria-label="Virtuo AI">
@@ -537,17 +1290,22 @@ function renderVirtuoAiModal() {
           <span style="font-size:18px;">✨</span>
           <div>
             <h3 style="font-size:15px; margin:0; color:#7EE7FF; font-weight:700;">Virtuo AI • Diretor Musical</h3>
-            <span style="font-size:11px; color:#94a3b8;">Assistente inteligente ativo para seu ministério</span>
+            <span style="font-size:11px; color:#94a3b8;">Contexto: ${escapeHtml(contextSongTitle)} (${context?.key || 'G'})</span>
           </div>
         </div>
-        <button class="minister-metro-close" onclick="window.closeVirtuoAiModal()" title="Fechar Assistente">✕</button>
+        <div style="display:flex; align-items:center; gap:6px;">
+          <button class="tag-btn" onclick="window.closeVirtuoAiModal(); show('ai');" style="font-size:11px; padding:3px 8px; color:#7EE7FF; border-color:rgba(126,231,255,0.4);" title="Abrir painel completo do Virtuo AI">
+            Expandir ↗
+          </button>
+          <button class="minister-metro-close" onclick="window.closeVirtuoAiModal()" title="Fechar Assistente">✕</button>
+        </div>
       </div>
 
       <div class="ai-modal-body" id="ai-chat-body">
         ${aiChatHistory.map(msg => `
           <div class="ai-chat-message ${msg.role}">
             <div style="font-size:10px; color:#94a3b8; margin-bottom:2px;">
-              ${msg.role === 'user' ? 'Você' : '✦ Virtuo AI (Gemini)'}
+              ${msg.role === 'user' ? 'Você' : '✦ Virtuo AI (Diretor Musical)'}
             </div>
             <div class="ai-bubble">
               ${escapeHtml(msg.text).replace(/\\n/g, '<br/>')}
@@ -558,7 +1316,7 @@ function renderVirtuoAiModal() {
           <div class="ai-chat-message assistant">
             <div class="ai-bubble" style="display:flex; align-items:center; gap:8px;">
               <div class="auth-spinner" style="width:14px; height:14px; border-width:2px; margin:0;"></div>
-              <span style="color:#7EE7FF; font-size:12px;">Virtuo AI formulando orientação musical...</span>
+              <span style="color:#7EE7FF; font-size:12px;">Virtuo AI formulando orientação contextual...</span>
             </div>
           </div>
         ` : ''}
@@ -566,10 +1324,12 @@ function renderVirtuoAiModal() {
 
       <div class="ai-modal-footer">
         <div class="ai-quick-prompts">
-          <button class="ai-quick-btn" onclick="window.insertAiQuickPrompt('Como fazer transição suave de Tom G para Tom D?')">✦ Transição G ➔ D</button>
-          <button class="ai-quick-btn" onclick="window.insertAiQuickPrompt('Dicas de dinâmica para ministrar Mistério na Olaria')">✦ Dinâmica Olaria</button>
-          <button class="ai-quick-btn" onclick="window.insertAiQuickPrompt('Como enriquecer os acordes no teclado em worship?')">✦ Teclado Worship</button>
-          <button class="ai-quick-btn" onclick="window.insertAiQuickPrompt('Qual o melhor momento para subir o tom no louvor?')">✦ Modulação</button>
+          <button class="ai-quick-btn" onclick="window.sendContextualPrompt('Facilitar música')">⚡ Facilitar música</button>
+          <button class="ai-quick-btn" onclick="window.sendContextualPrompt('Qual tom devo usar?')">🎯 Qual tom devo usar?</button>
+          <button class="ai-quick-btn" onclick="window.sendContextualPrompt('Como estudar?')">📅 Como estudar?</button>
+          <button class="ai-quick-btn" onclick="window.sendContextualPrompt('Montar ensaio')">🎸 Montar ensaio</button>
+          <button class="ai-quick-btn" onclick="window.sendContextualPrompt('Explicar acordes')">🎼 Explicar acordes</button>
+          <button class="ai-quick-btn" onclick="window.sendContextualPrompt('Preparar para tocar')">🎯 Preparar para tocar</button>
         </div>
 
         <div style="display:flex; gap:8px;">
@@ -577,7 +1337,7 @@ function renderVirtuoAiModal() {
             type="text" 
             id="ai-user-message-input" 
             class="form-input" 
-            placeholder="Pergunte ao Virtuo AI (arranjos, acordes, ensaio)..." 
+            placeholder="Pergunte ao Virtuo AI sobre ${escapeHtml(contextSongTitle)}..." 
             style="margin:0; flex:1;"
             onkeydown="if(event.key==='Enter') window.sendVirtuoAiChatMessage()"
           />
@@ -728,8 +1488,14 @@ const screens = {
 
         <div class="tile" onclick="show('vocal')" style="cursor:pointer;">
           <div class="icon">🎤</div>
-          <h3>Monitor Vocal</h3>
-          <p>Tessitura e pitch.</p>
+          <h3>Virtuo Vocal</h3>
+          <p>Afinador e treino.</p>
+        </div>
+
+        <div class="tile" onclick="show('performance')" style="cursor:pointer; border: 1px solid rgba(126, 231, 255, 0.25);">
+          <div class="icon">🎯</div>
+          <h3>Virtuo Performance</h3>
+          <p>Acompanhamento ao vivo.</p>
         </div>
 
         <div class="tile" onclick="show('coach')" style="cursor:pointer;">
@@ -762,10 +1528,10 @@ const screens = {
           <p>Feed dos músicos.</p>
         </div>
 
-        <div class="tile" onclick="window.openVirtuoAiModal()" style="cursor:pointer; border: 1px solid rgba(126, 231, 255, 0.35); background: linear-gradient(135deg, rgba(14, 165, 233, 0.08), rgba(99, 102, 241, 0.08));">
+        <div class="tile" onclick="show('ai')" style="cursor:pointer; border: 1px solid rgba(126, 231, 255, 0.35); background: linear-gradient(135deg, rgba(14, 165, 233, 0.08), rgba(99, 102, 241, 0.08));">
           <div class="icon">✨</div>
-          <h3>Virtuo AI</h3>
-          <p>Diretor musical ativo.</p>
+          <h3>Virtuo AI 2.0</h3>
+          <p>Inteligência musical ativa.</p>
         </div>
       </div>
 
@@ -806,8 +1572,16 @@ const screens = {
     return renderVocalScreen();
   },
 
+  get performance() {
+    return renderPerformanceScreen(liveSongs || DEMO_SONGS);
+  },
+
   get coach() {
     return renderGuitarCoachScreen();
+  },
+
+  get ai() {
+    return renderVirtuoAiScreen(activeSong || (liveSongs && liveSongs[0]) || DEMO_SONGS[0], liveSongs, aiChatHistory, isAiReplying);
   },
 
   get diagnostics() {
@@ -815,131 +1589,51 @@ const screens = {
   },
 
   get comunidade() {
-    const isLogged = !!currentUser;
-    const isCelestial = !!(userProfile?.isCelestial || localStorage.getItem('virtuo_celestial_member') === 'true');
-    const isAdmin = isUserAdmin(currentUser, userProfile);
+    const communityHtml = renderCommunityView({
+      currentSubTab: communitySubTab,
+      posts: communityPosts,
+      filterPostType,
+      currentUser,
+      userProfile,
+      bands: bandsList,
+      activeBand,
+      commentsMap,
+      expandedPostId: null,
+      expandedCommentsPostId,
+      searchQuery: communitySearchQuery,
+      searchResults: communitySearchResults,
+      discoverCategory: selectedDiscoverCategory,
+      discoverResults,
+      pendingReports: pendingReportsList,
+      savedPostIds: savedPostIdsList,
+      invites: bandInvitesList
+    });
 
-    const postsListHtml = communityPosts.length === 0 ? `
-      <div style="text-align:center; padding:32px 12px; color:#94a3b8;">
-        <span style="font-size:32px; display:block; margin-bottom:8px;">👥</span>
-        <h3>Comunidade Virtuo</h3>
-        <p style="font-size:13px; margin-top:4px;">Seja o primeiro a compartilhar um momento de ensaio ou louvor!</p>
-      </div>
-    ` : communityPosts.map(post => {
-      const isLiked = Array.isArray(post.likes) && currentUser && post.likes.includes(currentUser.uid);
-      const likesCount = Array.isArray(post.likes) ? post.likes.length : 0;
-      const canDelete = currentUser && (post.authorId === currentUser.uid || isAdmin);
-      const authorInitials = (post.authorName || "M").charAt(0).toUpperCase();
+    let modalsHtml = "";
+    if (isCreateBandModalOpen) {
+      modalsHtml += renderCreateBandModal();
+    }
+    if (isInviteMemberModalOpen && activeBandForInvite) {
+      modalsHtml += renderInviteMemberModal(activeBandForInvite);
+    }
+    if (isAddSongToRepModalOpen && activeBandForSong) {
+      modalsHtml += renderAddSongToRepertoireModal(activeBandForSong, liveSongs);
+    }
+    if (isCreateRehearsalModalOpen && activeBandForRehearsal) {
+      modalsHtml += renderCreateRehearsalModal(activeBandForRehearsal);
+    }
+    if (isReportModalOpen && activeReportTarget) {
+      modalsHtml += renderReportModal(activeReportTarget.type, activeReportTarget.id);
+    }
+    if (isEditProfileModalOpen) {
+      modalsHtml += renderEditProfileModal(userProfile || currentUser);
+    }
+    if (isUserProfileModalOpen && activePublicUserProfile) {
+      const isFollowing = currentUser && Array.isArray(activePublicUserProfile.followers) && activePublicUserProfile.followers.includes(currentUser.uid);
+      modalsHtml += renderUserProfileModal(activePublicUserProfile, isFollowing);
+    }
 
-      return `
-        <article class="community-post-card" id="post-${post.id}">
-          <div class="community-header">
-            <div class="community-author-wrap">
-              <div class="community-avatar-circ">
-                ${post.authorPhoto ? `<img src="${post.authorPhoto}" style="width:100%;height:100%;object-fit:cover;" />` : authorInitials}
-              </div>
-              <div>
-                <div style="display:flex; align-items:center; gap:6px;">
-                  <span class="community-author-name">${escapeHtml(post.authorName || "Músico Virtuoso")}</span>
-                  ${post.authorRole === "Membro Celestial" || post.authorRole === "Fundador" ? `
-                    <span class="badge-celestial" style="font-size:9px; padding:2px 8px;">✦ CELESTIAL</span>
-                  ` : ''}
-                </div>
-                <div class="community-author-meta">
-                  <span>${escapeHtml(post.authorRole || "Membro")}</span>
-                  <span>•</span>
-                  <span>${typeof post.createdAt === "string" ? new Date(post.createdAt).toLocaleDateString("pt-BR") : "Hoje"}</span>
-                </div>
-              </div>
-            </div>
-
-            ${canDelete ? `
-              <button 
-                class="tag-btn" 
-                style="color:#ef4444; border-color:rgba(239,68,68,0.3); font-size:11px; padding:4px 8px;" 
-                onclick="window.handleDeletePost('${post.id}')"
-                title="Excluir publicação"
-              >
-                🗑️
-              </button>
-            ` : ''}
-          </div>
-
-          <div class="community-content-text">${escapeHtml(post.content || "")}</div>
-
-          ${post.imageUrl ? `
-            <img src="${escapeHtml(post.imageUrl)}" class="community-post-img" alt="Publicação" loading="lazy" />
-          ` : ''}
-
-          <div class="community-actions-bar">
-            <button 
-              class="community-like-btn ${isLiked ? 'liked' : ''}" 
-              onclick="window.togglePostLike('${post.id}')"
-              title="Curtir publicação"
-            >
-              <span>${isLiked ? '❤️' : '🤍'}</span>
-              <span>${likesCount} curtida${likesCount !== 1 ? 's' : ''}</span>
-            </button>
-            <span style="font-size:11px; color:#64748b;">Virtuo Feed</span>
-          </div>
-        </article>
-      `;
-    }).join("");
-
-    return `
-      <section class="glass">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-          <span class="pill">COMUNIDADE VIRTUO</span>
-          <button class="button secondary" style="padding:4px 10px; font-size:11px;" onclick="window.refreshCommunityPosts()">
-            🔄 Atualizar
-          </button>
-        </div>
-
-        <h2 style="margin-top:10px;">Feed dos Músicos</h2>
-        <p class="subtitle">Compartilhe experiências de ensaios, fotos e troque ideias com ministros e instrumentistas.</p>
-
-        <!-- Formulário de Nova Publicação -->
-        <div style="margin-top:16px; padding:16px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:18px;">
-          <h3 style="font-size:14px; color:#7EE7FF; margin-bottom:8px;">+ Criar Publicação</h3>
-          <textarea 
-            id="community-post-text" 
-            class="form-input" 
-            rows="3" 
-            placeholder="O que sua equipe de louvor ensaiou hoje? Compartilhe com a comunidade..."
-          ></textarea>
-
-          <div style="margin-top:10px; display:flex; flex-direction:column; gap:6px;">
-            <label style="font-size:11px; color:#94a3b8; display:flex; align-items:center; gap:6px;">
-              <span>📷 Anexar Foto da Câmera ou Galeria</span>
-            </label>
-            <input 
-              type="file" 
-              id="community-post-file" 
-              accept="image/*" 
-              class="form-input" 
-              style="padding:6px 10px; font-size:12px; cursor:pointer;"
-            />
-            <input 
-              type="url" 
-              id="community-post-img-url" 
-              class="form-input" 
-              placeholder="Ou cole uma URL de imagem (opcional, ex: https://...)" 
-              style="font-size:12px;"
-            />
-          </div>
-
-          <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:10px;">
-            <button id="community-submit-btn" class="button primary" style="padding:8px 18px; font-size:13px;" onclick="window.handleCreatePost()">
-              Publicar no Feed
-            </button>
-          </div>
-        </div>
-
-        <div class="community-feed">
-          ${postsListHtml}
-        </div>
-      </section>
-    `;
+    return communityHtml + modalsHtml;
   },
 
   get library() {
@@ -1332,10 +2026,10 @@ const screens = {
             <button 
               class="button secondary" 
               style="width:100%; display:flex; align-items:center; justify-content:center; gap:8px; border-color:rgba(126,231,255,0.35); color:#7EE7FF;"
-              onclick="window.requestAiHarmonicAnalysis()"
+              onclick="window.openVirtuoAiForCurrentSong()"
             >
-              <span>✦ Virtuo AI</span>
-              <span>Analisar Arranjo e Dicas de Palco</span>
+              <span>✨ Virtuo AI 2.0</span>
+              <span>Análise Harmônica, Smart Key e Estudo</span>
             </button>
           `}
         </div>
@@ -1445,23 +2139,48 @@ const screens = {
         <div class="grid" style="margin-top:14px;">
           <div class="tile">
             <div class="icon">⭐</div>
-            <h3>5.0</h3>
-            <p>Reputação</p>
+            <h3>${userProfile?.reputationScore || 100}</h3>
+            <p>Reputação Musical</p>
           </div>
 
           <div class="tile">
             <div class="icon">✨</div>
-            <h3>${isCelestial ? 'Celestial' : 'Fundador'}</h3>
+            <h3>${isCelestial ? 'Celestial' : 'Músico'}</h3>
             <p>${isCelestial ? 'Membro Celestial' : (isLogged ? "Músico Virtuoso" : "Founder Edition")}</p>
           </div>
         </div>
 
         ${isLogged ? `
+          <!-- Estatísticas Musicais 2.0 -->
+          <div style="margin-top:14px; display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; text-align:center;">
+            <div class="tile" style="padding:10px;">
+              <strong style="font-size:16px; color:#7EE7FF;">${userProfile?.stats?.songsStudied || liveSongs.length}</strong>
+              <span style="font-size:10px; color:#94a3b8; display:block;">Músicas Estudadas</span>
+            </div>
+            <div class="tile" style="padding:10px;">
+              <strong style="font-size:16px; color:#7EE7FF;">${userProfile?.stats?.rehearsalsCompleted || 1}</strong>
+              <span style="font-size:10px; color:#94a3b8; display:block;">Ensaios Realizados</span>
+            </div>
+            <div class="tile" style="padding:10px;">
+              <strong style="font-size:16px; color:#7EE7FF;">${Array.isArray(userProfile?.followers) ? userProfile.followers.length : 0}</strong>
+              <span style="font-size:10px; color:#94a3b8; display:block;">Seguidores</span>
+            </div>
+          </div>
+
+          <!-- Banda Atual e Links -->
+          <div style="margin-top:12px; padding:10px 14px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); border-radius:12px; font-size:12px; color:#cbd5e1; text-align:left;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <span><strong>Banda / Ministério:</strong> ${escapeHtml(userProfile?.currentBand || "Solo / Convidado")}</span>
+              <span><strong>Nível:</strong> ${(userProfile?.level || "Intermediário").toUpperCase()}</span>
+            </div>
+            ${userProfile?.location ? `<div style="margin-top:4px; font-size:11px; color:#94a3b8;">📍 ${escapeHtml(userProfile.location)}</div>` : ''}
+          </div>
+
           <!-- Authenticated User Profile & Instruments Settings -->
           <div style="margin-top:20px; text-align:left;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
               <label style="font-size:12px; color:#7EE7FF; font-weight:700;">
-                MEUS INSTRUMENTOS (FIRESTORE: users/${escapeHtml(currentUser.uid.slice(0, 8))}...)
+                MEUS INSTRUMENTOS
               </label>
             </div>
             <div style="display:flex; flex-wrap:wrap; margin-bottom:16px;">
@@ -1476,12 +2195,16 @@ const screens = {
               }).join("")}
             </div>
 
-            <!-- Botão e Formulário de Edição de Perfil -->
-            <div style="margin-bottom:16px;">
-              <button class="button secondary" style="width:100%; font-size:12px; padding:6px 12px;" onclick="window.toggleEditProfileForm()">
-                ${isEditProfileOpen ? '✕ Fechar Edição' : '✏️ Editar Dados do Perfil'}
+            <!-- Botões de Edição de Perfil -->
+            <div style="margin-bottom:16px; display:flex; gap:8px;">
+              <button class="button primary" style="flex:1; font-size:12px; padding:8px;" onclick="window.openEditProfileModal()">
+                🎸 Editar Perfil Musical 2.0
               </button>
-              ${isEditProfileOpen ? `
+              <button class="button secondary" style="flex:1; font-size:12px; padding:8px;" onclick="window.toggleEditProfileForm()">
+                ${isEditProfileOpen ? '✕ Fechar Dados' : '✏️ Dados da Conta'}
+              </button>
+            </div>
+            ${isEditProfileOpen ? `
                 <div style="margin-top:10px; padding:12px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.08); border-radius:12px;">
                   <label style="font-size:11px; color:#94a3b8; display:block; margin-bottom:4px;">Nome de Exibição</label>
                   <input type="text" id="edit-profile-name" class="form-input" value="${escapeHtml(name)}" placeholder="Seu nome" />
@@ -1687,6 +2410,11 @@ function show(name) {
   }
 
   currentScreen = name;
+
+  if (name === "comunidade") {
+    loadCommunityDataV2();
+  }
+
   renderCurrentScreen();
   updateTabbarActiveState(name);
 
@@ -2180,12 +2908,22 @@ onAuthStateChanged(auth, async (user) => {
       }
     }
     userProfile = await syncUserProfile(user);
+    try {
+      const musicianProf = await ProfileService.getMusicianProfile(user.uid);
+      if (musicianProf) {
+        userProfile = { ...(userProfile || {}), ...musicianProf };
+      }
+      bandInvitesList = await BandService.getUserPendingInvites(user.uid);
+    } catch (e) {
+      console.warn("Aviso ao carregar perfil musical 2.0:", e);
+    }
     virtuoRehearsal.init(user.uid);
   } else {
     if (headerAvatar) {
       headerAvatar.textContent = "✦";
     }
     userProfile = null;
+    bandInvitesList = [];
     virtuoRehearsal.init(null);
   }
   renderCurrentScreen();

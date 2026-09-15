@@ -34,7 +34,7 @@ CRIADO POR NASHIX HOO
 </div>
 
 <div style="display:flex; align-items:center; gap:8px;">
-  <button class="ai-header-btn" onclick="window.openVirtuoAiModal()" title="Virtuo AI - Diretor Musical">
+  <button class="ai-header-btn" onclick="show('ai')" title="Virtuo AI 2.0 - Inteligência Musical">
     <span>✨</span>
     <span>IA</span>
   </button>
@@ -45,14 +45,20 @@ CRIADO POR NASHIX HOO
 
 <!-- Barra de Atalhos Rápidos para Culto e Ensaio (1 Toque) -->
 <nav class="quick-toolbar" id="quick-tools-strip" aria-label="Ferramentas Musicais Rápidas">
+  <button onclick="show('ai')" id="quick-btn-ai" title="Virtuo AI 2.0 - Inteligência Musical">
+    <span>✨</span> Virtuo AI
+  </button>
   <button onclick="show('library')" id="quick-btn-library" title="Acessar Cifras e Músicas">
     <span>📜</span> Cifra
   </button>
   <button onclick="show('tuner')" id="quick-btn-tuner" title="Afinador Cromático de Alta Precisão">
     <span>🎯</span> Afinador
   </button>
-  <button onclick="show('vocal')" id="quick-btn-vocal" title="Monitor Vocal e Extensão">
+  <button onclick="show('vocal')" id="quick-btn-vocal" title="Virtuo Vocal (Afinador e Treinamento)">
     <span>🎤</span> Vocal
+  </button>
+  <button onclick="show('performance')" id="quick-btn-performance" title="Virtuo Performance (Acompanhamento em Tempo Real)">
+    <span>🎯</span> Performance
   </button>
   <button onclick="show('coach')" id="quick-btn-coach" title="Treinador de Transição de Acordes">
     <span>⚡</span> Coach

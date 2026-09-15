@@ -72,24 +72,86 @@ function generateAlgorithmicHarmonicAdvice(songTitle, currentKey, bpm, musicianL
   };
 }
 
-function generateFallbackChatReply(message) {
+function generateFallbackChatReply(message, musicalContext = null) {
   const lower = (message || '').toLowerCase();
+  const songTitle = musicalContext?.songTitle || 'a música selecionada';
+  const key = musicalContext?.key || 'G';
+  const bpm = musicalContext?.bpm || 74;
+  const difficulty = musicalContext?.difficulty || 'Médio';
+  const chords = Array.isArray(musicalContext?.chords) ? musicalContext.chords : [];
+  const chordsList = chords.length > 0 ? chords.join(', ') : 'acordes fundamentais';
+  const structure = musicalContext?.structure || 'Intro • Verso • Refrão • Final';
+  const isOlaria = songTitle.toLowerCase().includes('olaria') || chords.includes('Ab7M') || key === 'Cm';
+
+  // 1. Contextual: "Facilitar música" / Easy Play
+  if (lower.includes('facilitar') || lower.includes('fácil') || lower.includes('facil') || lower.includes('easy play')) {
+    return `Para tocar **"${songTitle}"** de forma mais fácil:
+1. **Ative o Easy Play 2.0**: No Virtuo, as dissonâncias e extensões complexas (como 9ª, 7M e baixos invertidos) são convertidas automaticamente para tríades fundamentais abertas.
+2. **Uso de Capotraste (Smart Key)**: Se o tom ${key} exigir muitas pestanas, coloque o Capo para usar digitações abertas (como formato de Am ou Em) mantendo o pitch original.
+3. **Mão Esquerda Suave**: Simplifique baixos invertidos (ex: toque a nota fundamental do acorde) para garantir estabilidade rítmica antes de adicionar passagens elaboradas.`;
+  }
+
+  // 2. Contextual: "Qual tom devo usar?" / Smart Key
+  if (lower.includes('qual tom') || lower.includes('tom devo') || lower.includes('tom usar') || lower.includes('mudar tom')) {
+    return `Diretriz de Tonalidade para **"${songTitle}"**:
+- **Tom Atual**: ${key} (Andamento: ${bpm} BPM).
+- **Voz e Tessitura**: Se o ministro tiver extensão vocal mais grave (barítono/contralto), experimente descer 1 ou 2 semitons. Se for tenor/soprano, o tom atual (${key}) garante potência e brilho no clímax do refrão.
+- **Instrumentistas**: O Virtuo Smart Key recomenda tocar com digitações abertas para garantir maior ressonância nos instrumentos acústicos.`;
+  }
+
+  // 3. Contextual: "Como estudar?" / Plano de Estudo
+  if (lower.includes('como estudar') || lower.includes('estudo') || lower.includes('plano de')) {
+    return `Plano de Estudo Estruturado para **"${songTitle}"** (${difficulty}):
+- **Dia 1 (Acordes)**: Formação e digitação limpa dos acordes (${chordsList}).
+- **Dia 2 (Trocas)**: Prática das transições mais rápidas com metrônomo a ${Math.round(bpm * 0.75)} BPM.
+- **Dia 3 (Ritmo)**: Levada constante e acentuação no andamento alvo de ${bpm} BPM.
+- **Dia 4 (Refrão)**: Dinâmica de crescendo e sustentação harmônica no refrão.
+- **Dia 5 (Música Completa)**: Passagem de ponta a ponta com auto-scroll no Virtuo.
+- **Dia 6 (Modo Banda)**: Sincronização com bateria, baixo e teclado sintetizados.
+- **Dia 7 (Simulação de Apresentação)**: Ensaio geral no Modo Ministro de palco.`;
+  }
+
+  // 4. Contextual: "Montar ensaio" / Reunião de Equipe
+  if (lower.includes('montar ensaio') || lower.includes('ensaio') || lower.includes('equipe') || lower.includes('repert')) {
+    return `Checklist de Ensaio para **"${songTitle}"**:
+1. **Andamento Travado**: Inicie o ensaio com o metrônomo fixado em ${bpm} BPM para que toda a banda internalize a pulsação.
+2. **Mapa Estrutural**: Alinhe as seções com a equipe: ${structure}.
+3. **Dinâmica em Camadas**:
+   - **Verso**: Teclado em Pad contínuo e violão em arpejos limpos.
+   - **Verso 2**: Entrada do bumbo suave e condução de baixo nas fundamentais.
+   - **Refrão**: Toda a banda entra com dinâmica forte e abertura vocal.
+4. **Espontâneo**: Combine previamente a sustentação harmônica em ${key} para momentos de oração.`;
+  }
+
+  // 5. Contextual: "Explicar acordes" / Análise Harmônica
+  if (lower.includes('explicar acordes') || lower.includes('harmonia') || lower.includes('acordes') || lower.includes('graus')) {
+    return `Análise Harmônica de **"${songTitle}"** (Tom ${key}):
+- **Acordes Principais**: ${chordsList}.
+- **Função Harmônica**: A harmonia combina repousos tonais estáveis com acordes de tensão expressiva, gerando atmosfera contemplativa ideal para culto congregacional.
+- **Dica para Teclado/Violão**: Evite duplicar notas graves já conduzidas pelo contrabaixo; utilize voicings abertos na região média para dar espaço à voz do ministro.`;
+  }
+
+  // 6. Contextual: "Preparar para tocar" / Palco
+  if (lower.includes('preparar para') || lower.includes('palco') || lower.includes('ao vivo') || lower.includes('ministrar')) {
+    return `Checklist de Palco Virtuo para **"${songTitle}"**:
+- 🎯 **Afinação**: Use o Afinador Cromático do Virtuo para conferir corda por corda antes de subir ao palco.
+- 🥁 **BPM**: Confirme o metrônomo a ${bpm} BPM no Modo Ministro.
+- 📜 **Modo Ministro Ativo**: Ative o Modo Ministro para rolagem automática limpa e leitura sem distrações.
+- 🤍 **Coração em Adoração**: Lembre-se de que a excelência técnica é um instrumento para servir à congregação e adorar a Deus.`;
+  }
+
+  // Transições genéricas
   if (lower.includes('transi') || lower.includes('tom') || lower.includes('modula')) {
     return `Para transições harmônicas no louvor congregacional:
 1. **Acorde de Passagem (V7 ou V/V)**: Antes de entrar no novo tom, utilize a dominante da nova tonalidade (ex: para ir de G para D, prepare com A7 ou A/C#).
 2. **Pivô Comum**: Encontre um acorde compartilhado pelas tonalidades (ex: entre G e D, Em é o vi de G e o ii de D).
 3. **Pad e Dinâmica**: Deixe a banda recolher a dinâmica (pianíssimo), sustentando a nota fundamental no teclado enquanto a condução vocal introduz o novo tema.`;
   }
-  if (lower.includes('ensaio') || lower.includes('equipe') || lower.includes('dinam')) {
-    return `Dicas do Virtuo para um ensaio ministerial de alta qualidade:
-1. **Alinhamento do Andamento**: Inicie fixando o BPM no metrônomo antes de começar a música.
-2. **Mapa Dinâmico**: Combine previamente onde a bateria entra (Verso 1 em pad, Verso 2 bumbo suave, Refrão forte, Espontâneo aberto).
-3. **Simplificação Inteligente (Easy Play)**: Se algum músico estiver em desenvolvimento, utilize acordes fundamentais sem dissonâncias complexas para manter a solidez da base.`;
-  }
-  return `Como Diretor Musical Virtuo, recomendo:
-- Manter o andamento firme com o metrônomo integrado.
-- Enriquecer os acordes com notas de tensão controladas (9ª, sus4) mantendo clareza sonora.
-- Conduzir o baixo por graus conjuntos para suavizar a transição entre estrofes e refrão.`;
+
+  return `Como Diretor Musical Virtuo, oriento para **"${songTitle}"** (Tom ${key} • ${bpm} BPM):
+- Mantenha a pulsação estável acompanhando o metrônomo integrado.
+- Enriqueça os acordes com notas de tensão controladas mantendo clareza e sem embolar o som da banda.
+- Conduza a dinâmica com sensibilidade: comece suave, construa o crescendo para o refrão e sustente a atmosfera nas ministrações espontâneas.`;
 }
 
 // Virtuo AI Status Endpoint
@@ -116,12 +178,13 @@ async function callAiWithTimeout(promise, timeoutMs = 3500) {
 app.post('/api/ai/chat', async (req, res) => {
   const startTime = Date.now();
   try {
-    const { message, economyMode } = req.body || {};
+    const { message, economyMode, musicalContext } = req.body || {};
     if (!message) {
       return res.status(400).json({ success: false, error: 'Mensagem obrigatória' });
     }
 
-    const cacheKey = `chat:${message.trim().toLowerCase()}`;
+    const contextHash = musicalContext?.songTitle ? `${musicalContext.songTitle}:${musicalContext.key || ''}` : 'general';
+    const cacheKey = `chat:${contextHash}:${message.trim().toLowerCase()}`;
     const cached = getCached(cacheKey);
     if (cached) {
       return res.json({ 
@@ -134,7 +197,7 @@ app.post('/api/ai/chat', async (req, res) => {
 
     // No modo econômico explícito ou sem API Key, atende localmente
     if (economyMode) {
-      const fallbackReply = generateFallbackChatReply(message);
+      const fallbackReply = generateFallbackChatReply(message, musicalContext);
       setCached(cacheKey, fallbackReply);
       return res.json({ 
         success: true, 
@@ -153,12 +216,27 @@ Você orienta ministros, músicos e equipes de louvor sobre:
 - Transposição inteligente, acordes com tensões (9, 11, sus, baixos invertidos) e rearmonização.
 - Dinâmica instrumental para momentos de oração, ministração da palavra e cântico espontâneo.
 - Dicas práticas e encorajadoras para ensaios e alinhamento de palco.
-Responda de forma direta, clara, acolhedora e com formatação em tópicos fáceis de ler no palco ou ensaio.`;
+Sempre responda em Português do Brasil com acolhimento, clareza e formatação em tópicos fáceis de ler no palco ou ensaio.
+${musicalContext ? `
+CONTEXTO MUSICAL ATUAL:
+- Música: ${musicalContext.songTitle || 'Nenhuma'}
+- Artista: ${musicalContext.artist || 'Desconhecido'}
+- Tom Atual: ${musicalContext.key || 'G'} (Original: ${musicalContext.originalKey || musicalContext.key || 'G'})
+- BPM: ${musicalContext.bpm || 74}
+- Dificuldade: ${musicalContext.difficulty || 'Média'}
+- Acordes: ${(musicalContext.chords || []).join(', ')}
+- Estrutura: ${musicalContext.structure || 'Intro • Verso • Refrão • Final'}
+- Modo Ativo: ${musicalContext.currentMode || 'cifra'}
+Responda considerando diretamente este contexto musical.` : ''}`;
+
+        const promptWithContext = musicalContext?.songTitle 
+          ? `[Contexto da Música: ${musicalContext.songTitle} - Tom: ${musicalContext.key} - ${musicalContext.bpm} BPM]\n${message}`
+          : message;
 
         const response = await callAiWithTimeout(
           ai.models.generateContent({
             model: 'gemini-2.5-flash',
-            contents: message,
+            contents: promptWithContext,
             config: {
               systemInstruction
             }
@@ -179,7 +257,7 @@ Responda de forma direta, clara, acolhedora e com formatação em tópicos fáce
       }
     }
 
-    const fallbackReply = generateFallbackChatReply(message);
+    const fallbackReply = generateFallbackChatReply(message, musicalContext);
     setCached(cacheKey, fallbackReply);
     return res.json({ 
       success: true, 
