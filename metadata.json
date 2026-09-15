@@ -1,0 +1,8 @@
+{
+  "name": "Virtuo",
+  "description": "A plataforma do músico virtuoso",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

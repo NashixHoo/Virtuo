@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#07101F">
+
+<title>Virtuo</title>
+<meta name="description" content="A plataforma do músico virtuoso">
+<meta property="og:title" content="Virtuo">
+<meta property="og:description" content="A plataforma do músico virtuoso">
+
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="assets/icon.svg">
+</head>
+
+<body>
+
+<div class="background"></div>
+
+<header>
+
+<div>
+
+<div class="creator">
+CRIADO POR NASHIX HOO
+</div>
+
+<h1>VIRTUO</h1>
+
+<p>A plataforma do músico virtuoso</p>
+
+</div>
+
+<div style="display:flex; align-items:center; gap:8px;">
+  <button class="ai-header-btn" onclick="window.openVirtuoAiModal()" title="Virtuo AI - Diretor Musical">
+    <span>✨</span>
+    <span>IA</span>
+  </button>
+  <div id="header-avatar" class="avatar" onclick="show('profile')" style="cursor:pointer;" title="Meu Perfil">✦</div>
+</div>
+
+</header>
+
+<main id="app"></main>
+
+<nav class="tabbar">
+
+<button onclick="show('home')" id="tab-btn-home">
+🏠
+<span>Início</span>
+</button>
+
+<button onclick="show('library')" id="tab-btn-library">
+🎵
+<span>Biblioteca</span>
+</button>
+
+<button onclick="show('ensaio')" id="tab-btn-ensaio">
+🎸
+<span>Ensaio</span>
+</button>
+
+<button onclick="show('band')" id="tab-btn-band">
+🥁
+<span>Banda</span>
+</button>
+
+<button onclick="show('comunidade')" id="tab-btn-comunidade">
+👥
+<span>Comunidade</span>
+</button>
+
+<button onclick="show('profile')" id="tab-btn-profile">
+👤
+<span>Perfil</span>
+</button>
+
+</nav>
+
+<script type="module" src="app.js"></script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .then(reg => console.log('[Virtuo PWA] Service Worker registrado:', reg.scope))
+      .catch(err => console.warn('[Virtuo PWA] Falha ao registrar Service Worker:', err));
+  });
+}
+</script>
+
+</body>
+</html>

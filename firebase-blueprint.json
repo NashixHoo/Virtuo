@@ -1,0 +1,325 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "displayName": { "type": "string" },
+        "email": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "bio": { "type": "string" },
+        "role": { "type": "string", "enum": ["user", "admin"] },
+        "instruments": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "isCelestial": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email"]
+    },
+    "Admin": {
+      "title": "Admin",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string" },
+        "grantedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid"]
+    },
+    "Song": {
+      "title": "Song",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "normalizedTitle": { "type": "string" },
+        "artistId": { "type": "string" },
+        "artistName": { "type": "string" },
+        "albumId": { "type": "string" },
+        "albumName": { "type": "string" },
+        "originalKey": { "type": "string" },
+        "bpm": { "type": "number" },
+        "timeSignature": { "type": "string" },
+        "difficulty": { "type": "string" },
+        "capo": { "type": "number" },
+        "genres": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "instruments": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "chords": {
+          "type": "array",
+          "items": { "type": "object" }
+        },
+        "easyChords": {
+          "type": "array",
+          "items": { "type": "object" }
+        },
+        "chordSheet": { "type": "string" },
+        "easyChordSheet": { "type": "string" },
+        "structure": {
+          "type": "array",
+          "items": { "type": "object" }
+        },
+        "lyrics": { "type": "string" },
+        "lyricsStatus": { "type": "string", "enum": ["unavailable", "authorized", "licensed", "userProvided", "pendingReview"] },
+        "lyricsSource": { "type": "string" },
+        "lyricsLicense": { "type": "string" },
+        "lyricsUpdatedAt": { "type": "string", "format": "date-time" },
+        "youtubeUrl": { "type": "string" },
+        "spotifyUrl": { "type": "string" },
+        "audioUrl": { "type": "string" },
+        "coverUrl": { "type": "string" },
+        "sourceType": { "type": "string", "enum": ["official", "licensed", "user", "manual", "imported"] },
+        "sourceName": { "type": "string" },
+        "sourceUrl": { "type": "string" },
+        "source": { "type": "object" },
+        "createdBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["draft", "published", "pendingReview", "rejected", "archived"] },
+        "visibility": { "type": "string", "enum": ["public", "private", "unlisted"] },
+        "version": { "type": "number" },
+        "verified": { "type": "boolean" },
+        "verifiedBy": { "type": "string" },
+        "verificationStatus": { "type": "string" },
+        "searchKeywords": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "required": ["title", "originalKey", "createdBy"]
+    },
+    "Artist": {
+      "title": "Artist",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "normalizedName": { "type": "string" },
+        "photoUrl": { "type": "string" },
+        "bio": { "type": "string" },
+        "genres": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "verified": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name"]
+    },
+    "Album": {
+      "title": "Album",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "normalizedTitle": { "type": "string" },
+        "artistId": { "type": "string" },
+        "artistName": { "type": "string" },
+        "releaseYear": { "type": "number" },
+        "coverUrl": { "type": "string" },
+        "tracks": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title"]
+    },
+    "Genre": {
+      "title": "Genre",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "slug": { "type": "string" },
+        "description": { "type": "string" }
+      },
+      "required": ["name", "slug"]
+    },
+    "SongVersion": {
+      "title": "SongVersion",
+      "type": "object",
+      "properties": {
+        "songId": { "type": "string" },
+        "version": { "type": "number" },
+        "title": { "type": "string" },
+        "originalKey": { "type": "string" },
+        "chords": { "type": "string" },
+        "easyChords": { "type": "string" },
+        "structure": { "type": "string" },
+        "changeSummary": { "type": "string" },
+        "createdBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["songId", "version", "createdBy"]
+    },
+    "SongCollection": {
+      "title": "SongCollection",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "songs": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "visibility": { "type": "string", "enum": ["public", "private"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "ownerId"]
+    },
+    "UserFavorite": {
+      "title": "UserFavorite",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "songId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "songId"]
+    },
+    "UserSongHistory": {
+      "title": "UserSongHistory",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "songId": { "type": "string" },
+        "playedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "songId"]
+    },
+    "SongRating": {
+      "title": "SongRating",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "songId": { "type": "string" },
+        "rating": { "type": "number" },
+        "review": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "songId", "rating"]
+    },
+    "Band": {
+      "title": "Band",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "members": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "ownerId"]
+    },
+    "Post": {
+      "title": "Post",
+      "type": "object",
+      "properties": {
+        "authorId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "content": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["authorId", "content"]
+    },
+    "Rehearsal": {
+      "title": "Rehearsal",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "date": { "type": "string" },
+        "description": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "createdBy": { "type": "string" },
+        "instruments": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "songs": {
+          "type": "array",
+          "items": { "type": "object" }
+        },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "ownerId"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile documents keyed by Firebase Auth UID"
+    },
+    "/admins/{adminId}": {
+      "schema": "Admin",
+      "description": "Server-side administrator registry for authorization"
+    },
+    "/songs/{songId}": {
+      "schema": "Song",
+      "description": "Songs and chord charts with strict permission boundaries"
+    },
+    "/artists/{artistId}": {
+      "schema": "Artist",
+      "description": "Artists and worship ministries"
+    },
+    "/albums/{albumId}": {
+      "schema": "Album",
+      "description": "Albums and discography metadata"
+    },
+    "/genres/{genreId}": {
+      "schema": "Genre",
+      "description": "Musical genres catalog"
+    },
+    "/songVersions/{versionId}": {
+      "schema": "SongVersion",
+      "description": "Audit history and revision versions for songs"
+    },
+    "/songCollections/{collectionId}": {
+      "schema": "SongCollection",
+      "description": "Custom song collections and setlists"
+    },
+    "/userFavorites/{favoriteId}": {
+      "schema": "UserFavorite",
+      "description": "User favorite songs index"
+    },
+    "/userSongHistory/{historyId}": {
+      "schema": "UserSongHistory",
+      "description": "Musician song playback history logs"
+    },
+    "/songRatings/{ratingId}": {
+      "schema": "SongRating",
+      "description": "Community ratings and reviews for songs"
+    },
+    "/bands/{bandId}": {
+      "schema": "Band",
+      "description": "Bands with owner and member access control"
+    },
+    "/posts/{postId}": {
+      "schema": "Post",
+      "description": "Community and band feed posts controlled by author"
+    },
+    "/rehearsals/{rehearsalId}": {
+      "schema": "Rehearsal",
+      "description": "Band rehearsal plans and setlists"
+    }
+  }
+}

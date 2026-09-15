@@ -1,0 +1,2917 @@
+*{
+box-sizing:border-box;
+}
+
+body{
+margin:0;
+font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif;
+background:#020611;
+color:white;
+padding-bottom:100px;
+}
+
+.background{
+position:fixed;
+inset:0;
+background:
+radial-gradient(circle at 50% -10%,#214F90 0%,#081322 35%,#020611 80%);
+z-index:-2;
+}
+
+.background::after{
+content:"";
+position:absolute;
+inset:0;
+background:url("assets/stars.svg");
+opacity:.25;
+}
+
+header{
+display:flex;
+justify-content:space-between;
+align-items:center;
+padding:28px 20px 10px;
+}
+
+.creator{
+font-size:11px;
+letter-spacing:2px;
+color:#7EE7FF;
+}
+
+h1{
+margin:8px 0 4px;
+font-size:44px;
+letter-spacing:3px;
+}
+
+header p{
+margin:0;
+color:#A9BDD8;
+}
+
+.avatar{
+width:56px;
+height:56px;
+display:grid;
+place-items:center;
+border-radius:50%;
+background:rgba(255,255,255,.08);
+backdrop-filter:blur(18px);
+border:1px solid rgba(255,255,255,.12);
+font-size:22px;
+color:#7EE7FF;
+}
+
+main{
+padding:20px;
+}
+
+.glass{
+background:rgba(12,24,43,.55);
+backdrop-filter:blur(18px);
+border:1px solid rgba(255,255,255,.08);
+border-radius:28px;
+padding:22px;
+margin-bottom:18px;
+box-shadow:0 15px 40px rgba(0,0,0,.35);
+}
+
+.pill{
+display:inline-block;
+padding:7px 12px;
+border-radius:999px;
+background:#143057;
+color:#7EE7FF;
+font-size:12px;
+}
+
+.hero{
+font-size:30px;
+margin:10px 0;
+}
+
+.subtitle{
+color:#A9BDD8;
+line-height:1.5;
+}
+
+.grid{
+display:grid;
+grid-template-columns:repeat(2,1fr);
+gap:14px;
+margin-top:16px;
+}
+
+.tile{
+padding:20px;
+border-radius:22px;
+background:linear-gradient(160deg,
+rgba(41,90,165,.35),
+rgba(10,20,36,.78));
+border:1px solid rgba(255,255,255,.08);
+min-height:150px;
+transition:.25s;
+}
+
+.tile:hover{
+transform:translateY(-3px);
+}
+
+.tile .icon{
+font-size:34px;
+}
+
+.tile h3{
+margin:12px 0 8px;
+font-size:18px;
+}
+
+.tile p{
+margin:0;
+font-size:13px;
+color:#A9BDD8;
+}
+
+.song-cover{
+height:190px;
+border-radius:22px;
+background:linear-gradient(135deg,#234F90,#081322);
+display:grid;
+place-items:center;
+font-size:64px;
+margin-bottom:18px;
+}
+
+.row{
+display:flex;
+gap:12px;
+}
+
+.button{
+flex:1;
+display:block;
+text-align:center;
+text-decoration:none;
+padding:15px;
+border-radius:16px;
+font-weight:700;
+}
+
+.primary{
+background:linear-gradient(135deg,#7EE7FF,#57A9FF);
+color:#03101D;
+}
+
+.secondary{
+background:rgba(255,255,255,.08);
+border:1px solid rgba(255,255,255,.08);
+color:white;
+}
+
+.dial{
+font-size:72px;
+font-weight:800;
+text-align:center;
+margin:20px 0;
+}
+
+.controls{
+display:flex;
+justify-content:center;
+gap:16px;
+}
+
+.controls button{
+width:64px;
+height:64px;
+border-radius:18px;
+border:none;
+background:#173765;
+color:white;
+font-size:24px;
+}
+
+.tabbar{
+position:fixed;
+bottom:12px;
+left:12px;
+right:12px;
+display:flex;
+background:rgba(7,19,31,.78);
+backdrop-filter:blur(22px);
+border:1px solid rgba(255,255,255,.08);
+border-radius:24px;
+padding:10px;
+}
+
+.tabbar button{
+flex:1;
+background:none;
+border:none;
+color:#A9BDD8;
+font-size:18px;
+}
+
+.tabbar span{
+display:block;
+font-size:10px;
+margin-top:3px;
+}
+
+@media(max-width:420px){
+.grid{
+grid-template-columns:1fr;
+}
+}
+
+/* Firebase Enhancements */
+.firebase-status{
+display:inline-flex;
+align-items:center;
+gap:6px;
+font-size:11px;
+color:#7EE7FF;
+background:rgba(20,48,87,.6);
+padding:4px 10px;
+border-radius:999px;
+border:1px solid rgba(126,231,255,.2);
+margin-top:6px;
+}
+.status-dot{
+width:8px;
+height:8px;
+border-radius:50%;
+background:#4ade80;
+box-shadow:0 0 8px #4ade80;
+}
+.status-dot.syncing{
+background:#facc15;
+box-shadow:0 0 8px #facc15;
+}
+.status-dot.offline{
+background:#94a3b8;
+box-shadow:none;
+}
+.avatar-img{
+width:100%;
+height:100%;
+border-radius:50%;
+object-fit:cover;
+}
+.auth-actions{
+display:flex;
+flex-direction:column;
+gap:10px;
+margin-top:16px;
+}
+.song-actions{
+display:flex;
+justify-content:flex-end;
+margin-top:12px;
+}
+.form-input{
+width:100%;
+background:rgba(7,19,31,.7);
+border:1px solid rgba(255,255,255,.12);
+border-radius:12px;
+color:white;
+padding:12px 14px;
+font-size:14px;
+margin-bottom:10px;
+outline:none;
+transition:border-color .2s ease;
+box-sizing:border-box;
+}
+.form-input:focus{
+border-color:#7EE7FF;
+box-shadow:0 0 12px rgba(126,231,255,.15);
+}
+
+/* Apple-Class Auth Styles */
+.auth-tabs{
+display:flex;
+background:rgba(255,255,255,.05);
+border-radius:14px;
+padding:4px;
+margin-bottom:16px;
+gap:4px;
+}
+.auth-tab{
+flex:1;
+background:none;
+border:none;
+color:#94a3b8;
+font-size:12px;
+font-weight:600;
+padding:8px 0;
+border-radius:10px;
+cursor:pointer;
+transition:all .2s ease;
+}
+.auth-tab.active{
+background:rgba(255,255,255,.12);
+color:#ffffff;
+box-shadow:0 2px 8px rgba(0,0,0,.2);
+}
+.auth-feedback{
+padding:10px 14px;
+border-radius:12px;
+font-size:13px;
+margin-bottom:12px;
+display:none;
+animation:fadeIn .2s ease;
+}
+.auth-feedback.error{
+display:block;
+background:rgba(239,68,68,.15);
+border:1px solid rgba(239,68,68,.3);
+color:#fca5a5;
+}
+.auth-feedback.success{
+display:block;
+background:rgba(34,197,94,.15);
+border:1px solid rgba(34,197,94,.3);
+color:#86efac;
+}
+.divider-line{
+display:flex;
+align-items:center;
+text-align:center;
+color:#64748b;
+font-size:11px;
+margin:16px 0;
+text-transform:uppercase;
+letter-spacing:.08em;
+}
+.divider-line::before, .divider-line::after{
+content:'';
+flex:1;
+border-bottom:1px solid rgba(255,255,255,.08);
+}
+.divider-line::before{ margin-right:12px; }
+.divider-line::after{ margin-left:12px; }
+
+/* Chord Sheet & Transposer Experience */
+.cifra-viewer{
+margin-top:16px;
+}
+.transposer-toolbar{
+display:flex;
+flex-direction:column;
+background:rgba(255,255,255,.04);
+border:1px solid rgba(255,255,255,.08);
+border-radius:18px;
+padding:14px 16px;
+gap:12px;
+margin-bottom:16px;
+}
+.transposer-row{
+display:flex;
+flex-wrap:wrap;
+align-items:center;
+justify-content:space-between;
+gap:10px;
+}
+.tone-stepper-group{
+display:inline-flex;
+align-items:center;
+background:rgba(7,19,31,.7);
+border:1px solid rgba(255,255,255,.12);
+border-radius:12px;
+padding:3px;
+gap:2px;
+}
+.tone-stepper-btn{
+background:transparent;
+border:none;
+color:#7EE7FF;
+width:32px;
+height:32px;
+border-radius:8px;
+cursor:pointer;
+display:inline-flex;
+align-items:center;
+justify-content:center;
+font-size:16px;
+font-weight:700;
+transition:all .15s ease;
+}
+.tone-stepper-btn:hover{
+background:rgba(126,231,255,.15);
+color:#fff;
+}
+.tone-stepper-label{
+font-size:11px;
+font-weight:700;
+color:#94a3b8;
+letter-spacing:0.08em;
+padding:0 8px;
+user-select:none;
+}
+.tone-display-info{
+display:inline-flex;
+align-items:center;
+gap:8px;
+flex-wrap:wrap;
+}
+.tone-current-badge{
+font-size:13px;
+font-weight:700;
+color:#ffffff;
+background:rgba(126,231,255,.1);
+border:1px solid rgba(126,231,255,.3);
+padding:4px 10px;
+border-radius:8px;
+display:inline-flex;
+align-items:center;
+gap:6px;
+}
+.tone-current-badge strong{
+color:#7EE7FF;
+font-size:15px;
+}
+.tone-original-meta{
+font-size:11px;
+color:#94a3b8;
+}
+.tone-reset-link{
+background:none;
+border:none;
+color:#7EE7FF;
+font-size:11px;
+font-weight:600;
+cursor:pointer;
+padding:2px 6px;
+border-radius:6px;
+text-decoration:underline;
+transition:opacity .15s ease;
+}
+.tone-reset-link:hover{
+opacity:0.8;
+}
+
+/* Apple-Class Segmented Mode Switcher */
+.segmented-mode-control{
+display:inline-flex;
+background:rgba(7,19,31,.7);
+border:1px solid rgba(255,255,255,.12);
+border-radius:12px;
+padding:3px;
+gap:3px;
+}
+.segmented-mode-btn{
+background:transparent;
+border:none;
+color:#94a3b8;
+padding:6px 14px;
+border-radius:9px;
+font-size:12px;
+font-weight:600;
+cursor:pointer;
+transition:all .18s ease;
+white-space:nowrap;
+display:inline-flex;
+align-items:center;
+gap:6px;
+}
+.segmented-mode-btn:hover{
+color:#e2e8f0;
+}
+.segmented-mode-btn.active{
+background:#7EE7FF;
+color:#07101F;
+font-weight:700;
+box-shadow:0 2px 8px rgba(126,231,255,.25);
+}
+.tag-btn{
+background:rgba(255,255,255,.06);
+border:1px solid rgba(255,255,255,.12);
+color:#cbd5e1;
+padding:6px 12px;
+border-radius:999px;
+font-size:12px;
+cursor:pointer;
+transition:all .15s ease;
+}
+.tag-btn.active{
+background:#7EE7FF;
+color:#07101F;
+border-color:#7EE7FF;
+font-weight:700;
+}
+.cifra-pre{
+font-family:'SF Mono', Monaco, Menlo, Consolas, monospace;
+font-size:14px;
+line-height:1.75;
+white-space:pre-wrap;
+color:#e2e8f0;
+background:rgba(7,19,31,.6);
+padding:18px;
+border-radius:16px;
+border:1px solid rgba(255,255,255,.06);
+overflow-x:auto;
+letter-spacing:0.02em;
+}
+.chord-highlight{
+color:#7EE7FF;
+font-weight:700;
+}
+.section-tag{
+color:#facc15;
+font-weight:700;
+margin-top:12px;
+display:block;
+}
+
+/* Minister / Clean Stage Mode */
+.stage-focus{
+position:fixed;
+top:0;
+left:0;
+right:0;
+bottom:0;
+background:#050B14;
+z-index:999;
+overflow-y:auto;
+padding:24px 20px 80px 20px;
+}
+.stage-header{
+display:flex;
+justify-content:space-between;
+align-items:center;
+margin-bottom:20px;
+border-bottom:1px solid rgba(255,255,255,.08);
+padding-bottom:16px;
+}
+.stage-cifra{
+font-size:16px;
+line-height:1.9;
+color:#f8fafc;
+max-width:720px;
+margin:0 auto;
+}
+
+/* Instruments Pill Selector */
+.instrument-chip{
+display:inline-block;
+padding:6px 12px;
+border-radius:999px;
+font-size:12px;
+background:rgba(255,255,255,.06);
+border:1px solid rgba(255,255,255,.1);
+color:#94a3b8;
+cursor:pointer;
+margin:3px;
+transition:all .15s ease;
+}
+.instrument-chip.selected{
+background:rgba(126,231,255,.2);
+border-color:#7EE7FF;
+color:#7EE7FF;
+font-weight:600;
+}
+
+/* Modal for Protected Areas */
+.auth-modal-backdrop{
+position:fixed;
+top:0;
+left:0;
+right:0;
+bottom:0;
+background:rgba(3,16,29,.8);
+backdrop-filter:blur(10px);
+-webkit-backdrop-filter:blur(10px);
+z-index:1100;
+display:flex;
+align-items:center;
+justify-content:center;
+padding:20px;
+animation:fadeIn .2s ease;
+}
+
+.auth-modal{
+background:rgba(10,25,47,.95);
+border:1px solid rgba(126,231,255,.25);
+border-radius:22px;
+padding:24px;
+max-width:380px;
+width:100%;
+box-shadow:0 24px 48px rgba(0,0,0,.6);
+text-align:center;
+animation:fadeIn .25s ease;
+}
+
+.auth-modal-icon{
+width:52px;
+height:52px;
+border-radius:50%;
+background:rgba(126,231,255,.12);
+display:flex;
+align-items:center;
+justify-content:center;
+font-size:24px;
+margin:0 auto 14px auto;
+border:1px solid rgba(126,231,255,.3);
+}
+
+.auth-modal h3{
+margin:0 0 8px 0;
+font-size:18px;
+color:#fff;
+font-weight:700;
+}
+
+.auth-modal p{
+font-size:13px;
+color:#94a3b8;
+line-height:1.5;
+margin:0 0 20px 0;
+}
+
+.auth-modal-actions{
+display:flex;
+gap:10px;
+}
+
+.auth-loading-pill{
+display:inline-flex;
+align-items:center;
+gap:8px;
+font-size:12px;
+color:#7EE7FF;
+background:rgba(126,231,255,.08);
+padding:6px 14px;
+border-radius:999px;
+border:1px solid rgba(126,231,255,.2);
+margin-top:8px;
+}
+
+.auth-spinner{
+width:12px;
+height:12px;
+border:2px solid rgba(126,231,255,.3);
+border-top-color:#7EE7FF;
+border-radius:50%;
+animation:spin .8s linear infinite;
+}
+
+@keyframes spin{
+to{transform:rotate(360deg);}
+}
+
+@keyframes fadeIn{
+from{opacity:0; transform:translateY(-4px);}
+to{opacity:1; transform:translateY(0);}
+}
+
+.button.danger{
+background:#ef4444;
+color:#ffffff;
+border:none;
+}
+.button.danger:hover{
+background:#dc2626;
+}
+.button.outline-danger{
+background:rgba(239,68,68,0.1);
+color:#fca5a5;
+border:1px solid rgba(239,68,68,0.3);
+}
+.button.outline-danger:hover{
+background:rgba(239,68,68,0.2);
+}
+
+/* =============================================================
+   VIRTUO MINISTER MODE: CELESTIAL STAGE DESIGN
+   ============================================================= */
+body.minister-active-body{
+overflow:hidden !important;
+}
+
+.minister-overlay-backdrop{
+position:fixed;
+top:0;
+left:0;
+right:0;
+bottom:0;
+background:#040812;
+z-index:9999;
+display:flex;
+flex-direction:column;
+}
+
+.minister-stage{
+display:flex;
+flex-direction:column;
+height:100vh;
+width:100vw;
+background:radial-gradient(ellipse at 50% 0%, #0c1a2e 0%, #040812 75%);
+color:#f8fafc;
+position:relative;
+overflow:hidden;
+}
+
+/* 1. Header de Performance */
+.minister-top-bar{
+display:flex;
+justify-content:space-between;
+align-items:center;
+padding:12px 20px;
+background:rgba(6,14,24,.85);
+backdrop-filter:blur(16px);
+border-bottom:1px solid rgba(255,255,255,.08);
+z-index:20;
+flex-shrink:0;
+gap:12px;
+}
+
+.minister-top-left{
+display:flex;
+align-items:center;
+gap:14px;
+min-width:0;
+}
+
+.minister-btn-back{
+background:rgba(255,255,255,.08);
+border:1px solid rgba(255,255,255,.14);
+color:#e2e8f0;
+padding:7px 14px;
+border-radius:10px;
+font-size:13px;
+font-weight:600;
+cursor:pointer;
+display:inline-flex;
+align-items:center;
+gap:6px;
+transition:all .18s ease;
+flex-shrink:0;
+}
+.minister-btn-back:hover{
+background:rgba(255,255,255,.16);
+color:#fff;
+border-color:rgba(126,231,255,.4);
+}
+
+.minister-song-meta{
+min-width:0;
+}
+.minister-song-title{
+font-size:19px;
+font-weight:700;
+color:#ffffff;
+margin:0;
+white-space:nowrap;
+overflow:hidden;
+text-overflow:ellipsis;
+letter-spacing:-0.01em;
+}
+.minister-song-sub{
+display:flex;
+align-items:center;
+gap:8px;
+font-size:12px;
+color:#94a3b8;
+margin-top:2px;
+flex-wrap:wrap;
+}
+.minister-meta-dot{
+opacity:0.4;
+}
+.minister-artist-name{
+color:#cbd5e1;
+}
+.minister-bpm-badge{
+display:inline-flex;
+align-items:center;
+gap:5px;
+color:#e2e8f0;
+font-weight:500;
+}
+.bpm-pulse{
+width:6px;
+height:6px;
+border-radius:50%;
+background:#7EE7FF;
+box-shadow:0 0 8px #7EE7FF;
+animation:pulse 1.2s infinite ease-in-out;
+}
+@keyframes pulse{
+0%, 100%{ opacity:0.3; transform:scale(0.8); }
+50%{ opacity:1; transform:scale(1.2); }
+}
+
+.minister-key-indicator{
+color:#cbd5e1;
+}
+.minister-key-strong{
+color:#7EE7FF;
+font-size:14px;
+}
+.minister-offset-tag{
+color:#7EE7FF;
+font-size:11px;
+}
+.minister-easy-badge{
+background:rgba(250,204,21,.15);
+color:#fde047;
+border:1px solid rgba(250,204,21,.3);
+padding:2px 7px;
+border-radius:6px;
+font-size:10px;
+font-weight:700;
+letter-spacing:0.04em;
+}
+.minister-capo-badge{
+background:rgba(245,158,11,.15);
+color:#fde047;
+border:1px solid rgba(245,158,11,.35);
+padding:2px 8px;
+border-radius:6px;
+font-size:10px;
+font-weight:700;
+letter-spacing:0.04em;
+display:inline-flex;
+align-items:center;
+gap:4px;
+}
+
+.minister-top-right{
+display:flex;
+align-items:center;
+gap:8px;
+flex-shrink:0;
+}
+
+.minister-font-sizer{
+display:inline-flex;
+background:rgba(255,255,255,.06);
+border:1px solid rgba(255,255,255,.1);
+border-radius:9px;
+overflow:hidden;
+}
+.minister-sizer-btn{
+background:transparent;
+border:none;
+color:#94a3b8;
+font-size:12px;
+font-weight:700;
+padding:6px 10px;
+cursor:pointer;
+transition:background .15s ease;
+}
+.minister-sizer-btn:hover{
+background:rgba(255,255,255,.12);
+color:#fff;
+}
+
+.minister-btn-fullscreen{
+background:rgba(126,231,255,.1);
+border:1px solid rgba(126,231,255,.25);
+color:#7EE7FF;
+padding:7px 12px;
+border-radius:10px;
+font-size:12px;
+font-weight:600;
+cursor:pointer;
+display:inline-flex;
+align-items:center;
+gap:6px;
+transition:all .18s ease;
+}
+.minister-btn-fullscreen:hover{
+background:rgba(126,231,255,.2);
+color:#fff;
+}
+
+/* 2. Trilho de Estrutura */
+.minister-structure-track{
+display:flex;
+align-items:center;
+gap:10px;
+padding:8px 20px;
+background:rgba(6,12,22,.65);
+border-bottom:1px solid rgba(255,255,255,.05);
+overflow-x:auto;
+white-space:nowrap;
+flex-shrink:0;
+z-index:10;
+}
+.minister-structure-label{
+font-size:10px;
+font-weight:800;
+color:#64748b;
+letter-spacing:0.08em;
+flex-shrink:0;
+}
+.minister-structure-pills{
+display:flex;
+align-items:center;
+gap:6px;
+}
+.minister-part-pill{
+display:inline-flex;
+align-items:center;
+gap:5px;
+background:rgba(255,255,255,.04);
+border:1px solid rgba(255,255,255,.08);
+padding:4px 10px;
+border-radius:999px;
+font-size:11px;
+color:#cbd5e1;
+font-weight:500;
+}
+.minister-part-pill.first{
+background:rgba(126,231,255,.08);
+border-color:rgba(126,231,255,.25);
+color:#7EE7FF;
+}
+.minister-part-pill .part-index{
+font-size:9px;
+color:#94a3b8;
+font-weight:700;
+}
+
+/* 3. Área de Rolagem da Cifra */
+.minister-scroll-canvas{
+flex:1;
+overflow-y:auto;
+overflow-x:hidden;
+padding:30px 20px 140px 20px;
+scroll-behavior:auto;
+-webkit-overflow-scrolling:touch;
+}
+.minister-cifra-wrapper{
+max-width:820px;
+margin:0 auto;
+}
+.minister-cifra-text{
+font-family:'SF Mono', Monaco, Menlo, Consolas, monospace;
+font-size:inherit;
+line-height:2.05;
+white-space:pre-wrap;
+color:#f1f5f9;
+background:rgba(8,16,28,.4);
+border:1px solid rgba(255,255,255,.05);
+border-radius:20px;
+padding:28px 32px;
+letter-spacing:0.03em;
+box-shadow:0 12px 40px rgba(0,0,0,.45);
+}
+.minister-cifra-text .chord-highlight{
+color:#7EE7FF;
+font-weight:700;
+text-shadow:0 0 12px rgba(126,231,255,.2);
+}
+.minister-cifra-text .section-tag{
+color:#facc15;
+font-weight:800;
+margin-top:16px;
+display:block;
+letter-spacing:0.04em;
+}
+
+/* 4. Barra Flutuante de Controle no Rodapé (Celestial Dock) */
+.minister-dock{
+position:absolute;
+bottom:18px;
+left:0;
+right:0;
+display:flex;
+justify-content:center;
+align-items:center;
+z-index:100;
+pointer-events:none;
+padding:0 16px;
+}
+.minister-dock-inner{
+pointer-events:auto;
+display:flex;
+align-items:center;
+gap:12px;
+background:rgba(7,18,30,.88);
+backdrop-filter:blur(24px) saturate(180%);
+-webkit-backdrop-filter:blur(24px) saturate(180%);
+border:1px solid rgba(255,255,255,.14);
+box-shadow:0 16px 48px rgba(0,0,0,.6), 0 0 0 1px rgba(126,231,255,.15);
+border-radius:22px;
+padding:8px 14px;
+max-width:960px;
+flex-wrap:wrap;
+justify-content:center;
+}
+
+.dock-segment{
+display:inline-flex;
+align-items:center;
+gap:8px;
+}
+.dock-divider{
+width:1px;
+height:24px;
+background:rgba(255,255,255,.12);
+}
+
+/* Stepper [-] TOM [+] */
+.minister-stepper{
+display:inline-flex;
+align-items:center;
+background:rgba(255,255,255,.05);
+border:1px solid rgba(255,255,255,.1);
+border-radius:12px;
+padding:2px;
+}
+.minister-stepper-btn{
+background:transparent;
+border:none;
+color:#7EE7FF;
+width:32px;
+height:32px;
+border-radius:9px;
+cursor:pointer;
+display:inline-flex;
+align-items:center;
+justify-content:center;
+font-size:16px;
+font-weight:700;
+transition:background .15s ease;
+}
+.minister-stepper-btn:hover{
+background:rgba(126,231,255,.15);
+color:#fff;
+}
+.minister-stepper-center{
+display:flex;
+flex-direction:column;
+align-items:center;
+padding:0 8px;
+min-width:38px;
+user-select:none;
+}
+.minister-stepper-center .stepper-title{
+font-size:9px;
+color:#94a3b8;
+font-weight:800;
+letter-spacing:0.06em;
+line-height:1;
+}
+.minister-stepper-center .stepper-value{
+font-size:14px;
+font-weight:800;
+color:#ffffff;
+line-height:1.2;
+}
+
+.minister-btn-reset-key{
+background:transparent;
+border:none;
+color:#7EE7FF;
+font-size:11px;
+font-weight:600;
+cursor:pointer;
+padding:4px 6px;
+text-decoration:underline;
+white-space:nowrap;
+}
+.minister-btn-reset-key:hover{
+color:#fff;
+}
+
+/* Segmented: Original vs Easy Play */
+.minister-segmented{
+display:inline-flex;
+background:rgba(255,255,255,.05);
+border:1px solid rgba(255,255,255,.1);
+border-radius:12px;
+padding:3px;
+gap:3px;
+}
+.minister-seg-btn{
+background:transparent;
+border:none;
+color:#94a3b8;
+padding:6px 12px;
+border-radius:9px;
+font-size:11px;
+font-weight:700;
+cursor:pointer;
+transition:all .18s ease;
+white-space:nowrap;
+letter-spacing:0.02em;
+}
+.minister-seg-btn:hover{
+color:#e2e8f0;
+}
+.minister-seg-btn.active{
+background:#7EE7FF;
+color:#07101F;
+font-weight:800;
+box-shadow:0 2px 10px rgba(126,231,255,.3);
+}
+
+/* Auto-Scroll Controls */
+.autoscroll-action-btns{
+display:inline-flex;
+align-items:center;
+gap:6px;
+}
+.minister-dock-btn{
+background:rgba(255,255,255,.07);
+border:1px solid rgba(255,255,255,.12);
+color:#f1f5f9;
+padding:6px 12px;
+border-radius:10px;
+font-size:12px;
+font-weight:600;
+cursor:pointer;
+display:inline-flex;
+align-items:center;
+gap:6px;
+transition:all .18s ease;
+white-space:nowrap;
+}
+.minister-dock-btn:hover{
+background:rgba(255,255,255,.14);
+}
+.minister-dock-btn.play-btn{
+background:rgba(126,231,255,.12);
+border-color:rgba(126,231,255,.3);
+color:#7EE7FF;
+}
+.minister-dock-btn.play-btn:hover{
+background:rgba(126,231,255,.24);
+color:#fff;
+}
+.minister-dock-btn.play-btn.is-playing{
+background:rgba(250,204,21,.15);
+border-color:rgba(250,204,21,.4);
+color:#fde047;
+}
+.minister-dock-btn.stop-btn{
+color:#94a3b8;
+padding:6px 9px;
+}
+.minister-dock-btn.stop-btn:hover{
+color:#f87171;
+}
+
+.minister-speed-selector{
+display:inline-flex;
+background:rgba(255,255,255,.05);
+border:1px solid rgba(255,255,255,.1);
+border-radius:10px;
+padding:2px;
+gap:2px;
+}
+.minister-speed-selector .speed-btn{
+background:transparent;
+border:none;
+color:#94a3b8;
+padding:4px 8px;
+border-radius:7px;
+font-size:11px;
+font-weight:600;
+cursor:pointer;
+transition:all .15s ease;
+}
+.minister-speed-selector .speed-btn:hover{
+color:#fff;
+}
+.minister-speed-selector .speed-btn.active{
+background:rgba(255,255,255,.16);
+color:#7EE7FF;
+font-weight:700;
+}
+
+.minister-dock-btn-close{
+background:rgba(255,255,255,.06);
+border:1px solid rgba(255,255,255,.1);
+color:#94a3b8;
+width:32px;
+height:32px;
+border-radius:10px;
+cursor:pointer;
+display:inline-flex;
+align-items:center;
+justify-content:center;
+font-size:14px;
+font-weight:700;
+transition:all .15s ease;
+}
+.minister-dock-btn-close:hover{
+background:rgba(239,68,68,.2);
+border-color:rgba(239,68,68,.4);
+color:#fca5a5;
+}
+
+/* Responsividade Mobile & Tablets */
+@media (max-width: 768px){
+.minister-top-bar{
+padding:10px 12px;
+}
+.minister-song-title{
+font-size:16px;
+}
+.minister-song-sub{
+font-size:11px;
+}
+.minister-scroll-canvas{
+padding:16px 12px 160px 12px;
+}
+.minister-cifra-text{
+padding:18px 16px;
+border-radius:14px;
+}
+.minister-dock{
+bottom:10px;
+padding:0 8px;
+}
+.minister-dock-inner{
+gap:8px;
+padding:6px 10px;
+border-radius:18px;
+width:100%;
+}
+.dock-divider{
+display:none;
+}
+.fs-text{
+display:none;
+}
+}
+
+/* =============================================================
+   VIRTUO CELESTIAL METRONOME STYLES
+   Web Audio API Engine • Pulse, Beats, Tap, Subdivisions
+============================================================= */
+
+/* Indicador Rítmico de Batidas (● 1  ○ 2  ○ 3  ○ 4) */
+.metronome-beats-track {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  margin: 14px 0 16px 0;
+}
+
+.metronome-beat-unit {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.metronome-beat-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.08s ease-out;
+  box-shadow: 0 0 0 0 rgba(126, 231, 255, 0);
+}
+
+.metronome-beat-number {
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  font-variant-numeric: tabular-nums;
+  transition: color 0.08s ease;
+}
+
+.metronome-beat-dot.active {
+  background: #7EE7FF;
+  border-color: #A5F3FC;
+  box-shadow: 0 0 12px rgba(126, 231, 255, 0.8), 0 0 20px rgba(126, 231, 255, 0.4);
+  transform: scale(1.35);
+}
+
+.metronome-beat-dot.active.accent {
+  background: #38BDF8;
+  border-color: #FFFFFF;
+  box-shadow: 0 0 16px rgba(56, 189, 248, 1), 0 0 28px rgba(126, 231, 255, 0.6);
+  transform: scale(1.5);
+}
+
+.metronome-beat-unit.active .metronome-beat-number {
+  color: #7EE7FF;
+  font-weight: 800;
+}
+
+.metronome-beat-unit.active.accent .metronome-beat-number {
+  color: #FFFFFF;
+  font-weight: 800;
+}
+
+/* Pulso sutil no display do BPM */
+.flash-pulse {
+  animation: virtuoBeatFlash 0.18s ease-out;
+}
+
+.flash-accent {
+  animation: virtuoAccentFlash 0.22s ease-out;
+}
+
+@keyframes virtuoBeatFlash {
+  0% { transform: scale(1.02); filter: drop-shadow(0 0 8px rgba(126, 231, 255, 0.6)); }
+  100% { transform: scale(1); filter: drop-shadow(0 0 0 rgba(126, 231, 255, 0)); }
+}
+
+@keyframes virtuoAccentFlash {
+  0% { transform: scale(1.04); filter: drop-shadow(0 0 14px rgba(56, 189, 248, 0.9)); }
+  100% { transform: scale(1); filter: drop-shadow(0 0 0 rgba(56, 189, 248, 0)); }
+}
+
+/* Seletor Segmentado de Subdivisão (1/4, 1/8, 1/16) */
+.metronome-subdivision-group {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.metronome-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #94a3b8;
+}
+
+.metronome-segmented {
+  display: inline-flex;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 3px;
+  gap: 3px;
+}
+
+.metronome-seg-btn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  padding: 5px 12px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.metronome-seg-btn:hover {
+  color: #fff;
+}
+
+.metronome-seg-btn.active {
+  background: linear-gradient(135deg, rgba(126, 231, 255, 0.25), rgba(87, 169, 255, 0.25));
+  border: 1px solid rgba(126, 231, 255, 0.4);
+  color: #7EE7FF;
+}
+
+/* Checkbox Toggle Acento */
+.metro-toggle-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #cbd5e1;
+  cursor: pointer;
+  user-select: none;
+}
+
+.metro-toggle-label input[type="checkbox"] {
+  accent-color: #7EE7FF;
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+}
+
+/* Slider de Volume Celestial */
+.metro-volume-slider {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.12);
+  outline: none;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.metro-volume-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #7EE7FF;
+  box-shadow: 0 0 8px rgba(126, 231, 255, 0.6);
+  cursor: pointer;
+  transition: transform 0.1s ease;
+}
+
+.metro-volume-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+/* =============================================================
+   PAINEL COMPACTO DO METRÔNOMO NO MODO MINISTRO (PALCO)
+============================================================= */
+.minister-metro-popover-wrapper {
+  position: fixed;
+  bottom: 82px;
+  right: 24px;
+  z-index: 10005;
+  animation: slideUpFade 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideUpFade {
+  from { opacity: 0; transform: translateY(12px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.minister-metro-card {
+  background: rgba(8, 20, 36, 0.94);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(126, 231, 255, 0.25);
+  border-radius: 20px;
+  padding: 16px 18px;
+  width: 320px;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.6), 0 0 24px rgba(126, 231, 255, 0.12);
+}
+
+.minister-metro-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 10px;
+}
+
+.minister-metro-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #7EE7FF;
+  letter-spacing: 0.05em;
+}
+
+.minister-metro-close {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #94a3b8;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  transition: all 0.15s ease;
+}
+
+.minister-metro-close:hover {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+}
+
+/* Stepper de BPM no Modo Ministro: [-] [ Input 74 ] [+] + TAP */
+.minister-metro-bpm-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 12px 0;
+}
+
+.minister-metro-stepper {
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 3px;
+  flex: 1;
+}
+
+.metro-step-btn {
+  background: transparent;
+  border: none;
+  color: #7EE7FF;
+  width: 34px;
+  height: 34px;
+  font-size: 18px;
+  font-weight: 800;
+  border-radius: 9px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease;
+}
+
+.metro-step-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.metro-bpm-input-wrapper {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  flex: 1;
+  gap: 3px;
+}
+
+.metro-bpm-input {
+  width: 54px;
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-size: 20px;
+  font-weight: 800;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  outline: none;
+}
+
+.metro-bpm-unit {
+  font-size: 10px;
+  font-weight: 700;
+  color: #94a3b8;
+}
+
+.metro-tap-btn {
+  background: linear-gradient(135deg, rgba(126, 231, 255, 0.18), rgba(87, 169, 255, 0.18));
+  border: 1px solid rgba(126, 231, 255, 0.35);
+  color: #7EE7FF;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 8px 14px;
+  border-radius: 12px;
+  cursor: pointer;
+  height: 40px;
+  transition: all 0.12s ease;
+}
+
+.metro-tap-btn:active {
+  transform: scale(0.92);
+  background: #7EE7FF;
+  color: #03101D;
+  box-shadow: 0 0 12px rgba(126, 231, 255, 0.7);
+}
+
+/* Ações Play / Stop do Metrônomo */
+.minister-metro-actions {
+  display: flex;
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.metro-play-btn {
+  flex: 1;
+  background: linear-gradient(135deg, #7EE7FF, #57A9FF);
+  color: #03101D;
+  border: none;
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-size: 12px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.metro-play-btn.playing {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #fff;
+}
+
+.metro-play-btn:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
+.metro-stop-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #e2e8f0;
+  border-radius: 12px;
+  width: 42px;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.metro-stop-btn:hover {
+  background: rgba(239, 68, 68, 0.25);
+  color: #fca5a5;
+}
+
+.minister-metro-toggles {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 10px 0;
+  padding: 8px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.metro-song-bpm-btn {
+  background: rgba(126, 231, 255, 0.08);
+  border: 1px solid rgba(126, 231, 255, 0.2);
+  color: #7EE7FF;
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s ease;
+}
+
+.metro-song-bpm-btn:hover {
+  background: rgba(126, 231, 255, 0.16);
+}
+
+.minister-metro-volume-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.metro-vol-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #94a3b8;
+  font-weight: 700;
+}
+
+/* Botão Metrônomo no Dock */
+.metro-trigger-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.metro-trigger-btn.active {
+  background: rgba(126, 231, 255, 0.18);
+  border-color: rgba(126, 231, 255, 0.4);
+  color: #7EE7FF;
+}
+
+.metro-trigger-btn.playing {
+  color: #7EE7FF;
+  border-color: #7EE7FF;
+}
+
+.metro-dot-live {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #7EE7FF;
+  box-shadow: 0 0 8px #7EE7FF;
+  animation: pulseDot 1s infinite;
+}
+
+@keyframes pulseDot {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.4); opacity: 0.5; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* =============================================================
+   TELA MODO BANDA: CONTROLES COMPLETOS DO METRÔNOMO
+============================================================= */
+.band-engine-badge {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #7EE7FF;
+  background: rgba(126, 231, 255, 0.12);
+  border: 1px solid rgba(126, 231, 255, 0.25);
+  padding: 4px 8px;
+  border-radius: 8px;
+}
+
+.band-bpm-edit-wrap {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 6px;
+}
+
+.band-bpm-number-input {
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-size: 80px;
+  font-weight: 800;
+  text-align: center;
+  width: 180px;
+  outline: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.band-bpm-sublabel {
+  font-size: 20px;
+  font-weight: 700;
+  color: #7EE7FF;
+}
+
+.band-controls-master {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 14px;
+  margin-top: 10px;
+}
+
+.band-step-btn {
+  width: 58px;
+  height: 58px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #173765;
+  color: white;
+  font-size: 26px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.band-step-btn:hover {
+  background: #234f90;
+  transform: translateY(-2px);
+}
+
+.band-main-play-btn {
+  width: 72px;
+  height: 72px;
+  border-radius: 22px;
+  border: none;
+  background: linear-gradient(135deg, #7EE7FF, #57A9FF);
+  color: #03101D;
+  font-size: 28px;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 24px rgba(126, 231, 255, 0.35);
+  transition: all 0.15s ease;
+}
+
+.band-main-play-btn.playing {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #fff;
+  box-shadow: 0 8px 24px rgba(245, 158, 11, 0.4);
+}
+
+.band-main-play-btn:hover {
+  transform: scale(1.05);
+}
+
+.band-tap-btn {
+  width: 58px;
+  height: 58px;
+  border-radius: 18px;
+  border: 1px solid rgba(126, 231, 255, 0.4);
+  background: rgba(126, 231, 255, 0.15);
+  color: #7EE7FF;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.band-tap-btn:active {
+  background: #7EE7FF;
+  color: #03101D;
+  transform: scale(0.92);
+}
+
+.band-params-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 20px;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.band-param-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.band-param-tile.full-width {
+  grid-column: span 2;
+  margin-top: 8px;
+}
+
+.band-param-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.band-param-title {
+  color: #94a3b8;
+}
+
+.band-param-curr {
+  color: #7EE7FF;
+}
+
+/* =============================================================
+   VIRTUO CELESTIAL REHEARSAL MODE STYLES
+   Sessões de Ensaio • Repertório • Tons da Banda • Checklist
+============================================================= */
+
+.rehearsal-main-view,
+.rehearsal-list-view {
+  animation: fadeIn 0.25s ease-out;
+}
+
+.rehearsal-top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.rehearsal-hero {
+  margin-bottom: 20px;
+}
+
+.rehearsal-hero .hero-title {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #fff;
+  margin: 0 0 6px 0;
+}
+
+.rehearsal-meta {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  font-size: 13px;
+  color: #94a3b8;
+}
+
+/* Barra de Progresso do Ensaio */
+.rehearsal-progress-container {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 14px 18px;
+  margin-bottom: 24px;
+}
+
+.rehearsal-progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.rehearsal-progress-header .progress-title {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.rehearsal-progress-header .progress-count {
+  font-size: 13px;
+  font-weight: 700;
+  color: #7EE7FF;
+}
+
+.rehearsal-progress-bar {
+  width: 100%;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.rehearsal-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #38BDF8, #7EE7FF);
+  border-radius: 999px;
+  transition: width 0.3s ease;
+  box-shadow: 0 0 12px rgba(126, 231, 255, 0.5);
+}
+
+/* Área de Instrumentos */
+.rehearsal-instruments-section {
+  margin-bottom: 28px;
+}
+
+.section-title-strip {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.strip-label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: #94a3b8;
+}
+
+.strip-hint {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.rehearsal-instruments-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.rehearsal-inst-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #94a3b8;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.rehearsal-inst-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+.rehearsal-inst-btn.active {
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(126, 231, 255, 0.15));
+  border-color: rgba(126, 231, 255, 0.4);
+  color: #7EE7FF;
+  box-shadow: 0 0 14px rgba(126, 231, 255, 0.15);
+}
+
+/* Repertório e Cards de Músicas */
+.rehearsal-repertoire-section {
+  margin-top: 8px;
+}
+
+.rehearsal-songs-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.rehearsal-song-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 16px 18px;
+  transition: all 0.2s ease;
+}
+
+.rehearsal-song-card:hover {
+  border-color: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.rehearsal-song-card.is-done {
+  border-color: rgba(126, 231, 255, 0.25);
+  background: rgba(126, 231, 255, 0.02);
+}
+
+.rehearsal-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.rehearsal-card-title-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.rehearsal-order-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #7EE7FF;
+  font-weight: 800;
+  font-size: 13px;
+}
+
+.rehearsal-song-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+  margin: 0;
+}
+
+.rehearsal-song-artist {
+  font-size: 12px;
+  color: #94a3b8;
+  margin: 2px 0 0 0;
+}
+
+/* Status Chips Clicáveis */
+.rehearsal-status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+}
+
+.status-not-rehearsed {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #94a3b8;
+}
+
+.status-in-progress {
+  background: rgba(245, 158, 11, 0.15);
+  border-color: rgba(245, 158, 11, 0.35);
+  color: #FBBF24;
+}
+
+.status-rehearsed {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: rgba(16, 185, 129, 0.4);
+  color: #34D399;
+}
+
+/* Controles de Tom, BPM e Versão */
+.rehearsal-controls-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 12px 14px;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  margin-bottom: 14px;
+}
+
+.rehearsal-control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.rehearsal-ctl-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.rehearsal-stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.stepper-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-weight: 700;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.stepper-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: #7EE7FF;
+}
+
+.stepper-display {
+  min-width: 58px;
+  padding: 4px 10px;
+  text-align: center;
+  font-size: 13px;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.stepper-display.transposed {
+  color: #7EE7FF;
+  border-color: rgba(126, 231, 255, 0.35);
+}
+
+.reset-mini-btn {
+  font-size: 10px;
+  font-weight: 700;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #94a3b8;
+  padding: 4px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.reset-mini-btn:hover {
+  color: #fff;
+  border-color: #fff;
+}
+
+/* Segmented Original vs Easy Play */
+.rehearsal-version-segmented {
+  display: inline-flex;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 3px;
+  gap: 3px;
+}
+
+.version-seg-btn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  padding: 5px 12px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.version-seg-btn.active {
+  background: linear-gradient(135deg, rgba(126, 231, 255, 0.25), rgba(87, 169, 255, 0.25));
+  border: 1px solid rgba(126, 231, 255, 0.4);
+  color: #7EE7FF;
+}
+
+/* Barra de Ações Rápidas */
+.rehearsal-card-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.rehearsal-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.rehearsal-action-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.rehearsal-action-btn.primary-action {
+  background: linear-gradient(135deg, #0ea5e9, #0284c7);
+  border-color: #38bdf8;
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(14, 165, 233, 0.25);
+}
+
+.rehearsal-action-btn.primary-action:hover {
+  filter: brightness(1.1);
+}
+
+.rehearsal-order-arrows {
+  display: inline-flex;
+  gap: 2px;
+  margin-left: auto;
+}
+
+.arrow-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #94a3b8;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.arrow-btn:hover:not(:disabled) {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.arrow-btn:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+}
+
+.rehearsal-delete-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.rehearsal-delete-btn:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: #ef4444;
+}
+
+/* Modais do Modo Ensaio */
+.rehearsal-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.rehearsal-modal-card {
+  width: 100%;
+  max-width: 520px;
+  background: #0b1120;
+  border: 1px solid rgba(126, 231, 255, 0.2);
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7), 0 0 30px rgba(126, 231, 255, 0.1);
+  max-height: 88vh;
+  overflow-y: auto;
+}
+
+.rehearsal-modal-card .modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.rehearsal-modal-card .modal-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  color: #fff;
+}
+
+.modal-close-btn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.modal-close-btn:hover {
+  color: #fff;
+}
+
+.modal-subtitle {
+  font-size: 13px;
+  color: #94a3b8;
+  margin: 0 0 16px 0;
+}
+
+.modal-song-picker-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 50vh;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.picker-song-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  gap: 12px;
+}
+
+.picker-song-item.already-added {
+  border-color: rgba(126, 231, 255, 0.3);
+}
+
+.picker-song-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.picker-song-info strong {
+  color: #fff;
+  font-size: 14px;
+}
+
+.picker-song-info span {
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+.picker-add-btn {
+  white-space: nowrap;
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: rgba(126, 231, 255, 0.15);
+  border: 1px solid rgba(126, 231, 255, 0.3);
+  color: #7EE7FF;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.picker-add-btn:hover {
+  background: rgba(126, 231, 255, 0.25);
+  color: #fff;
+}
+
+/* Cards da lista de ensaios */
+.rehearsal-index-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  padding: 20px;
+  transition: all 0.2s ease;
+}
+
+.rehearsal-index-card:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(126, 231, 255, 0.3);
+  transform: translateY(-2px);
+}
+
+.index-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.index-card-icon {
+  font-size: 20px;
+}
+
+.index-card-date {
+  font-size: 12px;
+  color: #7EE7FF;
+  font-weight: 700;
+}
+
+.index-card-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: #fff;
+  margin: 0 0 4px 0;
+}
+
+.index-card-desc {
+  font-size: 13px;
+  color: #94a3b8;
+  margin: 0 0 14px 0;
+  line-height: 1.4;
+}
+
+.index-card-stats {
+  display: flex;
+  gap: 6px;
+  font-size: 12px;
+  color: #cbd5e1;
+  margin-bottom: 8px;
+}
+
+.rehearsal-mini-progress {
+  height: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.rehearsal-mini-progress-fill {
+  height: 100%;
+  background: #7EE7FF;
+  border-radius: 999px;
+}
+
+.rehearsal-empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 16px;
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+}
+
+.rehearsal-empty-state .empty-icon {
+  font-size: 36px;
+  margin-bottom: 10px;
+}
+
+.rehearsal-empty-state h3 {
+  color: #fff;
+  margin: 0 0 6px 0;
+  font-size: 16px;
+}
+
+.rehearsal-empty-state p {
+  color: #94a3b8;
+  font-size: 13px;
+  margin: 0;
+}
+
+/* Responsividade Mobile */
+@media (max-width: 640px) {
+  .rehearsal-card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .rehearsal-card-status-col {
+    width: 100%;
+  }
+  .rehearsal-status-chip {
+    width: 100%;
+    justify-content: center;
+    padding: 8px;
+  }
+  .rehearsal-controls-strip {
+    flex-direction: column;
+    gap: 12px;
+  }
+  .rehearsal-card-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .rehearsal-card-actions .rehearsal-action-btn {
+    justify-content: center;
+    padding: 10px;
+  }
+  .rehearsal-order-arrows {
+    margin-left: 0;
+    justify-content: center;
+  }
+}
+
+/* Tabbar Active Highlight */
+.tabbar button.active {
+  color: #7EE7FF;
+  font-weight: 700;
+  text-shadow: 0 0 10px rgba(126, 231, 255, 0.4);
+}
+.tabbar button.active span {
+  color: #7EE7FF;
+  font-weight: 600;
+}
+
+/* Celestial Member Badges & Luxury Accents */
+.badge-celestial {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, rgba(250, 204, 21, 0.22), rgba(217, 119, 6, 0.15));
+  border: 1px solid rgba(250, 204, 21, 0.6);
+  color: #fde047;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  box-shadow: 0 0 14px rgba(250, 204, 21, 0.25);
+}
+
+.badge-free {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #94a3b8;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* Community Feed Styling */
+.community-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.community-post-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  padding: 16px;
+  transition: border-color 0.2s ease;
+}
+
+.community-post-card:hover {
+  border-color: rgba(126, 231, 255, 0.25);
+}
+
+.community-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.community-author-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.community-avatar-circ {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #173765, #22518e);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: #7EE7FF;
+  font-size: 15px;
+  border: 1px solid rgba(126, 231, 255, 0.3);
+  overflow: hidden;
+}
+
+.community-author-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+.community-author-meta {
+  font-size: 11px;
+  color: #94a3b8;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.community-content-text {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #e2e8f0;
+  white-space: pre-wrap;
+  margin-bottom: 12px;
+}
+
+.community-post-img {
+  width: 100%;
+  max-height: 340px;
+  object-fit: cover;
+  border-radius: 12px;
+  margin-bottom: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.community-actions-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding-top: 10px;
+}
+
+.community-like-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 6px 14px;
+  border-radius: 999px;
+  color: #f1f5f9;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.community-like-btn.liked {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: #ef4444;
+  color: #f87171;
+}
+
+/* Virtuo AI Card */
+.ai-advice-card {
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.08), rgba(99, 102, 241, 0.08));
+  border: 1px solid rgba(126, 231, 255, 0.35);
+  border-radius: 18px;
+  padding: 16px;
+  margin-top: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.ai-advice-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.ai-advice-item {
+  display: flex;
+  gap: 10px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #e2e8f0;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 10px 12px;
+  border-radius: 10px;
+  border-left: 3px solid #7EE7FF;
+}
+
+/* Admin Dashboard Card */
+.admin-card {
+  background: rgba(239, 68, 68, 0.05);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  border-radius: 18px;
+  padding: 16px;
+  margin-top: 16px;
+}
+
+/* =============================================================
+   VIRTUO AI INTERACTIVE ASSISTANT (DIRETOR MUSICAL)
+============================================================= */
+.ai-header-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.15), rgba(126, 231, 255, 0.15));
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  color: #fce793;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ai-header-btn:hover {
+  transform: translateY(-1px);
+  border-color: #d4af37;
+  box-shadow: 0 4px 12px rgba(212, 175, 55, 0.25);
+}
+
+.ai-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 6, 23, 0.82);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: fadeIn 0.2s ease;
+}
+
+.ai-modal {
+  background: #090e17;
+  border: 1px solid rgba(126, 231, 255, 0.3);
+  border-radius: 24px;
+  width: 100%;
+  max-width: 580px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.8), 0 0 35px rgba(126, 231, 255, 0.15);
+  overflow: hidden;
+}
+
+.ai-modal-header {
+  padding: 16px 20px;
+  background: rgba(255, 255, 255, 0.02);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ai-modal-body {
+  padding: 16px 20px;
+  overflow-y: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.ai-chat-message {
+  display: flex;
+  flex-direction: column;
+  max-width: 90%;
+  gap: 4px;
+}
+
+.ai-chat-message.user {
+  align-self: flex-end;
+}
+
+.ai-chat-message.assistant {
+  align-self: flex-start;
+}
+
+.ai-bubble {
+  padding: 12px 16px;
+  border-radius: 16px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.ai-chat-message.user .ai-bubble {
+  background: #1e3a8a;
+  color: #eff6ff;
+  border-bottom-right-radius: 4px;
+}
+
+.ai-chat-message.assistant .ai-bubble {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(126, 231, 255, 0.2);
+  color: #e2e8f0;
+  border-bottom-left-radius: 4px;
+}
+
+.ai-quick-prompts {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  margin-bottom: 8px;
+}
+
+.ai-quick-btn {
+  white-space: nowrap;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  color: #cbd5e1;
+  font-size: 11px;
+  padding: 5px 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.ai-quick-btn:hover {
+  background: rgba(126, 231, 255, 0.1);
+  border-color: #7EE7FF;
+  color: #7EE7FF;
+}
+
+.ai-modal-footer {
+  padding: 14px 20px;
+  background: rgba(255, 255, 255, 0.02);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* =============================================================
+   VIRTUO ADMIN: BANCO MUSICAL - CADASTRO & GESTÃO PROFISSIONAL
+============================================================= */
+.admin-song-manager-container {
+  animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.admin-breadcrumb-bar {
+  background: rgba(14, 27, 46, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 16px;
+}
+
+.admin-stepper-bar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(126, 231, 255, 0.3) transparent;
+}
+
+.admin-stepper-bar::-webkit-scrollbar {
+  height: 4px;
+}
+
+.admin-stepper-bar::-webkit-scrollbar-thumb {
+  background: rgba(126, 231, 255, 0.3);
+  border-radius: 4px;
+}
+
+.admin-catalog-table table tr:hover td {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+@media (max-width: 640px) {
+  .admin-breadcrumb-bar {
+    padding: 12px;
+  }
+  .admin-footer-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .admin-footer-bar button {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+
+
+
+
+
