@@ -36,6 +36,7 @@ import {
   getStorage, 
   ref as storageRef, 
   uploadBytes, 
+  uploadBytesResumable,
   getDownloadURL 
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
@@ -268,59 +269,59 @@ export const DEMO_SONGS = [
     structure: "Intro • Verso 1 • Refrão • Verso 2 • Refrão • Final",
     youtubeUrl: "https://www.youtube.com/results?search_query=Mistério+na+Olaria+Raquel+Pereira",
     spotifyUrl: "https://open.spotify.com/search/Mistério%20na%20Olaria%20Raquel%20Pereira",
-    chords: `[Intro] G  C9  Em7  D
+    chords: `[Intro] Cm  Fm9  Ab7M  G
 
 [Verso 1]
-G               C9
+Cm              Fm9
 Eu fui na olaria ver o vaso se formar
-Em7               D
+Ab7M            G
 O oleiro trabalhava sem cessar
-G               C9
+Cm              Fm9
 Se o vaso quebrava, tornava a refazer
-Em7               D
+Ab7M            G
 Com paciência e poder
 
 [Refrão]
-G               D/F#
+Cm              G/B
 É mistério na olaria de Jeová
-Em7               C9
+Ab7M            Fm9
 Ele quebra, ele molda no lugar
-G               D/F#
+Cm              G/B
 Se você se humilhar nas mãos do Criador
-Em7               C9
+Ab7M            Fm9
 Ele faz vaso novo com amor
 
 [Verso 2]
-G               C9
+Cm              Fm9
 Desce como barro no chão do oleiro
-Em7               D
+Ab7M            G
 Deixa ele tirar o que não presta por inteiro
-G               C9
+Cm              Fm9
 Sai de lá brilhando cheio da unção
-Em7               D
+Ab7M            G
 Um vaso de honra nesta geração
 
 [Refrão]
-G               D/F#
+Cm              G/B
 É mistério na olaria de Jeová
-Em7               C9
+Ab7M            Fm9
 Ele quebra, ele molda no lugar
-G               D/F#
+Cm              G/B
 Se você se humilhar nas mãos do Criador
-Em7               C9
+Ab7M            Fm9
 Ele faz vaso novo com amor`,
-    easyChords: `[Intro] G  C  Em  D
+    easyChords: `[Intro] Cm  Fm  Ab  G
 
 [Verso]
-G           C
+Cm          Fm
 Eu fui na olaria ver o vaso se formar
-Em          D
+Ab          G
 O oleiro trabalhava sem cessar
 
 [Refrão]
-G           D
+Cm          G
 É mistério na olaria de Jeová
-Em          C
+Ab          Fm
 Ele quebra, ele molda no lugar`,
     createdBy: "virtuo-master"
   },
@@ -568,6 +569,87 @@ export async function uploadAudioFile(file, path) {
   }
 }
 
+// Resumable upload with progress, cancellation, and validation
+export function uploadFileWithProgress({ file, path, onProgress, onError, onComplete }) {
+  if (!auth.currentUser) {
+    throw new Error("Autenticação necessária para realizar upload no Firebase Storage.");
+  }
+  const fileRef = storageRef(storage, path);
+  const uploadTask = uploadBytesResumable(fileRef, file);
+
+  uploadTask.on('state_changed',
+    (snapshot) => {
+      const bytesTransferred = snapshot.bytesTransferred;
+      const totalBytes = snapshot.totalBytes;
+      const progress = totalBytes > 0 ? (bytesTransferred / totalBytes) * 100 : 0;
+      if (onProgress) onProgress(progress, bytesTransferred, totalBytes);
+    },
+    (error) => {
+      console.error("[uploadFileWithProgress] Erro no upload:", error);
+      if (onError) onError(error);
+    },
+    async () => {
+      try {
+        const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+        if (onComplete) onComplete(downloadURL);
+      } catch (err) {
+        if (onError) onError(err);
+      }
+    }
+  );
+
+  return uploadTask;
+}
+
+// Compress and resize image client-side before uploading (Canvas based)
+export async function compressImageFile(file, maxWidth = 1280, maxHeight = 1280, quality = 0.82) {
+  if (!file || !file.type.startsWith('image/')) return file;
+  
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxWidth || height > maxHeight) {
+          if (width > height) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          } else {
+            width = Math.round((width * maxHeight) / height);
+            height = maxHeight;
+          }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const outputType = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
+        canvas.toBlob((blob) => {
+          if (!blob) {
+            resolve(file);
+            return;
+          }
+          const compressedFile = new File([blob], file.name.replace(/\.[^/.]+$/, outputType === 'image/png' ? '.png' : '.jpg'), {
+            type: outputType,
+            lastModified: Date.now()
+          });
+          resolve(compressedFile);
+        }, outputType, quality);
+      };
+      img.onerror = () => resolve(file);
+      img.src = e.target.result;
+    };
+    reader.onerror = () => resolve(file);
+    reader.readAsDataURL(file);
+  });
+}
+
 // Firebase Storage helper for community images and photos
 export async function uploadImageFile(file, path) {
   try {
@@ -588,10 +670,8 @@ export async function uploadImageFile(file, path) {
 export function isUserAdmin(user, profile) {
   if (!user) return false;
   if (user.customClaims?.admin === true || user.customClaims?.role === 'admin') return true;
+  if (user.tokenResult?.claims?.admin === true || user.tokenResult?.claims?.role === 'admin') return true;
   if (profile?.role === 'admin') return true;
-  if (user.email === 'dramosdasilva7@gmail.com' && (user.emailVerified || user.providerData?.some(p => p.providerId === 'google.com'))) {
-    return true;
-  }
   return false;
 }
 

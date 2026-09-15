@@ -35,6 +35,11 @@ import {
 import { virtuoMinister } from "./src/features/minister/index.js";
 import { virtuoMetronome, renderBandScreenComponent, virtuoBand } from "./src/audio/index.js";
 import { virtuoRehearsal, renderRehearsalScreen } from "./src/features/rehearsal/index.js";
+import { virtuoTuner, renderTunerScreen } from "./src/features/tuner/tuner-view.js";
+import { virtuoVocal, renderVocalScreen } from "./src/features/vocal/vocal-view.js";
+import { virtuoGuitarCoach, renderGuitarCoachScreen } from "./src/features/guitar-coach/coach-view.js";
+import { virtuoDiagnostics, renderDiagnosticsScreen } from "./src/features/diagnostics/diagnostics-view.js";
+import { perfMonitor } from "./src/performance/performance-monitor.js";
 import { adminSongManager } from "./src/features/admin/index.js";
 import { CANONICAL_INSTRUMENTS } from "./src/services/rehearsals.js";
 import { CommunityService } from "./src/services/community.js";
@@ -715,8 +720,26 @@ const screens = {
           <p>Treine com BPM.</p>
         </div>
 
-        <div class="tile" onclick="window.openMinisterModeQuick()" style="cursor:pointer;">
+        <div class="tile" onclick="show('tuner')" style="cursor:pointer;">
+          <div class="icon">🎯</div>
+          <h3>Afinador</h3>
+          <p>Afinação precisa.</p>
+        </div>
+
+        <div class="tile" onclick="show('vocal')" style="cursor:pointer;">
           <div class="icon">🎤</div>
+          <h3>Monitor Vocal</h3>
+          <p>Tessitura e pitch.</p>
+        </div>
+
+        <div class="tile" onclick="show('coach')" style="cursor:pointer;">
+          <div class="icon">⚡</div>
+          <h3>Guitar Coach</h3>
+          <p>Troca de acordes.</p>
+        </div>
+
+        <div class="tile" onclick="window.openMinisterModeQuick()" style="cursor:pointer;">
+          <div class="icon">📖</div>
           <h3>Modo Ministro</h3>
           <p>Toque sem distrações.</p>
         </div>
@@ -725,6 +748,12 @@ const screens = {
           <div class="icon">🎧</div>
           <h3>Cifras e Áudio</h3>
           <p>Banco no Firestore.</p>
+        </div>
+
+        <div class="tile" onclick="show('diagnostics')" style="cursor:pointer;">
+          <div class="icon">📊</div>
+          <h3>Diagnóstico</h3>
+          <p>Performance e saúde.</p>
         </div>
 
         <div class="tile" onclick="show('comunidade')" style="cursor:pointer;">
@@ -744,7 +773,7 @@ const screens = {
         <div class="song-cover">🎵</div>
         <span class="pill">DESTAQUE DO REPERTÓRIO</span>
         <h2>Mistério na Olaria</h2>
-        <p class="subtitle">Tom G • 74 BPM • Raquel Pereira</p>
+        <p class="subtitle">Tom Cm • 74 BPM • Raquel Pereira</p>
 
         <div class="row">
           <button class="button primary" onclick="window.openSongById('demo-misterio-olaria')">
@@ -767,6 +796,22 @@ const screens = {
 
   get band() {
     return renderBandScreenComponent(virtuoMetronome.getState());
+  },
+
+  get tuner() {
+    return renderTunerScreen();
+  },
+
+  get vocal() {
+    return renderVocalScreen();
+  },
+
+  get coach() {
+    return renderGuitarCoachScreen();
+  },
+
+  get diagnostics() {
+    return renderDiagnosticsScreen();
   },
 
   get comunidade() {
@@ -1628,9 +1673,25 @@ function escapeHtml(str) {
 }
 
 function show(name) {
+  const tStart = performance.now();
+
+  // Teardown microfones e timers ao sair das telas de áudio
+  if (currentScreen === "tuner" && name !== "tuner") {
+    virtuoTuner.stop();
+  }
+  if (currentScreen === "vocal" && name !== "vocal") {
+    virtuoVocal.stop();
+  }
+  if (currentScreen === "coach" && name !== "coach") {
+    virtuoGuitarCoach.stop();
+  }
+
   currentScreen = name;
   renderCurrentScreen();
   updateTabbarActiveState(name);
+
+  const duration = performance.now() - tStart;
+  perfMonitor.recordMetric(`screen_render_${name}`, duration);
 }
 window.show = show;
 
@@ -1641,6 +1702,15 @@ function updateTabbarActiveState(name) {
   const activeBtn = document.getElementById(`tab-btn-${name}`);
   if (activeBtn) {
     activeBtn.classList.add("active");
+  }
+
+  // Atualiza barra de atalhos rápidos
+  document.querySelectorAll(".quick-toolbar button").forEach(btn => {
+    btn.classList.remove("active");
+  });
+  const quickBtn = document.getElementById(`quick-btn-${name}`);
+  if (quickBtn) {
+    quickBtn.classList.add("active");
   }
 }
 

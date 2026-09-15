@@ -9,6 +9,7 @@
 // =============================================================
 
 import { SUBDIVISIONS } from "./metronome.js";
+import { virtuoBand, BAND_PRESETS } from "./band-engine.js";
 
 /**
  * Renderiza o indicador de batidas (● 1  ○ 2  ○ 3  ○ 4)
@@ -309,6 +310,71 @@ export function renderBandScreenComponent(state) {
               title="Interromper todos os instrumentos virtuais"
             >
               ⏹ Parar
+            </button>
+          </div>
+        </div>
+
+        <!-- Seletor de Presets Musicais Locais (Worship, Congregacional, Pop, Balada, Rock, Corinho, Lento, Médio, Rápido) -->
+        <div style="margin-bottom:14px; padding:12px; background:rgba(0,0,0,0.25); border-radius:14px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:6px;">
+            <span style="font-size:12px; color:#7EE7FF; font-weight:700;">Estilo / Preset da Banda:</span>
+            <span style="font-size:11px; color:#94a3b8;" id="band-preset-desc">${BAND_PRESETS[virtuoBand.getState().currentPreset]?.description || ""}</span>
+          </div>
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            ${Object.keys(BAND_PRESETS).map(pKey => {
+              const p = BAND_PRESETS[pKey];
+              const isSelected = virtuoBand.getState().currentPreset === pKey;
+              return `
+                <button 
+                  class="band-preset-chip ${isSelected ? 'active' : ''}" 
+                  id="band-preset-${pKey}"
+                  onclick="window.setBandPreset('${pKey}')"
+                  style="padding:5px 12px; font-size:12px; border-radius:10px; background:${isSelected ? '#7EE7FF' : 'rgba(255,255,255,0.06)'}; color:${isSelected ? '#07101F' : '#E2E8F0'}; border:1px solid ${isSelected ? '#7EE7FF' : 'rgba(255,255,255,0.12)'}; font-weight:${isSelected ? '700' : '400'}; cursor:pointer; display:inline-flex; align-items:center; gap:4px;"
+                >
+                  <span>${p.icon}</span>
+                  <span>${p.name}</span>
+                </button>
+              `;
+            }).join("")}
+          </div>
+        </div>
+
+        <!-- Controles de Dinâmica: Intensidade e Loop -->
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:14px; padding:10px 14px; background:rgba(255,255,255,0.02); border-radius:14px; border:1px solid rgba(255,255,255,0.06);">
+          <!-- Intensidade -->
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:12px; color:#94a3b8;">Intensidade:</span>
+            <div style="display:flex; gap:4px;">
+              ${[
+                { level: 1, label: "1 Suave" },
+                { level: 2, label: "2 Médio" },
+                { level: 3, label: "3 Clímax" }
+              ].map(item => {
+                const isAct = virtuoBand.getState().intensity === item.level;
+                return `
+                  <button 
+                    class="band-intensity-btn ${isAct ? 'active' : ''}" 
+                    id="band-int-${item.level}"
+                    onclick="window.setBandIntensity(${item.level})"
+                    style="padding:3px 10px; font-size:11px; border-radius:8px; background:${isAct ? 'rgba(126,231,255,0.2)' : 'rgba(255,255,255,0.04)'}; border:1px solid ${isAct ? '#7EE7FF' : 'rgba(255,255,255,0.1)'}; color:${isAct ? '#7EE7FF' : '#94a3b8'}; cursor:pointer;"
+                  >
+                    ${item.label}
+                  </button>
+                `;
+              }).join("")}
+            </div>
+          </div>
+
+          <!-- Loop Toggle -->
+          <div style="display:flex; align-items:center; gap:8px;">
+            <button 
+              id="band-loop-btn"
+              class="tag-btn ${virtuoBand.getState().isLooping ? 'active' : ''}" 
+              style="padding:4px 12px; font-size:11px; display:inline-flex; align-items:center; gap:6px; ${virtuoBand.getState().isLooping ? 'background:rgba(16,185,129,0.15); border-color:#10b981; color:#6ee7b7;' : ''}"
+              onclick="window.toggleBandLoop()"
+            >
+              <span>🔁</span>
+              <span>Loop: <strong>${virtuoBand.getState().isLooping ? 'Ligado' : '1x Compassos'}</strong></span>
             </button>
           </div>
         </div>

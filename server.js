@@ -35,6 +35,29 @@ async function getGenAIClient() {
   return genAIClient;
 }
 
+// In-Memory Smart Cache for AI requests (prevents token waste)
+const aiResponseCache = new Map();
+const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hora de retenção
+
+function getCached(key) {
+  const item = aiResponseCache.get(key);
+  if (!item) return null;
+  if (Date.now() - item.timestamp > CACHE_TTL_MS) {
+    aiResponseCache.delete(key);
+    return null;
+  }
+  return item.data;
+}
+
+function setCached(key, data) {
+  // Limita tamanho do cache
+  if (aiResponseCache.size > 150) {
+    const oldestKey = aiResponseCache.keys().next().value;
+    aiResponseCache.delete(oldestKey);
+  }
+  aiResponseCache.set(key, { data, timestamp: Date.now() });
+}
+
 // Algorithmic musical analysis fallback (guarantees 100% reliability offline or without key)
 function generateAlgorithmicHarmonicAdvice(songTitle, currentKey, bpm, musicianLevel) {
   return {
@@ -75,17 +98,50 @@ app.get('/api/ai/status', async (req, res) => {
   res.json({
     active: true,
     geminiEnabled: hasKey,
-    model: 'gemini-3.8-flash',
-    engine: hasKey ? 'Google Gemini 3.8 Flash' : 'Virtuo Algorithmic Musical Engine'
+    model: 'gemini-2.5-flash',
+    engine: hasKey ? 'Google Gemini 2.5 Flash' : 'Virtuo Algorithmic Musical Engine'
   });
 });
 
+// Helper to run AI call with strict timeout fallback
+async function callAiWithTimeout(promise, timeoutMs = 3500) {
+  let timer;
+  const timeoutPromise = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error('AI Request Timeout')), timeoutMs);
+  });
+  return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timer));
+}
+
 // Virtuo AI Chat Endpoint
 app.post('/api/ai/chat', async (req, res) => {
+  const startTime = Date.now();
   try {
-    const { message } = req.body || {};
+    const { message, economyMode } = req.body || {};
     if (!message) {
       return res.status(400).json({ success: false, error: 'Mensagem obrigatória' });
+    }
+
+    const cacheKey = `chat:${message.trim().toLowerCase()}`;
+    const cached = getCached(cacheKey);
+    if (cached) {
+      return res.json({ 
+        success: true, 
+        reply: cached, 
+        source: 'cache',
+        elapsedMs: Date.now() - startTime
+      });
+    }
+
+    // No modo econômico explícito ou sem API Key, atende localmente
+    if (economyMode) {
+      const fallbackReply = generateFallbackChatReply(message);
+      setCached(cacheKey, fallbackReply);
+      return res.json({ 
+        success: true, 
+        reply: fallbackReply, 
+        source: 'virtuo-local',
+        elapsedMs: Date.now() - startTime
+      });
     }
 
     const ai = await getGenAIClient();
@@ -99,35 +155,74 @@ Você orienta ministros, músicos e equipes de louvor sobre:
 - Dicas práticas e encorajadoras para ensaios e alinhamento de palco.
 Responda de forma direta, clara, acolhedora e com formatação em tópicos fáceis de ler no palco ou ensaio.`;
 
-        const response = await ai.models.generateContent({
-          model: 'gemini-3.8-flash',
-          contents: message,
-          config: {
-            systemInstruction
-          }
-        });
+        const response = await callAiWithTimeout(
+          ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: message,
+            config: {
+              systemInstruction
+            }
+          }),
+          3500
+        );
 
         const replyText = response.text || '';
-        return res.json({ success: true, reply: replyText, source: 'gemini' });
+        setCached(cacheKey, replyText);
+        return res.json({ 
+          success: true, 
+          reply: replyText, 
+          source: 'gemini',
+          elapsedMs: Date.now() - startTime
+        });
       } catch (geminiErr) {
-        console.warn('[Virtuo AI Chat] Gemini API error, using fallback:', geminiErr.message);
+        console.warn('[Virtuo AI Chat] Gemini API error/timeout, using fallback:', geminiErr.message);
       }
     }
 
     const fallbackReply = generateFallbackChatReply(message);
-    return res.json({ success: true, reply: fallbackReply, source: 'virtuo-engine' });
+    setCached(cacheKey, fallbackReply);
+    return res.json({ 
+      success: true, 
+      reply: fallbackReply, 
+      source: 'virtuo-local',
+      elapsedMs: Date.now() - startTime
+    });
   } catch (error) {
-    console.error('[Virtuo AI Chat] Error:', error);
-    res.status(500).json({ success: false, error: error.message });
+    console.error('[Virtuo AI Chat] Error:', error.message);
+    res.status(500).json({ success: false, error: 'Erro ao processar solicitação musical. Utilizando modo inteligente local.' });
   }
 });
 
 // Virtuo AI Endpoint: Análise Harmônica e Sugestões Musicais
 app.post('/api/ai/suggest', async (req, res) => {
+  const startTime = Date.now();
   try {
-    const { songTitle, currentKey, originalKey, bpm, chords, musicianLevel } = req.body || {};
-    const ai = await getGenAIClient();
+    const { songTitle, currentKey, originalKey, bpm, chords, musicianLevel, economyMode } = req.body || {};
 
+    const cacheKey = `suggest:${songTitle || ''}:${currentKey || ''}:${bpm || ''}:${musicianLevel || ''}`;
+    const cached = getCached(cacheKey);
+    if (cached) {
+      return res.json({ 
+        success: true, 
+        advice: cached, 
+        source: 'cache',
+        elapsedMs: Date.now() - startTime
+      });
+    }
+
+    // Se solicitado modo econômico, responde com motor algorítmico local
+    if (economyMode) {
+      const fallbackAdvice = generateAlgorithmicHarmonicAdvice(songTitle, currentKey, bpm, musicianLevel);
+      setCached(cacheKey, fallbackAdvice);
+      return res.json({ 
+        success: true, 
+        advice: fallbackAdvice, 
+        source: 'virtuo-local',
+        elapsedMs: Date.now() - startTime
+      });
+    }
+
+    const ai = await getGenAIClient();
     if (ai) {
       try {
         const prompt = `Você é o Virtuo AI, um maestro e diretor musical congregacional especialista em louvor e adoração.
@@ -150,28 +245,43 @@ Responda em JSON com o formato:
   ]
 }`;
 
-        const response = await ai.models.generateContent({
-          model: 'gemini-3.8-flash',
-          contents: prompt,
-          config: {
-            responseMimeType: "application/json"
-          }
-        });
+        const response = await callAiWithTimeout(
+          ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+            config: {
+              responseMimeType: "application/json"
+            }
+          }),
+          3500
+        );
 
         const text = response.text;
         const parsed = JSON.parse(text);
-        return res.json({ success: true, advice: parsed, source: 'gemini' });
+        setCached(cacheKey, parsed);
+        return res.json({ 
+          success: true, 
+          advice: parsed, 
+          source: 'gemini',
+          elapsedMs: Date.now() - startTime
+        });
       } catch (geminiErr) {
-        console.warn('[Virtuo AI] Gemini API error, falling back to algorithmic advice:', geminiErr.message);
+        console.warn('[Virtuo AI] Gemini API error/timeout, falling back to algorithmic advice:', geminiErr.message);
       }
     }
 
     // Fallback algorítmico seguro
     const fallbackAdvice = generateAlgorithmicHarmonicAdvice(songTitle, currentKey, bpm, musicianLevel);
-    return res.json({ success: true, advice: fallbackAdvice, source: 'virtuo-engine' });
+    setCached(cacheKey, fallbackAdvice);
+    return res.json({ 
+      success: true, 
+      advice: fallbackAdvice, 
+      source: 'virtuo-local',
+      elapsedMs: Date.now() - startTime
+    });
   } catch (error) {
-    console.error('[Virtuo AI] Error handling suggestion:', error);
-    res.status(500).json({ success: false, error: error.message });
+    console.error('[Virtuo AI] Error handling suggestion:', error.message);
+    res.status(500).json({ success: false, error: 'Erro ao processar análise. Utilizando arranjo inteligente local.' });
   }
 });
 

@@ -82,14 +82,21 @@ export const SongValidator = {
       }
     }
 
-    // 6. Fórmula de Compasso (Time Signature)
+    // 6. Dificuldade (Canonical Difficulties)
+    if (song.difficulty !== undefined && song.difficulty !== null && song.difficulty !== "") {
+      if (!CANONICAL_DIFFICULTIES.includes(song.difficulty)) {
+        errors.push(`Dificuldade inválida: "${song.difficulty}". Valores permitidos: ${CANONICAL_DIFFICULTIES.join(", ")}.`);
+      }
+    }
+
+    // 7. Fórmula de Compasso (Time Signature)
     if (song.timeSignature) {
       if (typeof song.timeSignature !== "string" || !/^\d+\/\d+$/.test(song.timeSignature.trim())) {
         errors.push("A fórmula de compasso deve estar no formato padrão (ex: '4/4', '6/8', '3/4').");
       }
     }
 
-    // 7. Status e Visibilidade
+    // 8. Status e Visibilidade
     if (song.status && !VALID_STATUSES.includes(song.status)) {
       errors.push(`Status inválido: "${song.status}". Valores permitidos: ${VALID_STATUSES.join(", ")}.`);
     }
@@ -98,7 +105,23 @@ export const SongValidator = {
       errors.push(`Visibilidade inválida: "${song.visibility}". Valores permitidos: ${VALID_VISIBILITIES.join(", ")}.`);
     }
 
-    // 8. Status e Proteção de Direitos Autorais de Letra
+    // 9. Status de Verificação
+    const VALID_VERIFICATION_STATUSES = ["unverified", "verified", "rejected", "pending"];
+    if (song.verificationStatus !== undefined && song.verificationStatus !== null && song.verificationStatus !== "") {
+      if (!VALID_VERIFICATION_STATUSES.includes(song.verificationStatus)) {
+        errors.push(`Status de verificação inválido: "${song.verificationStatus}".`);
+      }
+    }
+
+    // 10. Versão
+    if (song.version !== undefined && song.version !== null) {
+      const verNum = Number(song.version);
+      if (isNaN(verNum) || verNum < 1 || !Number.isInteger(verNum)) {
+        errors.push("A versão deve ser um número inteiro maior ou igual a 1.");
+      }
+    }
+
+    // 11. Status e Proteção de Direitos Autorais de Letra
     if (song.lyricsStatus && !VALID_LYRICS_STATUSES.includes(song.lyricsStatus)) {
       errors.push(`Status de letra inválido: "${song.lyricsStatus}".`);
     }
@@ -114,13 +137,13 @@ export const SongValidator = {
       }
     }
 
-    // 9. Tipo de Fonte
+    // 12. Tipo de Fonte
     const sourceType = song.sourceType || (song.source && song.source.type);
     if (sourceType && !VALID_SOURCE_TYPES.includes(sourceType)) {
       errors.push(`Tipo de fonte inválido: "${sourceType}".`);
     }
 
-    // 10. URLs (opcionais, mas devem ser válidas se fornecidas)
+    // 13. URLs (opcionais, mas devem ser válidas se fornecidas)
     if (song.youtubeUrl && !isValidUrl(song.youtubeUrl)) {
       errors.push("A URL do YouTube informada não é uma URL válida.");
     }
@@ -134,16 +157,22 @@ export const SongValidator = {
       errors.push("A URL da capa informada não é uma URL válida.");
     }
 
-    // 11. Regras de Integridade de Autoria e Moderação (Não-admins não podem se auto-atribuir selo oficial ou verificado)
+    // 14. Regras de Integridade de Autoria e Moderação (Não-admins não podem se auto-atribuir selo oficial ou verificado)
     if (!options.isAdmin) {
       if (song.verified === true) {
         errors.push("Apenas administradores podem marcar músicas como verificadas.");
       }
+      if (song.verificationStatus === "verified") {
+        errors.push("Apenas administradores podem definir status de verificação como verificado.");
+      }
       if (sourceType === SOURCE_TYPES.OFFICIAL) {
         errors.push("Apenas administradores podem publicar conteúdo com fonte 'official'.");
       }
-      if (options.isCreation && song.status === SONG_STATUS.PUBLISHED && song.verified) {
-        errors.push("Conteúdo criado por usuários não pode ser publicado como oficial sem moderação prévia.");
+      if (options.isCreation && song.status === SONG_STATUS.PUBLISHED) {
+        errors.push("Usuários comuns não podem criar músicas diretamente com status publicado.");
+      }
+      if (options.isCreation && song.visibility === SONG_VISIBILITY.PUBLIC) {
+        errors.push("Usuários comuns não podem criar músicas diretamente com visibilidade pública.");
       }
     }
 

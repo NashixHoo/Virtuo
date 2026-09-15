@@ -15,7 +15,6 @@ service cloud.firestore {
       return isAuthenticated() && (
         request.auth.token.role == 'admin' ||
         request.auth.token.admin == true ||
-        (request.auth.token.email == 'dramosdasilva7@gmail.com' && request.auth.token.email_verified == true) ||
         exists(/databases/$(database)/documents/admins/$(request.auth.uid))
       );
     }
@@ -44,8 +43,14 @@ service cloud.firestore {
 
       allow create: if isAuthenticated() && 
                     request.resource.data.createdBy == request.auth.uid &&
-                    (!('verified' in request.resource.data) || request.resource.data.verified == false || isAdmin()) &&
-                    (!('sourceType' in request.resource.data) || request.resource.data.sourceType != 'official' || isAdmin());
+                    (isAdmin() || (
+                      request.resource.data.status in ['draft', 'pendingReview'] &&
+                      request.resource.data.visibility in ['private', 'unlisted'] &&
+                      (!('verified' in request.resource.data) || request.resource.data.verified == false) &&
+                      (!('verificationStatus' in request.resource.data) || request.resource.data.verificationStatus == 'unverified') &&
+                      (!('verifiedBy' in request.resource.data) || request.resource.data.verifiedBy == null) &&
+                      (!('sourceType' in request.resource.data) || request.resource.data.sourceType != 'official')
+                    ));
 
       allow update: if isAuthenticated() && (
         isAdmin() ||
@@ -53,7 +58,7 @@ service cloud.firestore {
           resource.data.createdBy == request.auth.uid &&
           request.resource.data.createdBy == resource.data.createdBy &&
           !request.resource.data.diff(resource.data).affectedKeys().hasAny([
-            'createdBy', 'createdAt', 'verified', 'verifiedBy', 'verificationStatus', 'sourceType', 'source'
+            'createdBy', 'createdAt', 'verified', 'verifiedBy', 'verificationStatus', 'sourceType', 'source', 'status', 'visibility', 'version'
           ])
         )
       );
@@ -81,8 +86,28 @@ service cloud.firestore {
 
     // Song Versions (Audit History): readable by author/admin, creator can append, admin can manage
     match /songVersions/{versionId} {
-      allow read: if isAuthenticated() && (resource.data.createdBy == request.auth.uid || isAdmin());
-      allow create: if isAuthenticated() && request.resource.data.createdBy == request.auth.uid;
+      allow read: if isAuthenticated() && (
+        resource.data.createdBy == request.auth.uid ||
+        isAdmin() ||
+        (
+          exists(/databases/$(database)/documents/songs/$(resource.data.songId)) &&
+          get(/databases/$(database)/documents/songs/$(resource.data.songId)).data.createdBy == request.auth.uid
+        )
+      );
+      allow create: if isAuthenticated() &&
+        request.resource.data.createdBy == request.auth.uid &&
+        ('songId' in request.resource.data) &&
+        exists(/databases/$(database)/documents/songs/$(request.resource.data.songId)) &&
+        (
+          isAdmin() ||
+          (
+            get(/databases/$(database)/documents/songs/$(request.resource.data.songId)).data.createdBy == request.auth.uid &&
+            (!('verified' in request.resource.data) || request.resource.data.verified == false) &&
+            (!('verificationStatus' in request.resource.data) || request.resource.data.verificationStatus == 'unverified') &&
+            (!('isOfficial' in request.resource.data) || request.resource.data.isOfficial == false) &&
+            (!('status' in request.resource.data) || request.resource.data.status in ['draft', 'pendingReview'])
+          )
+        );
       allow update, delete: if isAdmin();
     }
 
@@ -141,9 +166,16 @@ service cloud.firestore {
       allow delete: if isAuthenticated() && (resource.data.authorId == request.auth.uid || isAdmin());
     }
 
-    // Rehearsals Collection: setlists and rehearsals
+    // Rehearsals Collection: setlists and rehearsals (private to creator, band members, or admin)
     match /rehearsals/{rehearsalId} {
-      allow read: if true;
+      allow read: if isAuthenticated() && (
+        resource.data.ownerId == request.auth.uid ||
+        resource.data.createdBy == request.auth.uid ||
+        (resource.data.members is list && request.auth.uid in resource.data.members) ||
+        (resource.data.bandMemberUids is list && request.auth.uid in resource.data.bandMemberUids) ||
+        (resource.data.allowedUsers is list && request.auth.uid in resource.data.allowedUsers) ||
+        isAdmin()
+      );
       allow create: if isAuthenticated() && (
         request.resource.data.ownerId == request.auth.uid ||
         request.resource.data.createdBy == request.auth.uid

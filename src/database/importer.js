@@ -38,10 +38,11 @@ export const SongImporter = {
         verifiedBy: null
       };
 
-      // Se não for admin e status não for draft, define para pendingReview
-      if (normalized.status !== SONG_STATUS.DRAFT) {
+      // Se não for admin e o input não solicitou explicitamente draft, envia para pendingReview
+      if (rawData.status !== SONG_STATUS.DRAFT) {
         normalized.status = SONG_STATUS.PENDING_REVIEW;
       }
+      normalized.visibility = SONG_VISIBILITY.PRIVATE;
     } else {
       // Admin pode definir status oficial e verificado
       if (rawData.verified) {

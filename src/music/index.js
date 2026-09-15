@@ -29,3 +29,5 @@ export {
 } from "./easy-play.js";
 
 export { DEMO_SONGS } from "./demo-songs.js";
+
+export { VirtuoMusicIntelligence, musicIntelligence } from "./music-intelligence.js";

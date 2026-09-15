@@ -24,6 +24,7 @@ export {
 
 export {
   VirtuoBandEngine,
-  virtuoBand
+  virtuoBand,
+  BAND_PRESETS
 } from "./band-engine.js";
 

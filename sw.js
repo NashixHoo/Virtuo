@@ -1,5 +1,5 @@
-// Virtuo PWA Service Worker (v2)
-const CACHE_NAME = "virtuo-v2";
+// Virtuo PWA Service Worker (v1.0.0-prod)
+const CACHE_NAME = "virtuo-v1.0.0";
 
 const APP_SHELL_FILES = [
   "./",
@@ -11,21 +11,35 @@ const APP_SHELL_FILES = [
   "./assets/icon.svg",
   "./assets/stars.svg",
   "./src/music/index.js",
-  "./src/music/chord-transposer.js",
+  "./src/music/transposer.js",
+  "./src/music/chord-parser.js",
   "./src/music/easy-play.js",
   "./src/music/demo-songs.js",
+  "./src/music/music-intelligence.js",
   "./src/audio/index.js",
   "./src/audio/metronome.js",
   "./src/audio/metronome-controller.js",
   "./src/audio/metronome-view.js",
+  "./src/audio/band-engine.js",
+  "./src/audio/voice-detector.js",
   "./src/features/minister/index.js",
   "./src/features/minister/minister-controller.js",
   "./src/features/minister/minister-view.js",
-  "./src/features/minister/scroll-engine.js",
+  "./src/features/minister/auto-scroll.js",
   "./src/features/rehearsal/index.js",
   "./src/features/rehearsal/rehearsal-controller.js",
   "./src/features/rehearsal/rehearsal-view.js",
-  "./src/services/rehearsals.js"
+  "./src/services/rehearsals.js",
+  "./src/services/community.js",
+  "./songs-service.js",
+  "./src/database/index.js",
+  "./src/features/tuner/tuner-view.js",
+  "./src/features/vocal/vocal-view.js",
+  "./src/features/guitar-coach/coach-view.js",
+  "./src/features/diagnostics/diagnostics-view.js",
+  "./src/performance/performance-monitor.js",
+  "./src/features/admin/index.js",
+  "./src/features/admin/song-manager.js"
 ];
 
 self.addEventListener("install", event => {

@@ -14,47 +14,47 @@ export const DEMO_SONGS = [
     difficulty: "Fácil",
     capo: 0,
     structure: "Intro • Verso • Refrão • Espontâneo • Clímax • Final",
-    chords: `[Intro] G  D/F#  Em7  C9
+    chords: `[Intro] Cm  G/B  Ab7M  Fm9
 
 [Verso 1]
-G              D/F#
+Cm             G/B
 Desce como um vaso quebrado
-Em7              C9
+Ab7M             Fm9
 Entra na olaria de Deus
-G              D/F#
+Cm             G/B
 Ele vai quebrar, Ele vai moldar
-Em7             C9
+Ab7M            Fm9
 Um vaso novo Ele vai fazer
 
 [Refrão]
-G                D/F#
+Cm               G/B
 Tem mistério na olaria hoje
-Em7              C9
+Ab7M             Fm9
 O Oleiro está trabalhando
-G                D/F#
+Cm               G/B
 Tem mistério na olaria hoje
-Em7              C9
+Ab7M             Fm9
 Deus está te restaurando`,
-    easyChords: `[Intro] G  D  Em  C
+    easyChords: `[Intro] Cm  G  Ab  Fm
 
 [Verso 1]
-G              D
+Cm             G
 Desce como um vaso quebrado
-Em              C
+Ab             Fm
 Entra na olaria de Deus
-G              D
+Cm             G
 Ele vai quebrar, Ele vai moldar
-Em             C
+Ab            Fm
 Um vaso novo Ele vai fazer
 
 [Refrão]
-G                D
+Cm               G
 Tem mistério na olaria hoje
-Em              C
+Ab               Fm
 O Oleiro está trabalhando
-G                D
+Cm               G
 Tem mistério na olaria hoje
-Em              C
+Ab               Fm
 Deus está te restaurando`
   },
   {

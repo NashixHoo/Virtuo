@@ -307,6 +307,10 @@ export function renderRehearsalScreen(controller) {
         </div>
 
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button type="button" class="button primary" style="padding:6px 14px; font-size:12px; display:inline-flex; align-items:center; gap:6px; background:#7EE7FF; color:#07101F; font-weight:700;" onclick="window.virtuoRehearsalController.toggleAnalysis()" title="Análise harmônica, andamento e transições da sessão">
+            <span>⚡</span>
+            <span>${controller.isAnalysisOpen ? 'Fechar Análise' : 'Preparar Ensaio'}</span>
+          </button>
           <button type="button" class="tag-btn" style="color:#25D366; border-color:rgba(37,211,102,0.4);" onclick="window.shareRepertoireWhatsApp()" title="Compartilhar repertório do ensaio no WhatsApp">
             💬 WhatsApp
           </button>
@@ -318,6 +322,77 @@ export function renderRehearsalScreen(controller) {
           </button>
         </div>
       </div>
+
+      <!-- PAINEL DE ANÁLISE INTELIGENTE DO ENSAIO (LOCAL-FIRST) -->
+      ${controller.isAnalysisOpen && controller.rehearsalAnalysis ? `
+        <div class="rehearsal-analysis-card" style="margin:16px 0; padding:18px; background:rgba(126,231,255,0.04); border:1px solid rgba(126,231,255,0.25); border-radius:18px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:12px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="pill" style="background:rgba(126,231,255,0.15); color:#7EE7FF; border-color:#7EE7FF;">ANÁLISE INTELIGENTE DO REPERTÓRIO</span>
+              <strong style="font-size:14px; color:#ffffff;">Diagnóstico Harmônico da Sessão</strong>
+            </div>
+            <span style="font-size:11px; color:#94a3b8;">${controller.rehearsalAnalysis.timestamp}</span>
+          </div>
+
+          <!-- Métricas Chave do Ensaio: BPM Médio e Distribuição -->
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:10px; margin-bottom:14px;">
+            <div style="padding:10px; background:rgba(0,0,0,0.25); border-radius:12px;">
+              <span style="font-size:11px; color:#94a3b8; display:block;">BPM Médio</span>
+              <strong style="font-size:18px; color:#7EE7FF;">${controller.rehearsalAnalysis.avgBpm} <small style="font-size:11px; color:#94a3b8;">BPM</small></strong>
+            </div>
+            <div style="padding:10px; background:rgba(0,0,0,0.25); border-radius:12px;">
+              <span style="font-size:11px; color:#94a3b8; display:block;">Lentas (<68)</span>
+              <strong style="font-size:16px; color:#ffffff;">${controller.rehearsalAnalysis.tempoDistribution.lentas} músicas</strong>
+            </div>
+            <div style="padding:10px; background:rgba(0,0,0,0.25); border-radius:12px;">
+              <span style="font-size:11px; color:#94a3b8; display:block;">Médias (68-95)</span>
+              <strong style="font-size:16px; color:#ffffff;">${controller.rehearsalAnalysis.tempoDistribution.medias} músicas</strong>
+            </div>
+            <div style="padding:10px; background:rgba(0,0,0,0.25); border-radius:12px;">
+              <span style="font-size:11px; color:#94a3b8; display:block;">Rápidas (>95)</span>
+              <strong style="font-size:16px; color:#ffffff;">${controller.rehearsalAnalysis.tempoDistribution.rapidas} músicas</strong>
+            </div>
+          </div>
+
+          <!-- Alertas de Transição de Tom entre Músicas -->
+          <div style="margin-bottom:14px; padding:12px; background:rgba(0,0,0,0.2); border-radius:14px;">
+            <span style="font-size:12px; color:#7EE7FF; font-weight:700; display:block; margin-bottom:8px;">
+              Transições de Tonalidade Consecutivas:
+            </span>
+            ${controller.rehearsalAnalysis.transitions.length === 0 ? `
+              <span style="font-size:12px; color:#94a3b8;">Adicione pelo menos 2 músicas para analisar transições harmônicas.</span>
+            ` : controller.rehearsalAnalysis.transitions.map((tr, tIdx) => `
+              <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.04); font-size:12px; flex-wrap:wrap; gap:6px;">
+                <div>
+                  <strong style="color:#ffffff;">#${tIdx + 1} ${tr.from} (${tr.fromKey}) ➔ #${tIdx + 2} ${tr.to} (${tr.toKey})</strong>
+                  <div style="font-size:11px; color:#94a3b8; margin-top:2px;">${tr.tip}</div>
+                </div>
+                <span class="pill" style="font-size:10px; padding:2px 8px; ${tr.distance === 6 ? 'background:rgba(239,68,68,0.2); color:#f87171; border-color:#ef4444;' : 'background:rgba(16,185,129,0.15); color:#34d399; border-color:#10b981;'}">
+                  ${tr.type}
+                </span>
+              </div>
+            `).join("")}
+          </div>
+
+          <!-- Sugestões de Capo para Violão -->
+          <div>
+            <span style="font-size:12px; color:#7EE7FF; font-weight:700; display:block; margin-bottom:6px;">
+              Sugestão de Capo para Violonistas no Repertório:
+            </span>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              ${controller.rehearsalAnalysis.songs.map(s => `
+                <div style="padding:6px 10px; background:rgba(255,255,255,0.03); border-radius:8px; font-size:11px; border:1px solid rgba(255,255,255,0.06);">
+                  <strong style="color:#ffffff;">${s.title}:</strong>
+                  <span style="color:#94a3b8;"> Tom ${s.key}</span> ➔ 
+                  <span style="color:${s.capoInfo.capoFret > 0 ? '#7EE7FF' : '#94a3b8'};">
+                    ${s.capoInfo.capoFret > 0 ? `Capo ${s.capoInfo.capoFret}ª casa (forma ${s.capoInfo.shapeKey})` : 'Sem Capo'}
+                  </span>
+                </div>
+              `).join("")}
+            </div>
+          </div>
+        </div>
+      ` : ''}
 
       <!-- Título, Data e Descrição -->
       <div class="rehearsal-hero">

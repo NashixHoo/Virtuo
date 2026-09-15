@@ -23,12 +23,46 @@ export const SongMigration = {
     const normalized = SongNormalizer.normalizeSong(legacySong);
 
     // Ajuste específico para Mistério Na Olaria conforme requisito oficial #18 / #19:
-    // O tom original deve ser rigorosamente corrigido para 'Cm'
+    // O tom original deve ser rigorosamente corrigido para 'Cm' e harmonia ajustada matematicamente
     if (
       normalized.id === "demo-misterio-olaria" || 
       normalized.normalizedTitle.includes("misterio na olaria")
     ) {
       normalized.originalKey = "Cm";
+      if (typeof normalized.chords === "string" && (normalized.chords.includes("G ") || normalized.chords.includes("G\n") || normalized.chords.includes("G\t"))) {
+        normalized.chords = normalized.chords
+          .replace(/\bG\b/g, "Cm")
+          .replace(/\bC9\b/g, "Fm9")
+          .replace(/\bEm7\b/g, "Ab7M")
+          .replace(/\bEm\b/g, "Ab")
+          .replace(/\bD\/F#\b/g, "G/B")
+          .replace(/\bD\b/g, "G")
+          .replace(/\bC\b/g, "Fm");
+      }
+      if (typeof normalized.chordSheet === "string" && (normalized.chordSheet.includes("G ") || normalized.chordSheet.includes("G\n"))) {
+        normalized.chordSheet = normalized.chordSheet
+          .replace(/\bG\b/g, "Cm")
+          .replace(/\bC9\b/g, "Fm9")
+          .replace(/\bEm7\b/g, "Ab7M")
+          .replace(/\bEm\b/g, "Ab")
+          .replace(/\bD\/F#\b/g, "G/B")
+          .replace(/\bD\b/g, "G")
+          .replace(/\bC\b/g, "Fm");
+      }
+      if (typeof normalized.easyChords === "string" && (normalized.easyChords.includes("G ") || normalized.easyChords.includes("G\n"))) {
+        normalized.easyChords = normalized.easyChords
+          .replace(/\bG\b/g, "Cm")
+          .replace(/\bC\b/g, "Fm")
+          .replace(/\bEm\b/g, "Ab")
+          .replace(/\bD\b/g, "G");
+      }
+      if (typeof normalized.easyChordSheet === "string" && (normalized.easyChordSheet.includes("G ") || normalized.easyChordSheet.includes("G\n"))) {
+        normalized.easyChordSheet = normalized.easyChordSheet
+          .replace(/\bG\b/g, "Cm")
+          .replace(/\bC\b/g, "Fm")
+          .replace(/\bEm\b/g, "Ab")
+          .replace(/\bD\b/g, "G");
+      }
     }
 
     // Se a música for de demonstração ou oficial do sistema

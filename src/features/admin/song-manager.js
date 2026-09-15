@@ -18,6 +18,7 @@ import {
 } from "../../database/schema.js";
 import {
   SongNormalizer,
+  normalizeSearchText,
   parseStructureFromText,
   structureToString,
   extractChordsFromSheet
@@ -51,6 +52,16 @@ export const MUSICAL_KEYS = [
 // Fórmulas de compasso
 export const TIME_SIGNATURES = ["4/4", "3/4", "6/8", "2/4", "12/8", "5/4"];
 
+function escapeHtml(str) {
+  if (str === null || str === undefined) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 class SongManagerController {
   constructor(songsRepo = null) {
     this.songsRepository = songsRepo || globalThis.SongsRepository || null;
@@ -77,11 +88,19 @@ class SongManagerController {
     
     // Estado de catálogo e versões
     this.catalogSongs = [];
-    this.catalogFilter = "all"; // 'all' | 'published' | 'draft' | 'archived'
+    this.catalogFilter = "all"; // 'all' | 'published' | 'draft' | 'pending_review' | 'archived'
     this.catalogSearch = "";
     this.isLoadingCatalog = false;
     this.songVersions = [];
     this.changeSummary = "";
+    this.showHistoryModal = false;
+    this.selectedHistorySongId = null;
+    this.selectedHistorySongTitle = "";
+
+    // Estado de Upload de Áudio
+    this.audioUploadProgress = null; // { percent, transferred, total, filename }
+    this.audioUploadTask = null;
+    this.audioUploadError = null;
     
     // Notificações / Alertas
     this.notification = null; // { type: 'success' | 'error' | 'info', message: '' }
@@ -630,21 +649,74 @@ class SongManagerController {
   // -----------------------------------------------------------
   renderCatalogView(currentUid, isAdmin) {
     const filter = this.catalogFilter;
-    const search = this.catalogSearch.toLowerCase().trim();
+    const search = (this.catalogSearch || "").trim();
 
     let filtered = this.catalogSongs.filter(s => {
       if (filter === "published" && s.status !== SONG_STATUS.PUBLISHED) return false;
       if (filter === "draft" && s.status !== SONG_STATUS.DRAFT) return false;
       if (filter === "archived" && s.status !== SONG_STATUS.ARCHIVED) return false;
+      if (filter === "pending_review" && s.status !== SONG_STATUS.PENDING_REVIEW && s.status !== "pending_review" && s.status !== "pendingReview") return false;
       
       if (search) {
-        const titleMatch = (s.title || "").toLowerCase().includes(search);
-        const artistMatch = (s.artistName || s.artist || "").toLowerCase().includes(search);
-        const keyMatch = (s.originalKey || "").toLowerCase().includes(search);
-        return titleMatch || artistMatch || keyMatch;
+        const normSearch = normalizeSearchText(search);
+        const titleMatch = normalizeSearchText(s.title || "").includes(normSearch);
+        const artistMatch = normalizeSearchText(s.artistName || s.artist || "").includes(normSearch);
+        const keyMatch = (s.originalKey || "").toLowerCase().includes(search.toLowerCase());
+        const genreMatch = Array.isArray(s.genres) && s.genres.some(g => normalizeSearchText(g).includes(normSearch));
+        const tagMatch = Array.isArray(s.tags) && s.tags.some(t => normalizeSearchText(t).includes(normSearch));
+        return titleMatch || artistMatch || keyMatch || genreMatch || tagMatch;
       }
       return true;
     });
+
+    // Modal de Histórico de Versões
+    const historyModalHtml = (this.showHistoryModal) ? `
+      <div class="modal-backdrop" style="position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.8); backdrop-filter:blur(8px); display:flex; align-items:center; justify-content:center; z-index:10000; padding:16px;">
+        <div class="glass" style="max-width:680px; width:100%; max-height:85vh; display:flex; flex-direction:column; padding:24px; border-radius:20px; border:1px solid rgba(126,231,255,0.3); background:#0B1528;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:12px;">
+            <div>
+              <span class="pill" style="font-size:10px; border-color:#7EE7FF; color:#7EE7FF;">AUDITORIA & HISTÓRICO</span>
+              <h3 style="margin-top:6px; color:#fff; font-size:18px;">Versões de "${escapeHtml(this.selectedHistorySongTitle || 'Música')}"</h3>
+            </div>
+            <button class="button secondary" style="padding:6px 12px; font-size:13px;" onclick="window.adminSongManager.closeSongHistoryModal()">✕ Fechar</button>
+          </div>
+
+          <div style="flex:1; overflow-y:auto; padding-right:6px;">
+            ${this.songVersions.length === 0 ? `
+              <div style="text-align:center; padding:32px 16px; color:#94a3b8;">
+                <p style="font-size:14px;">Nenhuma versão histórica anterior registrada para esta música.</p>
+                <small style="display:block; margin-top:6px; color:#64748b;">Novas versões são salvas automaticamente quando a música é editada ou manualmente ao registrar versão.</small>
+              </div>
+            ` : `
+              <div style="display:flex; flex-direction:column; gap:12px;">
+                ${this.songVersions.map((v, vIdx) => `
+                  <div style="padding:14px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); border-radius:12px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                      <div>
+                        <strong style="color:#7EE7FF; font-size:14px;">Versão #${v.version || (this.songVersions.length - vIdx)}</strong>
+                        <span style="font-size:12px; color:#94a3b8; margin-left:8px;">
+                          ${v.createdAt ? (typeof v.createdAt === 'string' ? new Date(v.createdAt).toLocaleString('pt-BR') : 'Data registrada') : 'Recente'}
+                        </span>
+                      </div>
+                      <button class="button secondary" style="font-size:11px; padding:4px 10px;" onclick='window.adminSongManager.restoreVersion(${JSON.stringify(v)})' title="Carregar acordes e estrutura desta versão no formulário">
+                        ↺ Restaurar no Formulário
+                      </button>
+                    </div>
+                    <div style="margin-top:8px; font-size:13px; color:#e2e8f0;">
+                      ${escapeHtml(v.changeSummary || v.notes || "Atualização de cifra e harmonia")}
+                    </div>
+                    <div style="margin-top:8px; display:flex; gap:12px; font-size:11px; color:#94a3b8;">
+                      <span>Tom: <strong style="color:#fff;">${escapeHtml(v.originalKey || 'G')}</strong></span>
+                      <span>Modificado por: <strong style="color:#fff;">${escapeHtml(v.authorName || v.authorUid || 'Admin')}</strong></span>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            `}
+          </div>
+        </div>
+      </div>
+    ` : '';
 
     return `
       <section class="glass" style="padding:20px;">
@@ -660,13 +732,16 @@ class SongManagerController {
             <button class="pill ${filter === 'draft' ? 'active' : ''}" style="cursor:pointer; border-color:#F59E0B; color:${filter === 'draft' ? '#fff' : '#F59E0B'};" onclick="window.adminSongManager.setCatalogFilter('draft')">
               Rascunhos
             </button>
+            <button class="pill ${filter === 'pending_review' ? 'active' : ''}" style="cursor:pointer; border-color:#818cf8; color:${filter === 'pending_review' ? '#fff' : '#818cf8'};" onclick="window.adminSongManager.setCatalogFilter('pending_review')">
+              Em Revisão
+            </button>
             <button class="pill ${filter === 'archived' ? 'active' : ''}" style="cursor:pointer; border-color:#64748b; color:${filter === 'archived' ? '#fff' : '#94a3b8'};" onclick="window.adminSongManager.setCatalogFilter('archived')">
               Arquivadas
             </button>
           </div>
 
           <div style="flex:1; max-width:320px; min-width:200px;">
-            <input type="search" class="input" placeholder="Buscar no catálogo..." value="${this.catalogSearch}" 
+            <input type="search" class="input" placeholder="Buscar título, artista, gênero..." value="${escapeHtml(this.catalogSearch)}" 
                    oninput="window.adminSongManager.setCatalogSearch(this.value)" style="padding:8px 14px; font-size:13px;">
           </div>
         </div>
@@ -674,7 +749,7 @@ class SongManagerController {
         ${this.isLoadingCatalog ? `
           <div style="text-align:center; padding:40px 20px; color:#94a3b8;">
             <div style="font-size:24px; animation:spin 1s linear infinite;">⏳</div>
-            <p style="margin-top:10px; font-size:13px;">Carregando músicas do Firestore...</p>
+            <p style="margin-top:10px; font-size:13px;">Carregando músicas do acervo...</p>
           </div>
         ` : (filtered.length === 0 ? `
           <div style="text-align:center; padding:40px 20px; color:#94a3b8;">
@@ -693,19 +768,22 @@ class SongManagerController {
                   <th style="padding:10px 12px;">BPM</th>
                   <th style="padding:10px 12px;">Status</th>
                   <th style="padding:10px 12px;">Easy Play</th>
-                  <th style="padding:10px 12px;">Letra</th>
-                  <th style="padding:10px 12px; text-align:right;">Ações</th>
+                  <th style="padding:10px 12px;">Áudio</th>
+                  <th style="padding:10px 12px; text-align:right;">Ações Administrativas</th>
                 </tr>
               </thead>
               <tbody>
                 ${filtered.map(s => `
                   <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
                     <td style="padding:12px;">
-                      <div style="font-weight:700; color:#fff;">${s.title}</div>
-                      <div style="font-size:12px; color:#94a3b8;">${s.artistName || s.artist || 'Artista desconhecido'}</div>
+                      <div style="display:flex; align-items:center; gap:6px;">
+                        <strong style="color:#fff;">${escapeHtml(s.title)}</strong>
+                        ${s.isVerified ? `<span class="pill" style="border-color:#10B981; color:#10B981; font-size:10px; padding:1px 6px;" title="Oficial VIRTUO Verificada">✓ Oficial</span>` : ''}
+                      </div>
+                      <div style="font-size:12px; color:#94a3b8;">${escapeHtml(s.artistName || s.artist || 'Artista desconhecido')}</div>
                     </td>
                     <td style="padding:12px;">
-                      <span class="pill" style="border-color:#7EE7FF; color:#7EE7FF; font-size:11px;">${s.originalKey || 'G'}</span>
+                      <span class="pill" style="border-color:#7EE7FF; color:#7EE7FF; font-size:11px;">${escapeHtml(s.originalKey || 'G')}</span>
                     </td>
                     <td style="padding:12px; color:#cbd5e1;">
                       ${s.bpm || 74} BPM
@@ -713,29 +791,49 @@ class SongManagerController {
                     <td style="padding:12px;">
                       <span class="pill" style="
                         font-size:11px;
-                        border-color:${s.status === 'published' ? '#10B981' : (s.status === 'draft' ? '#F59E0B' : '#64748b')};
-                        color:${s.status === 'published' ? '#10B981' : (s.status === 'draft' ? '#F59E0B' : '#94a3b8')};
+                        border-color:${s.status === 'published' ? '#10B981' : (s.status === 'draft' ? '#F59E0B' : (s.status === 'pendingReview' || s.status === 'pending_review' ? '#818cf8' : '#64748b'))};
+                        color:${s.status === 'published' ? '#10B981' : (s.status === 'draft' ? '#F59E0B' : (s.status === 'pendingReview' || s.status === 'pending_review' ? '#818cf8' : '#94a3b8'))};
                       ">
-                        ${s.status === 'published' ? '● Publicada' : (s.status === 'draft' ? '○ Rascunho' : 'Arquivada')}
+                        ${s.status === 'published' ? '● Publicada' : (s.status === 'draft' ? '○ Rascunho' : (s.status === 'pendingReview' || s.status === 'pending_review' ? '⏳ Em Revisão' : 'Arquivada'))}
                       </span>
                     </td>
                     <td style="padding:12px;">
-                      ${(s.easyChords || s.easyChordSheet) ? `<span style="color:#10B981; font-size:12px;">✓ Disponível</span>` : `<span style="color:#64748b; font-size:12px;">Gerável</span>`}
+                      ${(s.easyChords || s.easyChordSheet) ? `<span style="color:#10B981; font-size:12px;">✓ Ativo</span>` : `<span style="color:#64748b; font-size:12px;">Gerável</span>`}
                     </td>
-                    <td style="padding:12px; font-size:11px; color:#94a3b8;">
-                      ${s.lyricsStatus === 'authorized' ? '🟢 Autorizada' : (s.lyricsStatus === 'licensed' ? '🟢 Licenciada' : '🔒 Indisponível')}
+                    <td style="padding:12px; font-size:11px;">
+                      ${s.audioUrl ? `<span style="color:#7EE7FF;">🎧 Áudio Ok</span>` : `<span style="color:#64748b;">Sem áudio</span>`}
                     </td>
                     <td style="padding:12px; text-align:right;">
-                      <div style="display:inline-flex; gap:6px;">
+                      <div style="display:inline-flex; gap:6px; flex-wrap:wrap; justify-content:flex-end;">
+                        <!-- Editar Formulário Completo -->
                         <button class="button secondary" style="font-size:11px; padding:4px 8px;" onclick="window.adminSongManager.openEdit('${s.id}', '${currentUid}', ${isAdmin})" title="Editar Música">
                           ✏️ Editar
                         </button>
-                        ${s.status === 'draft' ? `
-                          <button class="button primary" style="font-size:11px; padding:4px 8px;" onclick="window.adminSongManager.quickPublish('${s.id}', '${currentUid}')" title="Publicar">
+
+                        <!-- Prévia & Revisão Rápida -->
+                        <button class="button secondary" style="font-size:11px; padding:4px 8px; color:#7EE7FF; border-color:rgba(126,231,255,0.4);" onclick="window.adminSongManager.openPreviewDirectly('${s.id}', '${currentUid}', ${isAdmin})" title="Revisar e Pré-visualizar no Palco">
+                          👁️ Prévia
+                        </button>
+
+                        <!-- Histórico de Versões -->
+                        <button class="button secondary" style="font-size:11px; padding:4px 8px;" onclick="window.adminSongManager.viewSongHistoryModal('${s.id}')" title="Ver Histórico de Versões">
+                          📜 Versões
+                        </button>
+
+                        <!-- Verificar (Admin) -->
+                        ${isAdmin && !s.isVerified ? `
+                          <button class="button secondary" style="font-size:11px; padding:4px 8px; color:#10B981; border-color:rgba(16,185,129,0.4);" onclick="window.adminSongManager.quickVerify('${s.id}', '${currentUid}')" title="Marcar como Oficial Verificada">
+                            ⭐ Verificar
+                          </button>
+                        ` : ''}
+
+                        <!-- Publicar ou Arquivar -->
+                        ${s.status === 'draft' || s.status === 'pendingReview' || s.status === 'pending_review' ? `
+                          <button class="button primary" style="font-size:11px; padding:4px 8px;" onclick="window.adminSongManager.quickPublish('${s.id}', '${currentUid}')" title="Publicar Música">
                             🚀 Publicar
                           </button>
                         ` : (s.status === 'published' ? `
-                          <button class="button secondary" style="font-size:11px; padding:4px 8px;" onclick="window.adminSongManager.quickArchive('${s.id}', '${currentUid}')" title="Arquivar">
+                          <button class="button secondary" style="font-size:11px; padding:4px 8px;" onclick="window.adminSongManager.quickArchive('${s.id}', '${currentUid}')" title="Arquivar Música">
                             📦 Arquivar
                           </button>
                         ` : '')}
@@ -748,6 +846,7 @@ class SongManagerController {
           </div>
         `)}
       </section>
+      ${historyModalHtml}
     `;
   }
 
@@ -783,6 +882,167 @@ class SongManagerController {
     } catch (err) {
       this.setNotification("error", `Erro ao arquivar: ${err.message}`);
     }
+  }
+
+  async quickVerify(songId, userUid) {
+    try {
+      const repo = this.getRepository();
+      if (!repo) throw new Error("Repositório indisponível.");
+      await repo.verifySong(songId, userUid);
+      this.setNotification("success", "Música verificada com sucesso como Oficial VIRTUO!");
+      this.loadCatalog();
+    } catch (err) {
+      this.setNotification("error", `Erro ao verificar música: ${err.message}`);
+    }
+  }
+
+  async openPreviewDirectly(songId, currentUid, isAdmin) {
+    await this.openEdit(songId, currentUid, isAdmin);
+    this.goToStep(6);
+  }
+
+  async viewSongHistoryModal(songId) {
+    this.selectedHistorySongId = songId;
+    const song = this.catalogSongs.find(s => s.id === songId) || this.formData;
+    this.selectedHistorySongTitle = song ? (song.title || "Música") : "Música";
+    await this.loadVersionHistory(songId);
+    this.showHistoryModal = true;
+    this.requestRender();
+  }
+
+  closeSongHistoryModal() {
+    this.showHistoryModal = false;
+    this.selectedHistorySongId = null;
+    this.requestRender();
+  }
+
+  restoreVersion(versionData) {
+    if (!versionData) return;
+    if (versionData.chords || versionData.chordSheet) {
+      const chords = versionData.chords || versionData.chordSheet;
+      this.formData.chordSheet = chords;
+      this.formData.chords = chords;
+    }
+    if (versionData.easyChords || versionData.easyChordSheet) {
+      const easy = versionData.easyChords || versionData.easyChordSheet;
+      this.formData.easyChordSheet = easy;
+      this.formData.easyChords = easy;
+    }
+    if (versionData.originalKey) {
+      this.formData.originalKey = versionData.originalKey;
+    }
+    if (versionData.structure) {
+      this.formData.structure = typeof versionData.structure === "string" 
+        ? parseStructureFromText(versionData.structure)
+        : versionData.structure;
+      this.syncStructureString();
+    }
+    this.changeSummary = `Restaurado da versão #${versionData.version || 'anterior'}`;
+    this.showHistoryModal = false;
+    this.setNotification("info", `Versão #${versionData.version || ''} restaurada no formulário para revisão.`);
+    this.currentView = "form";
+    this.currentStep = 6; // leva direto para prévia da versão restaurada
+    this.requestRender();
+  }
+
+  async createExplicitVersion(userUid, changeNote = "") {
+    if (!this.editingSongId) {
+      this.setNotification("error", "É necessário que a música já esteja cadastrada para criar nova versão.");
+      return;
+    }
+    try {
+      const repo = this.getRepository();
+      if (!repo) throw new Error("Repositório indisponível.");
+      await repo.createSongVersion(this.editingSongId, this.formData, userUid, changeNote || this.changeSummary || "Nova versão cadastrada");
+      this.setNotification("success", "Nova versão registrada com sucesso no histórico!");
+      await this.loadVersionHistory(this.editingSongId);
+      this.requestRender();
+    } catch (err) {
+      this.setNotification("error", `Erro ao salvar versão: ${err.message}`);
+    }
+  }
+
+  async handleAudioFileUpload(file, userUid) {
+    if (!file) return;
+    const allowedExts = ['mp3', 'wav', 'ogg', 'm4a', 'aac'];
+    const ext = (file.name.split('.').pop() || '').toLowerCase();
+
+    if (!file.type.startsWith('audio/') && !allowedExts.includes(ext)) {
+      this.audioUploadError = "Formato não suportado. Envie arquivos MP3, WAV, OGG, M4A ou AAC.";
+      this.requestRender();
+      return;
+    }
+
+    const MAX_SIZE = 35 * 1024 * 1024; // 35MB (limite Storage rules)
+    if (file.size > MAX_SIZE) {
+      this.audioUploadError = "O arquivo excede o limite máximo permitido de 35MB para áudio.";
+      this.requestRender();
+      return;
+    }
+
+    this.audioUploadError = null;
+    this.audioUploadProgress = {
+      percent: 0,
+      transferred: 0,
+      total: file.size,
+      filename: file.name
+    };
+    this.requestRender();
+
+    try {
+      const fbConfig = await import("../../../firebase-config.js");
+      const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+      const path = `audios/${Date.now()}_${sanitizedName}`;
+
+      this.audioUploadTask = fbConfig.uploadFileWithProgress({
+        file,
+        path,
+        onProgress: (percent, bytesTransferred, totalBytes) => {
+          this.audioUploadProgress = {
+            percent: Math.round(percent),
+            transferred: bytesTransferred,
+            total: totalBytes,
+            filename: file.name
+          };
+          this.requestRender();
+        },
+        onError: (err) => {
+          this.audioUploadError = `Falha no upload: ${err.message || 'Erro desconhecido'}`;
+          this.audioUploadProgress = null;
+          this.audioUploadTask = null;
+          this.requestRender();
+        },
+        onComplete: (downloadUrl) => {
+          this.formData.audioUrl = downloadUrl;
+          this.audioUploadProgress = null;
+          this.audioUploadTask = null;
+          this.setNotification("success", "Áudio de referência enviado com sucesso!");
+          this.requestRender();
+        }
+      });
+    } catch (err) {
+      this.audioUploadError = `Erro ao iniciar upload: ${err.message}`;
+      this.audioUploadProgress = null;
+      this.audioUploadTask = null;
+      this.requestRender();
+    }
+  }
+
+  cancelAudioUpload() {
+    if (this.audioUploadTask && typeof this.audioUploadTask.cancel === "function") {
+      this.audioUploadTask.cancel();
+      this.audioUploadTask = null;
+      this.audioUploadProgress = null;
+      this.setNotification("info", "Upload de áudio cancelado.");
+      this.requestRender();
+    }
+  }
+
+  removeAudioUrl() {
+    this.formData.audioUrl = "";
+    this.audioUploadProgress = null;
+    this.audioUploadError = null;
+    this.requestRender();
   }
 
   // -----------------------------------------------------------
@@ -1213,12 +1473,74 @@ class SongManagerController {
 
   // ETAPA 4: LINKS & FONTES
   renderStep4(f) {
+    const isUploadingAudio = !!this.audioUploadProgress;
+
     return `
       <div>
-        <h3 style="font-size:18px; margin-bottom:4px; color:#fff;">Etapa 4: Links & Fontes de Referência</h3>
+        <h3 style="font-size:18px; margin-bottom:4px; color:#fff;">Etapa 4: Áudio & Fontes de Referência</h3>
         <p style="font-size:13px; color:#94a3b8; margin-bottom:20px;">
-          Mídia externa para escuta de referência e autenticação da fonte do arranjo.
+          Adicione o áudio de referência do louvor e links complementares para estudo da equipe.
         </p>
+
+        <!-- UPLOAD NATIVO DE ÁUDIO (FIREBASE STORAGE) -->
+        <div style="margin-bottom:24px; padding:18px; background:rgba(255,255,255,0.03); border:1px solid rgba(126,231,255,0.2); border-radius:14px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:12px;">
+            <div>
+              <span class="pill" style="border-color:#7EE7FF; color:#7EE7FF; font-size:10px;">ÁUDIO OFICIAL</span>
+              <strong style="color:#fff; font-size:14px; margin-left:6px;">Upload de Áudio da Música</strong>
+            </div>
+            <small style="color:#94a3b8; font-size:11px;">Formatos: MP3, WAV, OGG, M4A, AAC • Limite: 35MB</small>
+          </div>
+
+          ${this.audioUploadError ? `
+            <div style="padding:10px 14px; background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.4); border-radius:10px; color:#fca5a5; font-size:12px; margin-bottom:12px;">
+              ⚠️ ${escapeHtml(this.audioUploadError)}
+            </div>
+          ` : ''}
+
+          ${isUploadingAudio ? `
+            <div style="padding:14px; background:rgba(0,0,0,0.3); border-radius:12px; border:1px solid rgba(126,231,255,0.3);">
+              <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; margin-bottom:6px;">
+                <span style="color:#7EE7FF;">Enviando "${escapeHtml(this.audioUploadProgress.filename)}"...</span>
+                <strong style="color:#fff;">${this.audioUploadProgress.percent}%</strong>
+              </div>
+              <div style="width:100%; height:8px; background:rgba(255,255,255,0.1); border-radius:4px; overflow:hidden; margin-bottom:10px;">
+                <div style="width:${this.audioUploadProgress.percent}%; height:100%; background:#7EE7FF; transition:width 0.2s ease;"></div>
+              </div>
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-size:11px; color:#94a3b8;">
+                  ${Math.round((this.audioUploadProgress.transferred || 0) / 1024 / 1024 * 10) / 10} MB de ${Math.round((this.audioUploadProgress.total || 0) / 1024 / 1024 * 10) / 10} MB
+                </span>
+                <button type="button" class="button secondary" style="font-size:11px; padding:4px 10px; color:#ef4444; border-color:rgba(239,68,68,0.4);" onclick="window.adminSongManager.cancelAudioUpload()">
+                  ✕ Cancelar
+                </button>
+              </div>
+            </div>
+          ` : `
+            ${f.audioUrl ? `
+              <div style="padding:12px 14px; background:rgba(0,0,0,0.25); border-radius:12px; border:1px solid rgba(16,185,129,0.3); margin-bottom:12px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                  <span style="font-size:12px; color:#10B981; font-weight:600;">✓ Áudio carregado e pronto para reprodução:</span>
+                  <button type="button" class="button secondary" style="font-size:11px; padding:2px 8px; color:#ef4444;" onclick="window.adminSongManager.removeAudioUrl()" title="Remover áudio atual">
+                    Remover
+                  </button>
+                </div>
+                <audio controls src="${escapeHtml(f.audioUrl)}" style="width:100%; height:36px; outline:none;"></audio>
+              </div>
+            ` : ''}
+
+            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+              <input type="file" id="admin-audio-input" accept="audio/*,.mp3,.wav,.ogg,.m4a,.aac" style="display:none;" 
+                     onchange="if(this.files &amp;&amp; this.files[0]) window.adminSongManager.handleAudioFileUpload(this.files[0], '${this.currentUid || 'admin'}')">
+              <button type="button" class="button primary" style="font-size:12px; display:inline-flex; align-items:center; gap:6px;" 
+                      onclick="document.getElementById('admin-audio-input').click()">
+                <span>📁</span>
+                <span>${f.audioUrl ? 'Substituir Arquivo de Áudio' : 'Selecionar Arquivo de Áudio do Dispositivo'}</span>
+              </button>
+              <span style="font-size:11px; color:#94a3b8;">ou informe link direto abaixo</span>
+            </div>
+          `}
+        </div>
 
         <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:16px;">
           
@@ -1246,9 +1568,9 @@ class SongManagerController {
                    oninput="window.adminSongManager.updateField('coverUrl', this.value)">
           </div>
 
-          <!-- Áudio Autorizado -->
+          <!-- URL Manual de Áudio Alternativa -->
           <div>
-            <label class="label">URL do Áudio de Referência (Apenas quando autorizado)</label>
+            <label class="label">URL Direta de Áudio (Alternativa)</label>
             <input type="url" class="input" placeholder="https://.../audio.mp3" 
                    value="${f.audioUrl || ''}" 
                    oninput="window.adminSongManager.updateField('audioUrl', this.value)">
@@ -1420,6 +1742,12 @@ class SongManagerController {
               ${isEasy ? '✓ Easy Play Ativo' : 'Cifra Normal'}
             </button>
 
+            <!-- Teste no Modo Ministro -->
+            <button type="button" class="button primary" style="font-size:11px; padding:4px 10px; background:#7EE7FF; color:#0B1528; font-weight:700; border:none;" 
+                    onclick="if(window.VirtuoMinister && window.VirtuoMinister.open){ window.VirtuoMinister.open(window.adminSongManager.formData, window.adminSongManager.previewSemitones, window.adminSongManager.previewEasyPlay); } else { window.adminSongManager.setNotification('info', 'Modo Ministro ativado nas telas de palco.'); }">
+              🎤 Testar no Modo Ministro
+            </button>
+
           </div>
         </div>
 
@@ -1563,6 +1891,14 @@ class SongManagerController {
               🚀 Publicar Oficialmente
             </button>
 
+            <!-- Registrar Nova Versão Manualmente -->
+            ${this.editingSongId ? `
+              <button class="button secondary" style="border-color:#7EE7FF; color:#7EE7FF;" 
+                      onclick="window.adminSongManager.createExplicitVersion('${currentUid}')">
+                📜 Registrar Nova Versão
+              </button>
+            ` : ''}
+
             <!-- Arquivar (se já existir) -->
             ${this.editingSongId ? `
               <button class="button secondary" style="border-color:#64748b; color:#94a3b8;" 
@@ -1582,12 +1918,17 @@ class SongManagerController {
             <div style="display:flex; flex-direction:column; gap:8px;">
               ${this.songVersions.map((v, idx) => `
                 <div style="padding:10px 14px; background:rgba(255,255,255,0.03); border-radius:10px; border:1px solid rgba(255,255,255,0.06); font-size:12px;">
-                  <div style="display:flex; justify-content:space-between; color:#fff; font-weight:700;">
-                    <span>Versão #${this.songVersions.length - idx}</span>
-                    <span style="color:#94a3b8; font-weight:400;">Tom: ${v.originalKey || 'G'}</span>
+                  <div style="display:flex; justify-content:space-between; align-items:center; color:#fff; font-weight:700;">
+                    <span>Versão #${this.songVersions.length - idx} ${v.version ? `(v${v.version})` : ''}</span>
+                    <div style="display:flex; gap:8px; align-items:center;">
+                      <span style="color:#94a3b8; font-weight:400;">Tom: ${escapeHtml(v.originalKey || 'G')}</span>
+                      <button class="button secondary" style="font-size:10px; padding:2px 8px;" onclick='window.adminSongManager.restoreVersion(${JSON.stringify(v)})'>
+                        ↺ Restaurar
+                      </button>
+                    </div>
                   </div>
-                  <div style="color:#cbd5e1; margin-top:2px;">
-                    ${v.changeSummary || 'Atualização sem nota descritiva'}
+                  <div style="color:#cbd5e1; margin-top:4px;">
+                    ${escapeHtml(v.changeSummary || v.notes || 'Atualização sem nota descritiva')}
                   </div>
                 </div>
               `).join('')}

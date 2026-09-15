@@ -93,17 +93,17 @@ function checkIsCelestial(userDoc, localFlag) {
   return !!(userDoc?.isCelestial || localFlag === "true");
 }
 
-function checkIsAdmin(email, customRole) {
-  return email === "dramosdasilva7@gmail.com" || customRole === "admin";
+function checkIsAdmin(user, customRole) {
+  return user?.customClaims?.admin === true || user?.customClaims?.role === "admin" || customRole === "admin";
 }
 
 assert(checkIsCelestial({ isCelestial: true }, null) === true, "Membro com isCelestial no Firestore é reconhecido");
 assert(checkIsCelestial(null, "true") === true, "Membro com ativação no localStorage é reconhecido");
 assert(checkIsCelestial({}, "false") === false, "Membro gratuito padrão não possui selo celestial");
 
-assert(checkIsAdmin("dramosdasilva7@gmail.com", null) === true, "Email do criador possui permissões de Administrador mestre");
-assert(checkIsAdmin("musico@virtuo.app", "admin") === true, "Role admin no perfil possui permissões de Administrador");
-assert(checkIsAdmin("musico@virtuo.app", "member") === false, "Membro comum não possui acesso ao painel de administração");
+assert(checkIsAdmin({ customClaims: { admin: true } }, null) === true, "Custom Claims admin possui permissões de Administrador mestre");
+assert(checkIsAdmin(null, "admin") === true, "Role admin no perfil possui permissões de Administrador");
+assert(checkIsAdmin({ customClaims: {} }, "member") === false, "Membro comum não possui acesso ao painel de administração");
 
 console.log("\n==============================================");
 console.log("TOTAL DE TESTES EXECUTADOS: 15");

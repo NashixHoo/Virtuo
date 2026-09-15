@@ -1,16 +1,17 @@
 {
-"name":"Virtuo Apple-Class",
-"short_name":"Virtuo",
-"lang":"pt-BR",
-"start_url":"./",
-"display":"standalone",
-"background_color":"#020611",
-"theme_color":"#07101F",
-"icons":[
-{
-"src":"assets/icon.svg",
-"sizes":"any",
-"type":"image/svg+xml"
-}
-]
+  "name": "VIRTUO",
+  "short_name": "VIRTUO",
+  "description": "A plataforma do músico virtuoso",
+  "lang": "pt-BR",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#020611",
+  "theme_color": "#07101F",
+  "icons": [
+    {
+      "src": "assets/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
 }

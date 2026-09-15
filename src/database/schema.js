@@ -123,8 +123,8 @@ export function createEmptySong(overrides = {}) {
     createdAt: overrides.createdAt || null,
     updatedAt: overrides.updatedAt || null,
 
-    status: overrides.status || SONG_STATUS.PUBLISHED,
-    visibility: overrides.visibility || SONG_VISIBILITY.PUBLIC,
+    status: overrides.status || SONG_STATUS.DRAFT,
+    visibility: overrides.visibility || SONG_VISIBILITY.PRIVATE,
 
     version: typeof overrides.version === "number" ? overrides.version : 1,
 

@@ -288,6 +288,82 @@ test("Transição para Arquivado (Archived) define status arquivado", () => {
 });
 
 // -------------------------------------------------------------
+// 5. GESTÃO DE CATÁLOGO, FILTROS, VERIFICAÇÃO E PRÉVIA
+// -------------------------------------------------------------
+console.log("\n[5] Gestão de Catálogo, Filtros e Verificação Oficial:");
+
+test("Catálogo filtra músicas por status (published, draft, pending_review, archived)", () => {
+  adminSongManager.catalogSongs = [
+    { id: "s1", title: "Graça Maravilhosa", status: "published", originalKey: "G", isVerified: true },
+    { id: "s2", title: "Oceans", status: "draft", originalKey: "D", isVerified: false },
+    { id: "s3", title: "Em Teus Braços", status: "pending_review", originalKey: "E", isVerified: false },
+    { id: "s4", title: "Antiga Canção", status: "archived", originalKey: "C", isVerified: false }
+  ];
+
+  adminSongManager.catalogFilter = "published";
+  let html = adminSongManager.renderCatalogView("admin-1", true);
+  assert.strictEqual(html.includes("Graça Maravilhosa"), true);
+  assert.strictEqual(html.includes("Oceans"), false);
+
+  adminSongManager.catalogFilter = "pending_review";
+  html = adminSongManager.renderCatalogView("admin-1", true);
+  assert.strictEqual(html.includes("Em Teus Braços"), true);
+  assert.strictEqual(html.includes("Graça Maravilhosa"), false);
+
+  adminSongManager.catalogFilter = "all";
+});
+
+test("Busca no catálogo utiliza normalização de acentos e termos", () => {
+  adminSongManager.catalogSearch = "graca";
+  const html = adminSongManager.renderCatalogView("admin-1", true);
+  assert.strictEqual(html.includes("Graça Maravilhosa"), true, "Busca sem acento deve achar título acentuado");
+  adminSongManager.catalogSearch = "";
+});
+
+test("Exibe badge oficial quando música possui isVerified = true", () => {
+  const html = adminSongManager.renderCatalogView("admin-1", true);
+  assert.strictEqual(html.includes("✓ Oficial"), true);
+});
+
+// -------------------------------------------------------------
+// 6. VERSIONAMENTO E RESTAURAÇÃO
+// -------------------------------------------------------------
+console.log("\n[6] Histórico de Versões e Restauração Auditável:");
+
+test("Restaura versão histórica carregando dados na cifra e formulário", () => {
+  const versionToRestore = {
+    version: 2,
+    originalKey: "F",
+    chordSheet: "[Intro] F  Bb  Dm  C\n[Verso] F Bb",
+    easyChordSheet: "[Intro] F  Bb  Dm  C",
+    changeSummary: "Correção de harmonia da ponte"
+  };
+
+  adminSongManager.restoreVersion(versionToRestore);
+  assert.strictEqual(adminSongManager.formData.originalKey, "F");
+  assert.strictEqual(adminSongManager.formData.chordSheet.includes("Bb"), true);
+  assert.strictEqual(adminSongManager.currentStep, 6, "Restauração deve levar à prévia para conferência");
+});
+
+// -------------------------------------------------------------
+// 7. UPLOAD E GESTÃO DE ÁUDIO
+// -------------------------------------------------------------
+console.log("\n[7] Mídia e Áudio da Música:");
+
+test("Etapa 4 renderiza componente de áudio e botões de mídia", () => {
+  adminSongManager.formData.audioUrl = "https://firebasestorage.googleapis.com/test-audio.mp3";
+  const html = adminSongManager.renderStep4(adminSongManager.formData);
+  assert.strictEqual(html.includes("Upload de Áudio da Música"), true);
+  assert.strictEqual(html.includes("Áudio carregado e pronto para reprodução"), true);
+  assert.strictEqual(html.includes("test-audio.mp3"), true);
+});
+
+test("Remoção de áudio limpa a URL do formulário", () => {
+  adminSongManager.removeAudioUrl();
+  assert.strictEqual(adminSongManager.formData.audioUrl, "");
+});
+
+// -------------------------------------------------------------
 // RELATÓRIO FINAL DE TESTES
 // -------------------------------------------------------------
 console.log("\n=============================================================");

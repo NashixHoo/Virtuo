@@ -58,59 +58,59 @@ export const DEMO_SONGS = [
     structure: "Intro • Verso 1 • Refrão • Verso 2 • Refrão • Final",
     youtubeUrl: "https://www.youtube.com/results?search_query=Mistério+na+Olaria+Raquel+Pereira",
     spotifyUrl: "https://open.spotify.com/search/Mistério%20na%20Olaria%20Raquel%20Pereira",
-    chords: `[Intro] G  C9  Em7  D
+    chords: `[Intro] Cm  Fm9  Ab7M  G
 
 [Verso 1]
-G               C9
+Cm              Fm9
 Eu fui na olaria ver o vaso se formar
-Em7               D
+Ab7M            G
 O oleiro trabalhava sem cessar
-G               C9
+Cm              Fm9
 Se o vaso quebrava, tornava a refazer
-Em7               D
+Ab7M            G
 Com paciência e poder
 
 [Refrão]
-G               D/F#
+Cm              G/B
 É mistério na olaria de Jeová
-Em7               C9
+Ab7M            Fm9
 Ele quebra, ele molda no lugar
-G               D/F#
+Cm              G/B
 Se você se humilhar nas mãos do Criador
-Em7               C9
+Ab7M            Fm9
 Ele faz vaso novo com amor
 
 [Verso 2]
-G               C9
+Cm              Fm9
 Desce como barro no chão do oleiro
-Em7               D
+Ab7M            G
 Deixa ele tirar o que não presta por inteiro
-G               C9
+Cm              Fm9
 Sai de lá brilhando cheio da unção
-Em7               D
+Ab7M            G
 Um vaso de honra nesta geração
 
 [Refrão]
-G               D/F#
+Cm              G/B
 É mistério na olaria de Jeová
-Em7               C9
+Ab7M            Fm9
 Ele quebra, ele molda no lugar
-G               D/F#
+Cm              G/B
 Se você se humilhar nas mãos do Criador
-Em7               C9
+Ab7M            Fm9
 Ele faz vaso novo com amor`,
-    easyChords: `[Intro] G  C  Em  D
+    easyChords: `[Intro] Cm  Fm  Ab  G
 
 [Verso]
-G           C
+Cm          Fm
 Eu fui na olaria ver o vaso se formar
-Em          D
+Ab          G
 O oleiro trabalhava sem cessar
 
 [Refrão]
-G           D
+Cm          G
 É mistério na olaria de Jeová
-Em          C
+Ab          Fm
 Ele quebra, ele molda no lugar`,
     lyrics: null,
     lyricsStatus: LYRICS_STATUS.UNAVAILABLE,

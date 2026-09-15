@@ -5,7 +5,8 @@
 // =============================================================
 
 import { RehearsalsService, CANONICAL_INSTRUMENTS, REHEARSAL_STATUSES, DEFAULT_DEMO_REHEARSAL } from "../../services/rehearsals.js";
-import { calculateKey, DEMO_SONGS } from "../../music/index.js";
+import { calculateKey, getSemitoneDistance, DEMO_SONGS } from "../../music/index.js";
+import { musicIntelligence } from "../../music/music-intelligence.js";
 import { virtuoMinister } from "../minister/index.js";
 import { virtuoMetronome } from "../../audio/index.js";
 
@@ -20,6 +21,8 @@ export class RehearsalController {
     this.isEditModalOpen = false;
     this.isCreateModalOpen = false;
     this.editingRehearsalData = null;
+    this.rehearsalAnalysis = null;
+    this.isAnalysisOpen = false;
     this.subscribers = new Set();
   }
 
@@ -401,6 +404,105 @@ export class RehearsalController {
 
     virtuoMetronome.useSongBpm(bpm);
     virtuoMetronome.start();
+  }
+
+  /**
+   * Executa a análise inteligente determinística do repertório
+   */
+  analyzeRehearsalIntelligence() {
+    const active = this.getActiveRehearsal();
+    if (!active || !active.songs || active.songs.length === 0) {
+      this.rehearsalAnalysis = null;
+      this._notify();
+      return null;
+    }
+
+    const songs = active.songs.map((item, idx) => {
+      const originalSong = this.songsMap.get(item.songId) || {
+        title: "Música",
+        originalKey: "G",
+        bpm: 74,
+        difficulty: "Fácil"
+      };
+      const keyOffset = item.keyOffset || 0;
+      const key = calculateKey(originalSong.originalKey || "G", keyOffset);
+      const bpm = item.bpm || originalSong.bpm || 74;
+      const capoInfo = musicIntelligence.suggestCapo(key);
+
+      return {
+        index: idx + 1,
+        title: originalSong.title,
+        key,
+        originalKey: originalSong.originalKey,
+        bpm,
+        capoInfo,
+        difficulty: originalSong.difficulty || "Fácil"
+      };
+    });
+
+    const totalBpm = songs.reduce((acc, s) => acc + s.bpm, 0);
+    const avgBpm = Math.round(totalBpm / songs.length);
+
+    const tempoDistribution = {
+      lentas: songs.filter(s => s.bpm < 68).length,
+      medias: songs.filter(s => s.bpm >= 68 && s.bpm <= 95).length,
+      rapidas: songs.filter(s => s.bpm > 95).length
+    };
+
+    // Análise de transições de tom entre músicas consecutivas
+    const transitions = [];
+    for (let i = 0; i < songs.length - 1; i++) {
+      const fromSong = songs[i];
+      const toSong = songs[i + 1];
+      const dist = getSemitoneDistance(fromSong.key, toSong.key);
+      let noteType = "Suave";
+      let tip = `Transição de ${fromSong.key} para ${toSong.key}.`;
+
+      if (dist === 0) {
+        noteType = "Mesmo Tom (Perfeita)";
+        tip = `Ambas no mesmo tom (${fromSong.key}). Emenda direta recomendada.`;
+      } else if (dist === 1 || dist === 11) {
+        noteType = "Subida de Meio Tom";
+        tip = `Subida de 1 semitom (${fromSong.key} → ${toSong.key}). Eleva a intensidade da ministração.`;
+      } else if (dist === 5 || dist === 7) {
+        noteType = "Ciclo de Quintas/Quartas";
+        tip = `Harmonia natural de quinta/quarta (${fromSong.key} → ${toSong.key}). Transição agradável.`;
+      } else if (dist === 6) {
+        noteType = "Salto Harmônico (Atenção)";
+        tip = `Intervalo de trítono (${fromSong.key} → ${toSong.key}). Recomendado momento de oração ou solo antes de entrar.`;
+      }
+
+      transitions.push({
+        from: fromSong.title,
+        to: toSong.title,
+        fromKey: fromSong.key,
+        toKey: toSong.key,
+        distance: dist,
+        type: noteType,
+        tip
+      });
+    }
+
+    this.rehearsalAnalysis = {
+      avgBpm,
+      tempoDistribution,
+      transitions,
+      songs,
+      timestamp: new Date().toLocaleTimeString("pt-BR")
+    };
+
+    this.isAnalysisOpen = true;
+    this._notify();
+    return this.rehearsalAnalysis;
+  }
+
+  toggleAnalysis() {
+    this.isAnalysisOpen = !this.isAnalysisOpen;
+    if (this.isAnalysisOpen && !this.rehearsalAnalysis) {
+      this.analyzeRehearsalIntelligence();
+    } else {
+      this._notify();
+    }
   }
 
   /**
