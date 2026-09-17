@@ -67,6 +67,22 @@ import {
   REPORT_REASONS 
 } from "./src/community/index.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { renderHojeScreen, startGreetingAutoUpdater } from "./src/features/home/index.js";
+import { virtuoPulse, PULSE_STATES } from "./src/features/pulse/index.js";
+import { virtuoSplash, isStartupChimeEnabled, setStartupChimeEnabled } from "./src/features/splash/index.js";
+import { playStartupChime } from "./src/audio/startup-chime.js";
+import { 
+  missionsController, 
+  renderMissionsListScreen, 
+  renderCreateMissionScreen, 
+  renderCommandCenterScreen,
+  renderCheckInScreen
+} from "./src/features/missions/index.js";
+import { liveSyncController, liveSyncEngine } from "./src/features/live-sync/index.js";
+import { notificationsService, renderNotificationsScreen } from "./src/features/notifications/index.js";
+import { momentsService, renderMomentCelebrationScreen } from "./src/features/moments/index.js";
+import { renderAcademyScreen } from "./src/academy/academy-view.js";
+import { VirtuoAcademyService } from "./src/academy/academy-service.js";
 
 // Conecta o repositório musical profissional ao painel administrativo
 adminSongManager.setRepository(SongsRepository);
@@ -79,9 +95,34 @@ let currentUser = null;
 let userProfile = null;
 let isAuthChecking = true;
 let currentScreen = "home";
+window.show = show;
+window._virtuoShow = show;
 let liveSongs = DEMO_SONGS;
 let isMetronomePlaying = false;
 let firebaseStatus = { connected: true, label: "virtuo-7e01b Conectado" };
+
+// Missions & Live Sync State (Etapa 5/5)
+let allMissions = [];
+let missionsActiveFilter = "all";
+let activeMomentForCelebration = null;
+
+// Sincroniza Missões e Notificações com a UI reativa
+missionsController.subscribe(() => {
+  if (currentScreen === "missions" || currentScreen === "commandCenter" || currentScreen === "checkin" || currentScreen === "home") {
+    renderCurrentScreen();
+  }
+});
+
+notificationsService.subscribe((notifs) => {
+  const badge = document.getElementById("header-notif-badge");
+  if (badge) {
+    const unread = notifs.filter(n => !n.read).length;
+    badge.style.display = unread > 0 ? "block" : "none";
+  }
+  if (currentScreen === "notifications") {
+    renderCurrentScreen();
+  }
+});
 
 // Community 2.0 State
 let communityPosts = [];
@@ -318,6 +359,20 @@ virtuoBand.onStateChange((bandState) => {
       }
     }
 
+    // Live chord and bar update
+    const liveChord = document.getElementById("band-live-chord");
+    if (liveChord && liveChord.textContent.trim() !== bandState.currentChord) {
+      liveChord.textContent = bandState.currentChord;
+    }
+    const nextChord = document.getElementById("band-next-chord");
+    if (nextChord && bandState.nextChord) {
+      nextChord.textContent = bandState.nextChord;
+    }
+    const barPulse = document.getElementById("band-bar-pulse");
+    if (barPulse) {
+      barPulse.textContent = `Bar #${bandState.currentBar + 1}`;
+    }
+
     // Key selection chips
     document.querySelectorAll(".band-key-chip").forEach(chip => {
       if (chip.id === `band-key-${bandState.currentKey}`) {
@@ -390,6 +445,13 @@ window.setBandPreset = (presetName) => {
 window.setBandKey = (key) => {
   virtuoBand.setKey(key);
   if (currentScreen === "band") renderCurrentScreen();
+};
+
+window.setBandProgression = (chords) => {
+  if (Array.isArray(chords) && chords.length > 0) {
+    virtuoBand.loadProgression(chords, virtuoBand.getState().currentKey, virtuoBand.getState().bpm);
+    if (currentScreen === "band") renderCurrentScreen();
+  }
 };
 
 window.setBandIntensity = (level) => {
@@ -1423,6 +1485,251 @@ window.saveUserProfileEdits = async () => {
   renderCurrentScreen();
 };
 
+// -------------------------------------------------------------
+// VIRTUO V2 — ETAPA 5/5: MISSÕES, LIVE SYNC, CONFIRM & NOTIFICAÇÕES
+// -------------------------------------------------------------
+window.virtuoFilterMissions = (filter) => {
+  missionsActiveFilter = filter;
+  renderCurrentScreen();
+};
+
+window.virtuoOpenCreateMission = () => {
+  show("createMission");
+};
+
+window.virtuoOpenMissionDetail = async (id) => {
+  const m = await missionsController.getMissionById(id);
+  if (m) {
+    show("commandCenter");
+  } else {
+    show("missions");
+  }
+};
+
+window.virtuoOpenCheckIn = async (id) => {
+  await missionsController.getMissionById(id);
+  show("checkin");
+};
+
+window.virtuoSubmitCreateMission = async (event) => {
+  event.preventDefault();
+  const eventType = document.getElementById("mission-event-type")?.value || "culto";
+  const eventDate = document.getElementById("mission-event-date")?.value;
+  const title = document.getElementById("mission-title")?.value?.trim();
+  const churchName = document.getElementById("mission-church-name")?.value?.trim() || "Igreja Central";
+  const description = document.getElementById("mission-description")?.value?.trim() || "";
+
+  if (!title) {
+    alert("Por favor, preencha o título da missão.");
+    return;
+  }
+
+  // Coleta louvores informados
+  const rows = document.querySelectorAll("#mission-songs-input-list .song-input-row");
+  const songs = [];
+  rows.forEach((row, idx) => {
+    const titleVal = row.querySelector(".song-title-field")?.value?.trim();
+    const keyVal = row.querySelector(".song-key-field")?.value?.trim() || "C";
+    const bpmVal = Number(row.querySelector(".song-bpm-field")?.value) || 74;
+    if (titleVal) {
+      songs.push({
+        id: `song-${Date.now()}-${idx}`,
+        title: titleVal,
+        artist: "Louvor",
+        key: keyVal,
+        bpm: bpmVal,
+        order: idx + 1,
+        status: "unstarted"
+      });
+    }
+  });
+
+  const pastorName = userProfile?.displayName || currentUser?.displayName || "Pastor";
+  const pastorId = currentUser?.uid || "pastor-local";
+
+  try {
+    const created = await missionsController.createMission({
+      title,
+      description,
+      churchName,
+      eventType,
+      eventDate,
+      pastorId,
+      pastorName,
+      leaderId: "leader-1",
+      leaderName: "Líder Musical",
+      songs
+    });
+
+    allMissions = await missionsController.getAllMissions();
+    alert(`Missão "${created.title}" criada e enviada ao Líder Musical com sucesso!`);
+    show("commandCenter");
+  } catch (err) {
+    alert("Erro ao criar missão: " + err.message);
+  }
+};
+
+window.virtuoAddSuggestedSongField = () => {
+  const container = document.getElementById("mission-songs-input-list");
+  if (!container) return;
+  const row = document.createElement("div");
+  row.className = "song-input-row";
+  row.style.display = "grid";
+  row.style.gridTemplateColumns = "2fr 1fr 1fr auto";
+  row.style.gap = "8px";
+  row.style.alignItems = "center";
+  row.innerHTML = `
+    <input type="text" placeholder="Nome da música" class="song-title-field" style="padding: 8px 10px; background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.12); border-radius: 6px; color: #fff; font-size: 13px;" required />
+    <input type="text" placeholder="Tom (Ex: G)" value="G" class="song-key-field" style="padding: 8px 10px; background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.12); border-radius: 6px; color: #fff; font-size: 13px;" required />
+    <input type="number" placeholder="BPM" value="70" class="song-bpm-field" style="padding: 8px 10px; background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.12); border-radius: 6px; color: #fff; font-size: 13px;" required />
+    <button type="button" class="button secondary" style="padding: 6px 8px; font-size: 12px;" onclick="this.parentElement.remove()">✕</button>
+  `;
+  container.appendChild(row);
+};
+
+window.virtuoApproveMission = async (missionId) => {
+  const leaderName = userProfile?.displayName || currentUser?.displayName || "Líder Musical";
+  try {
+    await missionsController.approveMission(missionId, {
+      leaderName,
+      leaderNotes: "Repertório e tons conferidos e aprovados."
+    });
+    alert("✓ Missão aprovada com sucesso! A banda já pode estudar.");
+    renderCurrentScreen();
+  } catch (err) {
+    alert("Erro ao aprovar missão: " + err.message);
+  }
+};
+
+window.virtuoReturnMissionPrompt = async (missionId) => {
+  const notes = prompt("Informe o motivo ou ajustes solicitados para o Pastor:", "Ajustar tonalidades ou louvores da escala.");
+  if (!notes) return;
+  const leaderName = userProfile?.displayName || currentUser?.displayName || "Líder Musical";
+  try {
+    await missionsController.returnMission(missionId, {
+      leaderName,
+      leaderNotes: notes
+    });
+    alert("Missão devolvida para revisão com as observações registradas.");
+    renderCurrentScreen();
+  } catch (err) {
+    alert("Erro ao devolver missão: " + err.message);
+  }
+};
+
+window.virtuoStartMission = async (missionId) => {
+  const initiatorName = userProfile?.displayName || currentUser?.displayName || "Líder Musical";
+  try {
+    await missionsController.startMission(missionId, initiatorName);
+    alert("⚡ Missão ao vivo no altar! Sincronização Live Sync conectada.");
+    renderCurrentScreen();
+  } catch (err) {
+    alert("Erro ao iniciar missão: " + err.message);
+  }
+};
+
+window.virtuoCompleteMission = async (missionId) => {
+  const confirmed = confirm("Deseja concluir esta ministração e consagrar o culto? Um Virtuo Moment será desbloqueado!");
+  if (!confirmed) return;
+  const finisherName = userProfile?.displayName || currentUser?.displayName || "Líder Musical";
+  try {
+    const { moment } = await missionsController.completeMission(missionId, finisherName);
+    activeMomentForCelebration = moment;
+    show("moment");
+  } catch (err) {
+    alert("Erro ao concluir missão: " + err.message);
+  }
+};
+
+window.virtuoToggleSongStudyStatus = async (missionId, songId, currentStatus) => {
+  let nextStatus = "studying";
+  if (currentStatus === "studying") nextStatus = "ready";
+  else if (currentStatus === "ready") nextStatus = "unstarted";
+  else nextStatus = "studying";
+
+  await missionsController.setSongStudyStatus(missionId, songId, nextStatus);
+  renderCurrentScreen();
+};
+
+window.virtuoSubmitCheckIn = async (event, missionId) => {
+  event.preventDefault();
+  const instrument = document.getElementById("checkin-instrument-select")?.value || "Violão";
+  const checkedIn = document.getElementById("checkin-presence-check")?.checked;
+  const isTuned = document.getElementById("checkin-tuned-check")?.checked;
+  const returnWorking = document.getElementById("checkin-return-check")?.checked;
+
+  const uid = currentUser?.uid || "current-musician";
+  const name = userProfile?.displayName || currentUser?.displayName || "Músico Convidado";
+
+  try {
+    await missionsController.submitCheckIn(missionId, {
+      uid,
+      name,
+      instrument,
+      checkedIn,
+      isTuned,
+      returnWorking
+    });
+    alert("✓ Confirmação registrada com sucesso no Virtuo Confirm!");
+    renderCurrentScreen();
+  } catch (err) {
+    alert("Erro ao confirmar check-in: " + err.message);
+  }
+};
+
+window.virtuoViewMomentScreen = (momentId) => {
+  const m = momentsService.getMomentById(momentId);
+  if (m) {
+    activeMomentForCelebration = m;
+    show("moment");
+  }
+};
+
+window.liveSyncChangeKey = (key) => {
+  liveSyncController.changeKey(key);
+  renderCurrentScreen();
+};
+
+window.liveSyncChangeBpm = (bpmVal) => {
+  liveSyncController.changeBpm(bpmVal);
+  renderCurrentScreen();
+};
+
+window.liveSyncChangeSection = (section) => {
+  liveSyncController.changeSection(section);
+  renderCurrentScreen();
+};
+
+window.liveSyncNextSong = () => {
+  liveSyncController.nextSong();
+  renderCurrentScreen();
+};
+
+window.liveSyncPrevSong = () => {
+  liveSyncController.previousSong();
+  renderCurrentScreen();
+};
+
+window.liveSyncTogglePlay = () => {
+  liveSyncController.togglePlay();
+  renderCurrentScreen();
+};
+
+window.liveSyncToggleEasyPlay = (enabled) => {
+  liveSyncController.toggleEasyPlay(enabled);
+  renderCurrentScreen();
+};
+
+window.notificationsMarkAllAsRead = () => {
+  notificationsService.markAllAsRead();
+  renderCurrentScreen();
+};
+
+window.notificationsClearAll = () => {
+  notificationsService.clearAll();
+  renderCurrentScreen();
+};
+
 // Inicialização antecipada do ensaio com as músicas disponíveis
 virtuoRehearsal.init();
 loadCommunityPosts();
@@ -1436,124 +1743,61 @@ const screens = {
     return adminSongManager.render(currentUser, userProfile, isAdmin);
   },
 
+  get missions() {
+    return renderMissionsListScreen(allMissions, currentUser, missionsActiveFilter);
+  },
+
+  get createMission() {
+    return renderCreateMissionScreen();
+  },
+
+  get commandCenter() {
+    const active = missionsController.activeMission || allMissions[0] || null;
+    return renderCommandCenterScreen(active, currentUser);
+  },
+
+  get checkin() {
+    const active = missionsController.activeMission || allMissions[0] || null;
+    return renderCheckInScreen(active, currentUser);
+  },
+
+  get notifications() {
+    return renderNotificationsScreen();
+  },
+
+  get moment() {
+    return renderMomentCelebrationScreen(activeMomentForCelebration);
+  },
+
+  get hoje() {
+    return this.home;
+  },
+
   get home() {
-    const greeting = currentUser 
-      ? `Olá, ${currentUser.displayName ? currentUser.displayName.split(' ')[0] : 'Músico'}.` 
-      : `Bom dia.`;
+    let lastSong = null;
+    try {
+      const saved = localStorage.getItem('virtuo_last_opened_song');
+      if (saved) {
+        lastSong = JSON.parse(saved);
+      }
+    } catch {}
 
-    return `
-      <section class="glass">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-          <span class="pill">VIRTUO READY</span>
-          <div class="firebase-status">
-            <span class="status-dot ${firebaseStatus.connected ? '' : 'offline'}"></span>
-            <span>${firebaseStatus.label}</span>
-          </div>
-        </div>
+    if (!lastSong) {
+      if (activeSong) {
+        lastSong = activeSong;
+      } else if (Array.isArray(liveSongs) && liveSongs.length > 0) {
+        lastSong = liveSongs[0];
+      }
+    }
 
-        <h2 class="hero">${greeting}</h2>
+    const activeMission = missionsController.activeMission || virtuoRehearsal?.getActiveRehearsal?.() || null;
 
-        <p class="subtitle">
-          Seu próximo ensaio já está preparado.
-        </p>
-
-        <div class="row">
-          <a class="button primary" href="#" onclick="show('ensaio'); return false;">
-            Abrir Ensaio
-          </a>
-          <a class="button secondary" href="#" onclick="show('band'); return false;">
-            Modo Banda
-          </a>
-        </div>
-      </section>
-
-      <div class="grid">
-        <div class="tile" onclick="show('ensaio')" style="cursor:pointer;">
-          <div class="icon">🎸</div>
-          <h3>Modo Ensaio</h3>
-          <p>Organize repertórios.</p>
-        </div>
-
-        <div class="tile" onclick="show('band')" style="cursor:pointer;">
-          <div class="icon">🥁</div>
-          <h3>Modo Banda</h3>
-          <p>Treine com BPM.</p>
-        </div>
-
-        <div class="tile" onclick="show('tuner')" style="cursor:pointer;">
-          <div class="icon">🎯</div>
-          <h3>Afinador</h3>
-          <p>Afinação precisa.</p>
-        </div>
-
-        <div class="tile" onclick="show('vocal')" style="cursor:pointer;">
-          <div class="icon">🎤</div>
-          <h3>Virtuo Vocal</h3>
-          <p>Afinador e treino.</p>
-        </div>
-
-        <div class="tile" onclick="show('performance')" style="cursor:pointer; border: 1px solid rgba(126, 231, 255, 0.25);">
-          <div class="icon">🎯</div>
-          <h3>Virtuo Performance</h3>
-          <p>Acompanhamento ao vivo.</p>
-        </div>
-
-        <div class="tile" onclick="show('coach')" style="cursor:pointer;">
-          <div class="icon">⚡</div>
-          <h3>Guitar Coach</h3>
-          <p>Troca de acordes.</p>
-        </div>
-
-        <div class="tile" onclick="window.openMinisterModeQuick()" style="cursor:pointer;">
-          <div class="icon">📖</div>
-          <h3>Modo Ministro</h3>
-          <p>Toque sem distrações.</p>
-        </div>
-
-        <div class="tile" onclick="show('library')" style="cursor:pointer;">
-          <div class="icon">🎧</div>
-          <h3>Cifras e Áudio</h3>
-          <p>Banco no Firestore.</p>
-        </div>
-
-        <div class="tile" onclick="show('diagnostics')" style="cursor:pointer;">
-          <div class="icon">📊</div>
-          <h3>Diagnóstico</h3>
-          <p>Performance e saúde.</p>
-        </div>
-
-        <div class="tile" onclick="show('comunidade')" style="cursor:pointer;">
-          <div class="icon">👥</div>
-          <h3>Comunidade</h3>
-          <p>Feed dos músicos.</p>
-        </div>
-
-        <div class="tile" onclick="show('ai')" style="cursor:pointer; border: 1px solid rgba(126, 231, 255, 0.35); background: linear-gradient(135deg, rgba(14, 165, 233, 0.08), rgba(99, 102, 241, 0.08));">
-          <div class="icon">✨</div>
-          <h3>Virtuo AI 2.0</h3>
-          <p>Inteligência musical ativa.</p>
-        </div>
-      </div>
-
-      <section class="glass">
-        <div class="song-cover">🎵</div>
-        <span class="pill">DESTAQUE DO REPERTÓRIO</span>
-        <h2>Mistério na Olaria</h2>
-        <p class="subtitle">Tom Cm • 74 BPM • Raquel Pereira</p>
-
-        <div class="row">
-          <button class="button primary" onclick="window.openSongById('demo-misterio-olaria')">
-            Ver Cifra Completa
-          </button>
-          <a class="button secondary"
-             target="_blank"
-             rel="noopener noreferrer"
-             href="https://open.spotify.com/search/Mistério%20na%20Olaria%20Raquel%20Pereira">
-            Spotify
-          </a>
-        </div>
-      </section>
-    `;
+    return renderHojeScreen({
+      currentUser,
+      activeMission,
+      lastOpenedSong: lastSong,
+      firebaseStatus
+    });
   },
 
   get ensaio() {
@@ -1562,6 +1806,10 @@ const screens = {
 
   get band() {
     return renderBandScreenComponent(virtuoMetronome.getState());
+  },
+
+  get academy() {
+    return renderAcademyScreen();
   },
 
   get tuner() {
@@ -2354,6 +2602,40 @@ const screens = {
           ✨ Abrir Assistente Virtuo AI
         </button>
       </section>
+
+      <!-- Experiência & Configurações Oficiais -->
+      <section class="glass" style="margin-top:16px;">
+        <span class="pill">EXPERIÊNCIA & SISTEMA</span>
+        <h3 style="margin-top:10px;">Configurações</h3>
+        <p class="subtitle" style="font-size:12px; margin-bottom:12px;">Personalize a experiência sensorial do Virtuo.</p>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 14px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.08); border-radius:12px;">
+          <div>
+            <strong style="font-size:13px; color:#F8FAFC; display:block;">Som de Inicialização</strong>
+            <span style="font-size:11px; color:#94A3B8;">Acorde límpido Web Audio ao abrir o Virtuo</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <button 
+              type="button" 
+              class="button secondary" 
+              style="padding:6px 10px; font-size:11px;" 
+              onclick="window.testStartupChime()"
+              title="Testar som agora"
+            >
+              🔊 Testar
+            </button>
+            <button 
+              type="button" 
+              id="btn-toggle-startup-sound"
+              class="button ${isStartupChimeEnabled() ? 'primary' : 'secondary'}" 
+              style="padding:6px 12px; font-size:11px; font-weight:600;" 
+              onclick="window.toggleStartupChime()"
+            >
+              ${isStartupChimeEnabled() ? 'Ligado' : 'Desligado'}
+            </button>
+          </div>
+        </div>
+      </section>
     `;
   }
 };
@@ -2397,37 +2679,52 @@ function escapeHtml(str) {
 
 function show(name) {
   const tStart = performance.now();
+  const targetName = (name === "hoje" || name === "inicio") ? "home" : name;
 
   // Teardown microfones e timers ao sair das telas de áudio
-  if (currentScreen === "tuner" && name !== "tuner") {
-    virtuoTuner.stop();
+  if (currentScreen === "tuner" && targetName !== "tuner") {
+    if (typeof virtuoTuner !== "undefined" && virtuoTuner.stop) virtuoTuner.stop();
   }
-  if (currentScreen === "vocal" && name !== "vocal") {
-    virtuoVocal.stop();
+  if (currentScreen === "vocal" && targetName !== "vocal") {
+    if (typeof virtuoVocal !== "undefined" && virtuoVocal.stop) virtuoVocal.stop();
   }
-  if (currentScreen === "coach" && name !== "coach") {
-    virtuoGuitarCoach.stop();
+  if (currentScreen === "coach" && targetName !== "coach") {
+    if (typeof virtuoGuitarCoach !== "undefined" && virtuoGuitarCoach.stop) virtuoGuitarCoach.stop();
   }
 
-  currentScreen = name;
+  currentScreen = targetName;
 
-  if (name === "comunidade") {
+  if (typeof screens === "undefined") {
+    window._pendingScreen = targetName;
+    return;
+  }
+
+  if (targetName === "comunidade") {
     loadCommunityDataV2();
   }
 
+  if (targetName === "missions") {
+    missionsController.getAllMissions().then(m => {
+      allMissions = m;
+      if (currentScreen === "missions") renderCurrentScreen();
+    });
+  }
+
   renderCurrentScreen();
-  updateTabbarActiveState(name);
+  updateTabbarActiveState(targetName);
 
   const duration = performance.now() - tStart;
-  perfMonitor.recordMetric(`screen_render_${name}`, duration);
+  perfMonitor.recordMetric(`screen_render_${targetName}`, duration);
 }
 window.show = show;
+window._virtuoShow = show;
 
 function updateTabbarActiveState(name) {
+  const tabName = (name === "hoje") ? "home" : name;
   document.querySelectorAll(".tabbar button").forEach(btn => {
     btn.classList.remove("active");
   });
-  const activeBtn = document.getElementById(`tab-btn-${name}`);
+  const activeBtn = document.getElementById(`tab-btn-${tabName}`);
   if (activeBtn) {
     activeBtn.classList.add("active");
   }
@@ -2436,7 +2733,7 @@ function updateTabbarActiveState(name) {
   document.querySelectorAll(".quick-toolbar button").forEach(btn => {
     btn.classList.remove("active");
   });
-  const quickBtn = document.getElementById(`quick-btn-${name}`);
+  const quickBtn = document.getElementById(`quick-btn-${tabName}`);
   if (quickBtn) {
     quickBtn.classList.add("active");
   }
@@ -2445,8 +2742,15 @@ function updateTabbarActiveState(name) {
 function renderCurrentScreen() {
   const container = document.getElementById("app");
   if (!container) return;
+  if (typeof screens === "undefined") return;
   const screenContent = screens[currentScreen];
-  container.innerHTML = typeof screenContent === "function" ? screenContent() : screenContent;
+  container.innerHTML = typeof screenContent === "function" ? screenContent() : (screenContent || "");
+  
+  // Transição rápida de tela (<= 160ms)
+  container.classList.remove("screen-transition-enter");
+  void container.offsetWidth;
+  container.classList.add("screen-transition-enter");
+
   updateTabbarActiveState(currentScreen);
 }
 window.renderCurrentScreen = renderCurrentScreen;
@@ -2639,6 +2943,23 @@ window.openSongById = (songId) => {
   if (song) {
     activeSong = song;
     SongsRepository.cacheSongOffline(song);
+    try {
+      localStorage.setItem('virtuo_last_opened_song', JSON.stringify({
+        id: song.id,
+        title: song.title,
+        artist: song.artist || 'Raquel Pereira',
+        key: song.key || 'Cm',
+        bpm: song.bpm || 74
+      }));
+    } catch {}
+
+    virtuoPulse.setState(PULSE_STATES.SONG_ACTIVE, {
+      id: song.id,
+      title: song.title,
+      key: song.key || 'C',
+      bpm: song.bpm || 74
+    });
+
     transposeOffset = 0;
     isEasyPlay = false;
     currentScreen = "songDetail";
@@ -2648,6 +2969,23 @@ window.openSongById = (songId) => {
 
 window.changeTone = (delta) => {
   transposeOffset += delta;
+  if (activeSong) {
+    const currentCalculatedKey = calculateKey(activeSong.key || "C", transposeOffset);
+    virtuoPulse.setState(PULSE_STATES.KEY_SYNCED, {
+      key: currentCalculatedKey,
+      semitones: transposeOffset
+    }, 3500);
+  }
+  renderCurrentScreen();
+};
+
+window.testStartupChime = () => {
+  playStartupChime();
+};
+
+window.toggleStartupChime = () => {
+  const current = isStartupChimeEnabled();
+  setStartupChimeEnabled(!current);
   renderCurrentScreen();
 };
 
@@ -2918,6 +3256,7 @@ onAuthStateChanged(auth, async (user) => {
       console.warn("Aviso ao carregar perfil musical 2.0:", e);
     }
     virtuoRehearsal.init(user.uid);
+    VirtuoAcademyService.attachUserRealtime(user.uid);
   } else {
     if (headerAvatar) {
       headerAvatar.textContent = "✦";
@@ -2925,6 +3264,7 @@ onAuthStateChanged(auth, async (user) => {
     userProfile = null;
     bandInvitesList = [];
     virtuoRehearsal.init(null);
+    VirtuoAcademyService.attachUserRealtime(null);
   }
   renderCurrentScreen();
 });
@@ -2947,8 +3287,18 @@ SongsRepository.subscribeToSongs((updatedSongs) => {
   liveSongs = DEMO_SONGS;
 });
 
+// Experiência de Inicialização Premium: Saudação Dinâmica e Abertura Oficial Splash (1.4s)
+startGreetingAutoUpdater('hoje-dynamic-greeting');
+
 // Initial Screen Render
-show("home");
+const initialScreen = window._pendingScreen || "home";
+window._pendingScreen = null;
+show(initialScreen);
+
+// Executa a abertura oficial do Virtuo (1.4s)
+virtuoSplash.start(() => {
+  renderCurrentScreen();
+});
 
 // Verify Firebase Connection on boot
 checkFirebaseConnection().then((res) => {

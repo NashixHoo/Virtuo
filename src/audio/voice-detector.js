@@ -73,9 +73,12 @@ export class VirtuoVoiceDetector {
     this.listeners = new Set();
   }
 
-  setFilterRange(low, high) {
+  setFilterRange(low, high, confidenceThreshold = null) {
     this.lowCutoff = Math.max(20, Math.min(low, 500));
     this.highCutoff = Math.max(this.lowCutoff + 50, Math.min(high, 5000));
+    if (confidenceThreshold !== null && typeof confidenceThreshold === "number") {
+      this.confidenceThreshold = Math.max(0.5, Math.min(0.95, confidenceThreshold));
+    }
     if (this.audioCtx && this.highpassFilter) {
       try {
         this.highpassFilter.frequency.setValueAtTime(this.lowCutoff, this.audioCtx.currentTime);
@@ -336,6 +339,7 @@ export class VirtuoVoiceDetector {
 
     // 4. Filtro de Confiança estrito para evitar falsos positivos
     if (bestPeriod === -1 || bestCorrelation < this.confidenceThreshold) {
+      const isWeak = bestCorrelation >= 0.30 && rms >= this.silenceThreshold;
       return {
         frequency: 0,
         note: null,
@@ -344,8 +348,9 @@ export class VirtuoVoiceDetector {
         confidence: parseFloat(Math.max(0, bestCorrelation).toFixed(2)),
         intensity,
         isSilence: false,
+        isWeakSignal: isWeak,
         stability: 0,
-        stabilityLabel: "Instável",
+        stabilityLabel: isWeak ? "Sinal muito fraco" : "Instável",
         timestamp: Date.now()
       };
     }

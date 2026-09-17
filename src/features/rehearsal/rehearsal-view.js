@@ -6,6 +6,7 @@
 
 import { CANONICAL_INSTRUMENTS, REHEARSAL_STATUSES } from "../../services/rehearsals.js";
 import { calculateKey } from "../../music/index.js";
+import { virtuoBand } from "../../audio/index.js";
 
 function escapeHtml(str) {
   if (!str) return "";
@@ -179,7 +180,23 @@ export function renderRehearsalScreen(controller) {
             </div>
           </div>
 
-          <!-- Barra de Ações Rápidas: Modo Ministro, Metrônomo, Reordenar, Excluir -->
+          <!-- Acompanhamento Real da Banda Ativo para esta Canção -->
+          ${(controller.activePlayingSongIndex === index && virtuoBand.isPlaying) ? `
+            <div class="rehearsal-band-live-strip" style="margin:10px 0; padding:10px 14px; background:rgba(126,231,255,0.06); border:1px solid rgba(126,231,255,0.3); border-radius:12px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+              <div style="display:flex; align-items:center; gap:10px;">
+                <span class="pill" style="background:rgba(126,231,255,0.2); color:#7EE7FF; border-color:#7EE7FF; font-size:10px; font-weight:700;">🎸 BANDA TOCANDO</span>
+                <span style="font-size:12px; color:#94a3b8;">Acorde:</span>
+                <span style="font-size:18px; font-weight:800; color:#7EE7FF; text-shadow:0 0 10px rgba(126,231,255,0.5);">${virtuoBand.getState().currentChord}</span>
+                <span style="font-size:11px; color:#64748b;">➔ Próximo: <strong style="color:#e2e8f0;">${virtuoBand.getState().nextChord || '-'}</strong></span>
+              </div>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span style="font-size:11px; color:#94a3b8;">Compasso <strong style="color:#ffffff;">#${virtuoBand.getState().currentBar + 1}</strong></span>
+                <button type="button" class="tag-btn" style="padding:2px 8px; font-size:10px; color:#f87171; border-color:#ef4444;" onclick="window.virtuoRehearsalController.stopBand()">⏹ Parar</button>
+              </div>
+            </div>
+          ` : ''}
+
+          <!-- Barra de Ações Rápidas: Modo Ministro, Metrônomo, Banda, Reordenar, Excluir -->
           <div class="rehearsal-card-actions">
             <button 
               type="button"
@@ -187,6 +204,15 @@ export function renderRehearsalScreen(controller) {
               onclick="window.virtuoRehearsalController.openInMinisterMode(${index})"
               title="Abrir no Modo Ministro com o tom e BPM deste ensaio">
               🎤 Modo Ministro
+            </button>
+
+            <button 
+              type="button"
+              class="rehearsal-action-btn ${(controller.activePlayingSongIndex === index && virtuoBand.isPlaying) ? 'active-playing-band' : ''}" 
+              style="${(controller.activePlayingSongIndex === index && virtuoBand.isPlaying) ? 'background:rgba(126,231,255,0.25); color:#7EE7FF; border-color:#7EE7FF; font-weight:700;' : ''}"
+              onclick="window.virtuoRehearsalController.playSongWithBand(${index})"
+              title="Tocar acompanhamento da banda virtual para esta música">
+              ${(controller.activePlayingSongIndex === index && virtuoBand.isPlaying) ? '⏸ Pausar Banda' : '🎸 Tocar com Banda'}
             </button>
 
             <button 

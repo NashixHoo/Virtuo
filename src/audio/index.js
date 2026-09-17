@@ -42,6 +42,29 @@ export {
 } from "./band-harmony.js";
 
 export {
+  SoundLibrary,
+  SOUND_LIBRARY_METADATA
+} from "./sound-library.js";
+
+export {
+  VirtuoClock
+} from "./virtuo-clock.js";
+
+export {
+  HarmonicEngine,
+  midiToFrequency,
+  noteToFrequency
+} from "./harmonic-engine.js";
+
+export {
+  GrooveEngine
+} from "./groove-engine.js";
+
+export {
+  ArrangementEngine
+} from "./arrangement-engine.js";
+
+export {
   CultoModeController,
   virtuoCulto
 } from "./culto-mode.js";

@@ -587,6 +587,78 @@ export function renderBandScreenComponent(state) {
           </div>
         </div>
 
+        <!-- MOTOR HARMÔNICO & PROGRESSÃO DA BANDA VIRTUAL (REAL BAND ENGINE) -->
+        <div class="band-harmony-module" style="margin-bottom:16px; padding:16px; background:linear-gradient(135deg, rgba(126,231,255,0.05) 0%, rgba(14,27,53,0.4) 100%); border:1px solid rgba(126,231,255,0.2); border-radius:18px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:12px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="pill" style="background:rgba(126,231,255,0.2); color:#7EE7FF; border-color:#7EE7FF; font-size:11px; font-weight:700;">HARMONIA EM TEMPO REAL</span>
+              <span style="font-size:11px; color:#94a3b8;">Acompanhamento dinâmico inteligente (sem loops estáticos repetitivos)</span>
+            </div>
+            <span style="font-size:10px; padding:2px 8px; border-radius:999px; background:rgba(16,185,129,0.15); color:#34d399; border:1px solid rgba(16,185,129,0.3);">
+              ✓ Timbres Acústicos Fidedignos
+            </span>
+          </div>
+
+          <!-- Display Principal do Acorde Ativo com Pulso Visual -->
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:10px; margin-bottom:14px;">
+            <div style="padding:10px 14px; background:rgba(0,0,0,0.35); border-radius:12px; border:1px solid rgba(126,231,255,0.25);">
+              <span style="font-size:10px; color:#94a3b8; display:block; text-transform:uppercase; letter-spacing:0.05em;">Acorde Atual</span>
+              <strong id="band-live-chord" style="font-size:24px; color:#7EE7FF; font-weight:800; display:block; text-shadow:0 0 12px rgba(126,231,255,0.4); margin-top:2px;">
+                ${virtuoBand.getState().currentChord}
+              </strong>
+            </div>
+
+            <div style="padding:10px 14px; background:rgba(0,0,0,0.25); border-radius:12px; border:1px solid rgba(255,255,255,0.06);">
+              <span style="font-size:10px; color:#94a3b8; display:block; text-transform:uppercase; letter-spacing:0.05em;">Próximo Acorde</span>
+              <strong id="band-next-chord" style="font-size:20px; color:#e2e8f0; font-weight:700; display:block; margin-top:4px;">
+                ${virtuoBand.getState().nextChord || virtuoBand.getState().currentChord}
+              </strong>
+            </div>
+
+            <div style="padding:10px 14px; background:rgba(0,0,0,0.25); border-radius:12px; border:1px solid rgba(255,255,255,0.06);">
+              <span style="font-size:10px; color:#94a3b8; display:block; text-transform:uppercase; letter-spacing:0.05em;">Compasso & Pulso</span>
+              <strong id="band-bar-pulse" style="font-size:18px; color:#ffffff; font-weight:700; display:block; margin-top:4px;">
+                Bar #${virtuoBand.getState().currentBar + 1}
+              </strong>
+            </div>
+
+            <div style="padding:10px 14px; background:rgba(0,0,0,0.25); border-radius:12px; border:1px solid rgba(255,255,255,0.06);">
+              <span style="font-size:10px; color:#94a3b8; display:block; text-transform:uppercase; letter-spacing:0.05em;">Baixo & Condução</span>
+              <strong style="font-size:16px; color:#38bdf8; font-weight:600; display:block; margin-top:6px;">
+                ${virtuoBand.getState().bassNote ? `Baixo em ${virtuoBand.getState().bassNote}` : 'Fundamental'}
+              </strong>
+            </div>
+          </div>
+
+          <!-- Seletor Rápido de Progressões Harmônicas -->
+          <div>
+            <span style="font-size:11px; color:#94a3b8; font-weight:600; display:block; margin-bottom:8px;">
+              Selecione uma Progressão Harmônica de Estudo:
+            </span>
+            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+              ${[
+                { label: "Pop / Worship", chords: ["G", "D", "Em", "C"] },
+                { label: "Worship Reflexivo", chords: ["Em", "C", "G", "D"] },
+                { label: "Congregacional", chords: ["G", "C", "D", "G"] },
+                { label: "Balada Louvor", chords: ["C", "G", "Am", "F"] },
+                { label: "Corinho Júbilo", chords: ["C", "F", "G", "C"] }
+              ].map(prog => {
+                const isCur = JSON.stringify(virtuoBand.getState().activeProgression) === JSON.stringify(prog.chords);
+                return `
+                  <button 
+                    type="button" 
+                    class="tag-btn ${isCur ? 'active' : ''}" 
+                    style="padding:6px 10px; font-size:11px; border-radius:8px; ${isCur ? 'background:#7EE7FF; color:#07101F; font-weight:700; border-color:#7EE7FF;' : ''}"
+                    onclick="window.setBandProgression(${JSON.stringify(prog.chords).replace(/"/g, "'")})"
+                  >
+                    <strong>${prog.label}:</strong> ${prog.chords.join(" - ")}
+                  </button>
+                `;
+              }).join("")}
+            </div>
+          </div>
+        </div>
+
         <!-- PAINEL SMART BAND & MODO CULTO -->
         <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:12px; margin-top:16px;">
           

@@ -237,6 +237,58 @@ service cloud.firestore {
       );
     }
 
+    // Missions Collection: worship ministry missions with RBAC & Live Sync
+    match /missions/{missionId} {
+      allow read: if isAuthenticated() && (
+        isAdmin() ||
+        resource.data.pastorId == request.auth.uid ||
+        resource.data.leaderId == request.auth.uid ||
+        (resource.data.members is list) // members of the ministry can view mission
+      );
+
+      allow create: if isAuthenticated() && (
+        isAdmin() ||
+        request.resource.data.pastorId == request.auth.uid ||
+        request.resource.data.leaderId == request.auth.uid
+      );
+
+      allow update: if isAuthenticated() && (
+        isAdmin() ||
+        resource.data.pastorId == request.auth.uid ||
+        resource.data.leaderId == request.auth.uid ||
+        // Músico pode atualizar somente seu próprio check-in ou progresso de estudo
+        request.resource.data.diff(resource.data).affectedKeys().hasAny(['members', 'progress', 'updatedAt', 'currentSongId', 'currentKey', 'currentBpm'])
+      );
+
+      allow delete: if isAuthenticated() && (
+        isAdmin() ||
+        resource.data.pastorId == request.auth.uid ||
+        resource.data.leaderId == request.auth.uid
+      );
+    }
+
+    // Virtuo Academy Collections: courses, modules, lessons and user progress
+    match /academy_courses/{courseId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /academy_modules/{moduleId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /academy_lessons/{lessonId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /user_academy_progress/{userId} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow create, update: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow delete: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+    }
+
     // Default deny all other collections
     match /{document=**} {
       allow read, write: if false;

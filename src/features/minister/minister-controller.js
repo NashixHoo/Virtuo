@@ -115,8 +115,13 @@ export class MinisterController {
     document.body.appendChild(overlay);
     this._overlayEl = overlay;
 
-    // Previne scroll no body principal durante a apresentação
+    // Previne scroll no body principal durante a apresentação e ativa a Virtuo Aura Culto
     document.body.classList.add("minister-active-body");
+    document.body.classList.add("virtuo-aura-culto");
+
+    if (typeof window !== "undefined" && window.virtuoPulse) {
+      window.virtuoPulse.setState("live", { title: song.title || "Modo Palco" });
+    }
 
     // Conecta o motor de auto-scroll
     this._scrollTargetEl = document.getElementById("minister-scroll-canvas");
@@ -172,6 +177,14 @@ export class MinisterController {
 
     this._cleanupDom();
     document.body.classList.remove("minister-active-body");
+    document.body.classList.remove("virtuo-aura-culto");
+
+    if (typeof window !== "undefined" && window.virtuoPulse) {
+      const current = window.virtuoPulse.getState();
+      if (current.state === "live") {
+        window.virtuoPulse.clear();
+      }
+    }
 
     this.isOpen = false;
   }

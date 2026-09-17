@@ -1,18 +1,26 @@
 // =============================================================
-// VIRTUO BAND ENGINE 2.0
+// VIRTUO BAND ENGINE 2.0 (REAL BAND ENGINE)
 // src/audio/band-engine.js
 // Motor de Acompanhamento e Banda Virtual Inteligente
 // Lookahead Web Audio Scheduler com Bateria, Baixo, Teclado e Guitarra
 // Suporte a 4/4, 6/8, Easy Band, Smart Band, Modo Culto e Transições Quantizadas
-// 100% Client-Side Web Audio API Synthesis - Zero dependência externa
+// Timbres realistas e progressões harmônicas dinâmicas
+// Registro de Licença e Procedência:
+// { source: "Virtuo Internal Sound Engine (Web Audio Synthesis & Modeling)", license: "MIT", attribution: "Virtuo Musical Architecture", version: "2.1.0" }
 // =============================================================
 
 import { virtuoMetronome } from "./metronome-controller.js";
 import { BAND_STYLE_PATTERNS, BAND_SECTIONS } from "./band-patterns.js";
-import { BandSynths } from "./band-synths.js";
 import { BandHarmony } from "./band-harmony.js";
 import { VirtuoMusicIntelligence } from "../music/music-intelligence.js";
 import { virtuoCulto } from "./culto-mode.js";
+
+// Sub-motores canônicos da arquitetura Virtuo Real Band Engine
+import { SoundLibrary, SOUND_LIBRARY_METADATA } from "./sound-library.js";
+import { VirtuoClock } from "./virtuo-clock.js";
+import { HarmonicEngine } from "./harmonic-engine.js";
+import { GrooveEngine } from "./groove-engine.js";
+import { ArrangementEngine } from "./arrangement-engine.js";
 
 // =============================================================
 // PRESETS COMPATÍVEIS COM V1 E V2
@@ -191,58 +199,56 @@ Object.entries(PRESET_ALIASES).forEach(([alias, canonical]) => {
 export class VirtuoBandEngine {
   constructor() {
     this.audioCtx = null;
-    this.synths = null;
     this.channels = {};
     this.masterGain = null;
     this.masterCompressor = null;
+
+    // Sub-motores modulares integrados
+    this.harmonicEngine = new HarmonicEngine();
+    this.grooveEngine = new GrooveEngine();
+    this.clock = new VirtuoClock(null);
+    this.soundLibrary = null;
+    this.arrangementEngine = null;
 
     // Estado de reprodução
     this.isPlaying = false;
     this.isPaused = false;
     this.currentStep = 0;
     this.currentBar = 0;
-    this.totalStepsPerBar = 8; // 8 em 4/4, 6 em 6/8
+    this.totalStepsPerBar = 8;
     this.meter = "4/4";
 
-    // Scheduler Web Audio Lookahead
-    this.nextStepTime = 0.0;
-    this.scheduleAheadTime = 0.1; // 100ms
-    this.lookaheadInterval = 25; // 25ms timer tick
-    this.schedulerTimerId = null;
-
-    // Estrutura e Seções
-    this.currentPreset = "Worship";
-    this.currentSection = "verse"; // intro, verse, pre_chorus, chorus, bridge, spontaneous, outro
-    this.nextQueuedSection = null; // Para transição quantizada ao fim do compasso
-    this.isTransitioning = false;
-    this.currentChord = "G";
+    // Configuração musical
     this.currentKey = "G";
+    this.currentChord = "G";
+    this.currentPreset = "Worship";
+    this.currentSection = "verse";
+    this.nextQueuedSection = null;
+    this.intensity = 2; // 0 a 5
+    this.masterVolume = 0.85;
 
-    // Intensidade (0 a 5)
-    // 0: Silencioso, 1: Muito suave, 2: Suave, 3: Médio, 4: Forte, 5: Muito forte
-    this.intensity = 2;
-
-    // Controles de Ensaio e Loop
+    // Modos de ensaio e loop
     this.isLooping = true;
-    this.loopScope = "section"; // 'section' ou 'song'
-    this.loopRepeatTarget = 0; // 0 = Infinito (∞), 1 = 1x, 2 = 2x, 4 = 4x
+    this.loopScope = "section"; // "bar" | "section" | "song"
+    this.loopRepeatTarget = 0;   // 0 = infinito
     this.loopCurrentIteration = 0;
 
-    // Count-in (Contagem prévia)
+    // Contagem regressiva (Count-In)
     this.hasCountIn = false;
     this.isCountingIn = false;
-    this.countInBeat = 0;
+    this.countInBeatsRemaining = 0;
 
-    // Modos Especiais
+    // Modo Easy Band
     this.isEasyBand = false;
+
+    // Recomendações Smart Band
     this.smartRecommendation = null;
 
-    // Mixer de Trilhas (4 Canais: Bateria, Baixo, Teclado, Guitarra + Metrônomo)
+    // Canais e Mixer
     this.tracks = {
       drums: {
         id: "drums",
         name: "Bateria",
-        icon: "🥁",
         volume: 0.8,
         muted: false,
         solo: false,
@@ -251,7 +257,6 @@ export class VirtuoBandEngine {
       bass: {
         id: "bass",
         name: "Baixo",
-        icon: "🎸",
         volume: 0.75,
         muted: false,
         solo: false,
@@ -259,55 +264,70 @@ export class VirtuoBandEngine {
       },
       keyboard: {
         id: "keyboard",
-        name: "Teclado",
-        icon: "🎹",
+        name: "Teclado / Pad",
         volume: 0.7,
         muted: false,
         solo: false,
         active: true,
-        mode: "pad" // 'pad', 'piano', 'keys'
+        mode: "pad" // "pad" | "piano" | "keys"
       },
       guitar: {
         id: "guitar",
-        name: "Guitarra",
-        icon: "🎸",
-        volume: 0.65,
+        name: "Violão / Guitarra",
+        volume: 0.7,
         muted: false,
         solo: false,
         active: true,
-        pattern: "arpeggio" // 'strum', 'arpeggio', 'ambient', 'worship'
+        pattern: "arpeggio" // "strum" | "arpeggio" | "ambient"
       }
     };
 
-    this.masterVolume = 0.85;
+    // Subscrição de ouvintes reativos
     this.listeners = new Set();
 
-    // Sincroniza com o Metrônomo Mestre
-    virtuoMetronome.onStateChange((metroState) => {
-      this._notify();
-    });
+    // Vincula o relógio mestre global
+    this._bindMasterClock();
+
+    // Sincroniza metrônomo do Virtuo
+    if (typeof virtuoMetronome !== "undefined" && virtuoMetronome.onStateChange) {
+      virtuoMetronome.onStateChange(metroState => {
+        if (metroState && metroState.bpm) {
+          this.clock.setBpm(metroState.bpm);
+        }
+      });
+    }
   }
 
   // -----------------------------------------------------------
-  // INICIALIZAÇÃO DO MOTOR DE ÁUDIO WEB
+  // CONFIGURAÇÃO DO GRAFO DE ÁUDIO WEB AUDIO API
   // -----------------------------------------------------------
   _initAudio() {
-    if (!this.audioCtx && typeof window !== "undefined") {
-      const AudioCtxClass = window.AudioContext || window.webkitAudioContext;
-      if (AudioCtxClass) {
-        this.audioCtx = new AudioCtxClass();
-        this._setupAudioGraph();
+    if (this.audioCtx) {
+      if (this.audioCtx.state === "suspended") {
+        this.audioCtx.resume();
       }
+      return;
     }
-    if (this.audioCtx && this.audioCtx.state === "suspended") {
-      this.audioCtx.resume();
+
+    const AudioContextClass = typeof window !== "undefined"
+      ? (window.AudioContext || window.webkitAudioContext)
+      : null;
+
+    if (AudioContextClass) {
+      try {
+        this.audioCtx = new AudioContextClass();
+        this._setupAudioGraph();
+        this.clock.setAudioContext(this.audioCtx);
+      } catch (err) {
+        console.warn("[BandEngine] Web Audio não pôde ser iniciado:", err);
+      }
     }
   }
 
   _setupAudioGraph() {
     if (!this.audioCtx) return;
 
-    // 1. Compressor e Limitador Master para prevenir clipping
+    // 1. Compressor e Limitador Master para prevenir clipping e aspereza
     this.masterCompressor = this.audioCtx.createDynamicsCompressor();
     this.masterCompressor.threshold.setValueAtTime(-3, this.audioCtx.currentTime);
     this.masterCompressor.knee.setValueAtTime(6, this.audioCtx.currentTime);
@@ -335,8 +355,57 @@ export class VirtuoBandEngine {
       channelNode.connect(this.masterCompressor);
     });
 
-    // 4. Instancia sintetizadores com os canais roteados
-    this.synths = new BandSynths(this.audioCtx, this.channels);
+    // 4. Instancia a SoundLibrary realista e o ArrangementEngine
+    this.soundLibrary = new SoundLibrary(this.audioCtx, this.channels);
+    this.synths = this.soundLibrary; // Retrocompatibilidade completa com chamadas diretas a synths
+    this.arrangementEngine = new ArrangementEngine(this.soundLibrary, this.harmonicEngine, this.grooveEngine);
+  }
+
+  // -----------------------------------------------------------
+  // VINCULAÇÃO DO RELÓGIO MESTRE UNIFICADO
+  // -----------------------------------------------------------
+  _bindMasterClock() {
+    this.clock.onTick = (stepInfo) => {
+      this.currentStep = stepInfo.step;
+      this.currentBar = stepInfo.bar;
+      this.totalStepsPerBar = stepInfo.totalStepsPerBar;
+
+      // Executa orquestração e síntese pelo ArrangementEngine
+      if (this.arrangementEngine) {
+        this.arrangementEngine.scheduleStep(stepInfo, this.tracks);
+      }
+
+      // Notifica interface se estiver no primeiro step do tempo
+      if (stepInfo.step % 2 === 0) {
+        this._notify();
+      }
+    };
+
+    this.clock.onBarChange = (newBar) => {
+      // Avança a progressão harmônica se houver mais de um acorde carregado
+      if (this.harmonicEngine.activeProgression.length > 1) {
+        const nextInfo = this.harmonicEngine.advanceBar();
+        this.currentChord = nextInfo.symbol;
+      }
+
+      // Aplica transição de seção quantizada no início do novo compasso
+      if (this.nextQueuedSection) {
+        this.grooveEngine.clearQueuedTransition();
+        this.currentSection = this.grooveEngine.currentSection;
+        this.nextQueuedSection = null;
+      }
+
+      // Contabiliza iterações de loop
+      if (this.isLooping && this.loopRepeatTarget > 0) {
+        this.loopCurrentIteration++;
+        if (this.loopCurrentIteration >= this.loopRepeatTarget) {
+          this.stop();
+          return;
+        }
+      }
+
+      this._notify();
+    };
   }
 
   // -----------------------------------------------------------
@@ -350,6 +419,10 @@ export class VirtuoBandEngine {
     return () => this.listeners.delete(fn);
   }
 
+  subscribe(fn) {
+    return this.onStateChange(fn);
+  }
+
   _notify() {
     const state = this.getState();
     this.listeners.forEach(fn => {
@@ -359,6 +432,8 @@ export class VirtuoBandEngine {
 
   getState() {
     const metroBpm = virtuoMetronome.getState().bpm || 74;
+    const harmonicInfo = this.harmonicEngine.getCurrentChordInfo();
+
     return {
       isPlaying: this.isPlaying,
       isPaused: this.isPaused,
@@ -371,6 +446,11 @@ export class VirtuoBandEngine {
       masterVolume: this.masterVolume,
       currentKey: this.currentKey,
       currentChord: this.currentChord,
+      nextChord: harmonicInfo.nextChordSymbol,
+      activeProgression: [...this.harmonicEngine.activeProgression],
+      progressionIndex: this.harmonicEngine.progressionIndex,
+      chordNotes: harmonicInfo.notes,
+      bassNote: harmonicInfo.bassNote,
       currentPreset: this.currentPreset,
       currentSection: this.currentSection,
       nextQueuedSection: this.nextQueuedSection,
@@ -382,6 +462,7 @@ export class VirtuoBandEngine {
       hasCountIn: this.hasCountIn,
       isCountingIn: this.isCountingIn,
       isEasyBand: this.isEasyBand,
+      soundLibraryMetadata: SOUND_LIBRARY_METADATA,
       presetsList: Object.keys(BAND_PRESETS),
       sectionsList: BAND_SECTIONS,
       smartRecommendation: this.smartRecommendation
@@ -393,7 +474,7 @@ export class VirtuoBandEngine {
   }
 
   // -----------------------------------------------------------
-  // CONTROLES DE REPRODUÇÃO & SCHEDULER
+  // CONTROLES DE REPRODUÇÃO (UNIFICADOS NO RELÓGIO VIRTUO)
   // -----------------------------------------------------------
   togglePlay() {
     if (this.isPlaying) {
@@ -410,26 +491,22 @@ export class VirtuoBandEngine {
     this.isPlaying = true;
     this.isPaused = false;
 
-    if (this.hasCountIn && !this.isCountingIn) {
-      this._startCountIn();
-      return;
-    }
+    // Sincroniza BPM do metrônomo para o relógio
+    const metroBpm = virtuoMetronome.getState().bpm || 74;
+    this.clock.setBpm(metroBpm);
+    this.clock.setMeter(this.meter);
 
     this.currentStep = 0;
     this.currentBar = 0;
-    this.nextStepTime = this.audioCtx ? this.audioCtx.currentTime + 0.05 : 0;
     this._notify();
 
-    this._runScheduler();
+    this.clock.start();
   }
 
   pause() {
     this.isPlaying = false;
     this.isPaused = true;
-    if (this.schedulerTimerId) {
-      clearTimeout(this.schedulerTimerId);
-      this.schedulerTimerId = null;
-    }
+    this.clock.pause();
     this._notify();
   }
 
@@ -442,226 +519,66 @@ export class VirtuoBandEngine {
     this.loopCurrentIteration = 0;
     this.nextQueuedSection = null;
 
-    if (this.schedulerTimerId) {
-      clearTimeout(this.schedulerTimerId);
-      this.schedulerTimerId = null;
+    this.clock.stop();
+    this.harmonicEngine.progressionIndex = 0;
+    if (this.harmonicEngine.activeProgression.length > 0) {
+      this.currentChord = this.harmonicEngine.activeProgression[0];
     }
     this._notify();
   }
 
-  _startCountIn() {
-    this.isCountingIn = true;
-    this.countInBeat = 0;
+  // -----------------------------------------------------------
+  // CARREGAMENTO DE PROGRESSÕES E MÚSICAS PARA O MODO ENSAIO
+  // -----------------------------------------------------------
+
+  /**
+   * Carrega uma progressão harmônica explícita para acompanhamento dinâmico
+   */
+  loadProgression(progression, key = "G", bpm = 74) {
+    this.setKey(key);
+    this.harmonicEngine.setProgression(progression);
+    this.currentChord = this.harmonicEngine.getCurrentChordInfo().symbol;
+    this.setBpm(bpm);
     this._notify();
+    return this.harmonicEngine.activeProgression;
+  }
 
-    const bpm = virtuoMetronome.getState().bpm || 74;
-    const beatIntervalMs = (60000 / bpm);
+  /**
+   * Carrega uma canção completa para ensaio com a banda virtual
+   */
+  loadSong(song, keyOffset = 0, isEasy = false, rehearsalBpm = null) {
+    if (!song) return null;
 
-    const tickCountIn = () => {
-      if (!this.isPlaying || !this.isCountingIn) return;
+    const baseKey = song.originalKey || song.key || "G";
+    this.setKey(baseKey);
 
-      if (this.synths && this.audioCtx) {
-        this.synths.triggerMetronomeClick(this.audioCtx.currentTime, this.countInBeat === 0, 1.0);
-      }
+    const progression = this.harmonicEngine.loadSongProgression(song, keyOffset, isEasy);
+    this.currentChord = this.harmonicEngine.getCurrentChordInfo().symbol;
 
-      this.countInBeat++;
-      this._notify();
+    const targetBpm = rehearsalBpm || song.bpm || 74;
+    this.setBpm(targetBpm);
 
-      if (this.countInBeat >= (this.meter === "6/8" ? 6 : 4)) {
-        this.isCountingIn = false;
-        this.currentStep = 0;
-        this.currentBar = 0;
-        this.nextStepTime = this.audioCtx ? this.audioCtx.currentTime + 0.02 : 0;
-        this._notify();
-        this._runScheduler();
-      } else {
-        this.schedulerTimerId = setTimeout(tickCountIn, beatIntervalMs);
-      }
+    // Ajusta estilo conforme recomendação ou tipo de música
+    const rec = this.getSmartBandRecommendation(song);
+    if (rec && rec.recommendedStyle) {
+      this.setPreset(rec.recommendedStyle, false);
+    }
+
+    if (isEasy) {
+      this.setEasyBand(true);
+    }
+
+    this._notify();
+    return {
+      progression,
+      key: this.currentKey,
+      bpm: targetBpm,
+      currentChord: this.currentChord
     };
-
-    tickCountIn();
   }
 
-  // -----------------------------------------------------------
-  // WEB AUDIO LOOKAHEAD SCHEDULER
-  // -----------------------------------------------------------
-  _runScheduler() {
-    if (!this.isPlaying || this.isPaused || this.isCountingIn) return;
-
-    if (!this.audioCtx) {
-      // Fallback para ambientes sem Web Audio API (ex: testes de Node.js)
-      this._stepFallback();
-      return;
-    }
-
-    const currentTime = this.audioCtx.currentTime;
-
-    while (this.nextStepTime < currentTime + this.scheduleAheadTime) {
-      this._scheduleStep(this.currentStep, this.nextStepTime);
-      this._advanceStep();
-    }
-
-    this.schedulerTimerId = setTimeout(() => {
-      this._runScheduler();
-    }, this.lookaheadInterval);
-  }
-
-  _stepFallback() {
-    const bpm = virtuoMetronome.getState().bpm || 74;
-    const stepDurationMs = (60000 / bpm) / 2;
-    this._scheduleStep(this.currentStep, 0);
-    this._advanceStep();
-
-    this.schedulerTimerId = setTimeout(() => {
-      if (this.isPlaying) this._stepFallback();
-    }, stepDurationMs);
-  }
-
-  _advanceStep() {
-    const bpm = virtuoMetronome.getState().bpm || 74;
-    // Em 4/4, 8 colcheias por compasso (step = 1 colcheia)
-    // Em 6/8, 6 colcheias por compasso
-    const stepDuration = this.meter === "6/8" 
-      ? (60.0 / bpm) / 3 // 3 colcheias por tempo pontuado
-      : (60.0 / bpm) / 2; // 2 colcheias por semínima
-
-    this.nextStepTime += stepDuration;
-    this.currentStep++;
-
-    if (this.currentStep >= this.totalStepsPerBar) {
-      this.currentStep = 0;
-      this.currentBar++;
-
-      // Aplica transição de seção quantizada no final do compasso
-      if (this.nextQueuedSection) {
-        this.currentSection = this.nextQueuedSection;
-        this.nextQueuedSection = null;
-        this.isTransitioning = false;
-      }
-
-      // Checa condições de Loop e repetição
-      if (!this.isLooping) {
-        this.stop();
-        return;
-      }
-
-      if (this.loopRepeatTarget > 0) {
-        this.loopCurrentIteration++;
-        if (this.loopCurrentIteration >= this.loopRepeatTarget) {
-          this.stop();
-          return;
-        }
-      }
-    }
-
-    this._notify();
-  }
-
-  // -----------------------------------------------------------
-  // AGENDAMENTO MUSICAL DO STEP
-  // -----------------------------------------------------------
-  _scheduleStep(step, time) {
-    if (!this.synths) return;
-
-    // Verifica lógica de Solo: se houver alguma trilha com solo, apenas as solo tocam!
-    const hasAnySolo = Object.values(this.tracks).some(t => t.solo);
-
-    const canPlayTrack = (trackId) => {
-      const trk = this.tracks[trackId];
-      if (!trk || !trk.active || trk.muted || trk.volume <= 0) return false;
-      if (hasAnySolo) return trk.solo;
-      return true;
-    };
-
-    // Fator de escala de intensidade (0: 0x, 1: 0.5x, 2: 0.75x, 3: 1.0x, 4: 1.2x, 5: 1.4x)
-    const intensityMultipliers = [0.0, 0.5, 0.75, 1.0, 1.2, 1.4];
-    const intensityScale = intensityMultipliers[this.intensity] !== undefined ? intensityMultipliers[this.intensity] : 1.0;
-
-    // Obtém o padrão rítmico do estilo e seção
-    const styleData = BAND_STYLE_PATTERNS[this.currentPreset] || BAND_STYLE_PATTERNS.Worship;
-    let sectionPattern = (styleData.sections && styleData.sections[this.currentSection]) || styleData.sections?.verse || {};
-
-    // Easy Band simplifica padrões para iniciantes
-    if (this.isEasyBand) {
-      sectionPattern = BAND_STYLE_PATTERNS["4/4 simples"]?.sections?.verse || sectionPattern;
-    }
-
-    // Se estiver no último compasso antes da transição, injeta fill de bateria nos tempos finais!
-    const isTransitionBar = this.nextQueuedSection && step >= (this.totalStepsPerBar - 4);
-    const fillPattern = styleData.sections?.fill || {};
-
-    // 1. BATERIA
-    if (canPlayTrack("drums") && this.intensity > 0) {
-      const drumVol = this.tracks.drums.volume * intensityScale;
-
-      const kickSteps = isTransitionBar && fillPattern.kick ? fillPattern.kick : (sectionPattern.kick || []);
-      const snareSteps = isTransitionBar && fillPattern.snare ? fillPattern.snare : (sectionPattern.snare || []);
-      const hihatSteps = isTransitionBar && fillPattern.hihat ? fillPattern.hihat : (sectionPattern.hihat || []);
-      const crashSteps = sectionPattern.crash || [];
-      const tomSteps = isTransitionBar && fillPattern.toms ? fillPattern.toms : [];
-
-      if (kickSteps.includes(step)) {
-        this.synths.triggerKick(time, drumVol);
-      }
-      if (snareSteps.includes(step)) {
-        this.synths.triggerSnare(time, drumVol);
-      }
-      if (hihatSteps.includes(step)) {
-        const isOpen = this.intensity >= 4 && (step % 2 !== 0);
-        this.synths.triggerHiHat(time, drumVol * (step % 2 === 0 ? 0.8 : 0.5), isOpen);
-      }
-      if (crashSteps.includes(step) && this.intensity >= 3) {
-        this.synths.triggerCrash(time, drumVol);
-      }
-      if (tomSteps.includes(step)) {
-        this.synths.triggerTom(time, step % 2 === 0 ? "mid" : "low", drumVol);
-      }
-    }
-
-    // 2. BAIXO INTELIGENTE
-    if (canPlayTrack("bass") && this.intensity > 0) {
-      const bassVol = this.tracks.bass.volume * intensityScale;
-      const bassSteps = sectionPattern.bass || [0, 4];
-
-      if (bassSteps.includes(step)) {
-        const bassFreq = BandHarmony.getBassNoteForStep(
-          this.currentChord,
-          step,
-          this.totalStepsPerBar,
-          this.currentPreset,
-          this.intensity
-        );
-        const duration = this.intensity <= 2 ? 0.6 : 0.35;
-        this.synths.triggerBass(time, bassFreq, duration, bassVol, 250 + (this.intensity * 45));
-      }
-    }
-
-    // 3. TECLADO / PAD
-    if (canPlayTrack("keyboard") && this.intensity > 0) {
-      const kbVol = this.tracks.keyboard.volume * intensityScale;
-      const kbSteps = sectionPattern.keyboard || [0];
-
-      if (kbSteps.includes(step)) {
-        const chordFreqs = BandHarmony.getKeyboardFrequencies(this.currentChord, 4);
-        const mode = this.tracks.keyboard.mode || "pad";
-        const duration = mode === "piano" ? 0.8 : 1.8;
-        this.synths.triggerKeyboardChord(time, chordFreqs, mode, duration, kbVol);
-      }
-    }
-
-    // 4. GUITARRA
-    if (canPlayTrack("guitar") && this.intensity > 0) {
-      const gtVol = this.tracks.guitar.volume * intensityScale;
-      const gtSteps = sectionPattern.guitar || [0, 2, 4, 6];
-
-      if (gtSteps.includes(step)) {
-        const gtFreqs = BandHarmony.getGuitarFrequencies(this.currentChord, 3);
-        const noteIdx = step % gtFreqs.length;
-        const noteFreq = gtFreqs[noteIdx] || gtFreqs[0];
-        const pattern = this.tracks.guitar.pattern || "arpeggio";
-        this.synths.triggerGuitarNote(time, noteFreq, pattern, 0.45, gtVol);
-      }
-    }
+  getHarmonicState() {
+    return this.harmonicEngine.getCurrentChordInfo();
   }
 
   // -----------------------------------------------------------
@@ -672,13 +589,17 @@ export class VirtuoBandEngine {
     const resolvedKey = PRESET_ALIASES[presetName.toLowerCase()] || presetName;
     if (BAND_PRESETS[resolvedKey]) {
       this.currentPreset = BAND_PRESETS[resolvedKey].id;
+      this.grooveEngine.setPreset(this.currentPreset);
+
       const stylePattern = BAND_STYLE_PATTERNS[this.currentPreset];
       if (stylePattern) {
         this.meter = stylePattern.meter || "4/4";
         this.totalStepsPerBar = stylePattern.stepsPerBar || 8;
+        this.clock.setMeter(this.meter);
       }
       if (applyDefaultBpm && BAND_PRESETS[resolvedKey].defaultBpm) {
         virtuoMetronome.setBpm(BAND_PRESETS[resolvedKey].defaultBpm);
+        this.clock.setBpm(BAND_PRESETS[resolvedKey].defaultBpm);
       }
       this._notify();
     }
@@ -686,14 +607,16 @@ export class VirtuoBandEngine {
 
   setKey(key) {
     if (!key) return;
-    this.currentKey = key;
-    this.currentChord = key; // Sincroniza acorde inicial com o tom
+    this.currentKey = String(key).trim();
+    this.harmonicEngine.setKey(this.currentKey);
+    this.currentChord = this.harmonicEngine.currentChord;
     this._notify();
   }
 
   setChord(chord) {
     if (!chord) return;
-    this.currentChord = chord;
+    this.currentChord = String(chord).trim();
+    this.harmonicEngine.setChord(this.currentChord);
     this._notify();
   }
 
@@ -702,13 +625,14 @@ export class VirtuoBandEngine {
     if (!valid) return;
 
     if (this.isPlaying && quantizeToBar) {
-      // Agenda transição quantizada para o próximo compasso
       this.nextQueuedSection = sectionId;
-      this.isTransitioning = true;
+      this.grooveEngine.queueSectionTransition(sectionId);
       this._notify();
     } else {
       this.currentSection = sectionId;
+      this.grooveEngine.setSection(sectionId);
       this.intensity = valid.defaultIntensity;
+      this.grooveEngine.setIntensity(this.intensity);
       this._notify();
     }
   }
@@ -716,6 +640,7 @@ export class VirtuoBandEngine {
   setIntensity(level) {
     const parsed = parseInt(level, 10);
     this.intensity = Math.max(0, Math.min(5, isNaN(parsed) ? 3 : parsed));
+    this.grooveEngine.setIntensity(this.intensity);
     this._notify();
   }
 
@@ -738,7 +663,6 @@ export class VirtuoBandEngine {
   }
 
   setLoopRepeatTarget(times) {
-    // 0 = Infinito (∞), 1 = 1x, 2 = 2x, 4 = 4x
     this.loopRepeatTarget = parseInt(times, 10) || 0;
     this.loopCurrentIteration = 0;
     this._notify();
@@ -761,6 +685,7 @@ export class VirtuoBandEngine {
   setBpm(bpm) {
     const clamped = Math.max(40, Math.min(240, parseInt(bpm, 10) || 74));
     virtuoMetronome.setBpm(clamped);
+    this.clock.setBpm(clamped);
     this._notify();
   }
 
@@ -837,18 +762,21 @@ export class VirtuoBandEngine {
   // -----------------------------------------------------------
   toggleEasyBand() {
     this.isEasyBand = !this.isEasyBand;
-    if (this.isEasyBand) {
-      // Ajusta parâmetros para simplicidade imediata
-      this.tracks.keyboard.mode = "pad";
-      this.tracks.guitar.pattern = "strum";
-      this.intensity = 2;
-    }
-    this._notify();
+    this.setEasyBand(this.isEasyBand);
     return this.isEasyBand;
   }
 
   setEasyBand(enable) {
     this.isEasyBand = !!enable;
+    this.grooveEngine.setEasyBand(this.isEasyBand);
+    this.harmonicEngine.setEasyPlay(this.isEasyBand);
+
+    if (this.isEasyBand) {
+      this.tracks.keyboard.mode = "pad";
+      this.tracks.guitar.pattern = "strum";
+      this.intensity = 2;
+      this.grooveEngine.setIntensity(2);
+    }
     this._notify();
   }
 
@@ -874,9 +802,9 @@ export class VirtuoBandEngine {
       key,
       tracks: {
         drums: `${recommendedStyle} ${bpm > 100 ? 'Energético' : 'Suave'}`,
-        bass: "Fundamental + Quinta",
-        keyboard: "Pad Celestial",
-        guitar: "Arpejo Sincronizado"
+        bass: "Fundamental + Quinta + Condução Harmônica",
+        keyboard: "Pad Celestial / Piano Acústico",
+        guitar: "Arpejo & Palhetada Sincronizada"
       },
       dynamicMap: {
         intro: 1,
@@ -886,7 +814,7 @@ export class VirtuoBandEngine {
         bridge: 3,
         outro: 5
       },
-      summary: `Virtuo recomenda: Bateria ${recommendedStyle}, Baixo Fundamental/Quinta, Teclado Pad e Guitarra Arpejo com progressão dinâmica do Verso (2) ao Refrão (4).`
+      summary: `Virtuo recomenda: Bateria ${recommendedStyle}, Baixo com condução harmônica, Teclado com voicings naturais e Violão em dedilhado.`
     };
 
     this.smartRecommendation = rec;

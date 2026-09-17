@@ -314,6 +314,99 @@
         "updatedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["name", "ownerId"]
+    },
+    "Mission": {
+      "title": "Mission",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "churchName": { "type": "string" },
+        "eventType": { "type": "string", "enum": ["culto", "festividade", "congresso", "vigília", "ensaio"] },
+        "eventDate": { "type": "string", "format": "date-time" },
+        "leaderId": { "type": "string" },
+        "pastorId": { "type": "string" },
+        "status": { "type": "string", "enum": ["draft", "pending", "approved", "active", "completed", "archived"] },
+        "currentSongId": { "type": "string" },
+        "currentKey": { "type": "string" },
+        "currentBpm": { "type": "number" },
+        "members": {
+          "type": "array",
+          "items": { "type": "object" }
+        },
+        "songs": {
+          "type": "array",
+          "items": { "type": "object" }
+        },
+        "approvals": { "type": "object" },
+        "progress": { "type": "object" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "churchName", "eventType", "leaderId", "pastorId", "status"]
+    },
+    "AcademyCourse": {
+      "title": "AcademyCourse",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "slug": { "type": "string" },
+        "instrumentId": { "type": "string" },
+        "instrumentName": { "type": "string" },
+        "family": { "type": "string" },
+        "badge": { "type": "string" },
+        "description": { "type": "string" },
+        "levelMin": { "type": "number" },
+        "levelMax": { "type": "number" },
+        "estimatedHours": { "type": "number" },
+        "isPublished": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "slug", "instrumentId", "levelMin", "levelMax"]
+    },
+    "AcademyModule": {
+      "title": "AcademyModule",
+      "type": "object",
+      "properties": {
+        "courseId": { "type": "string" },
+        "level": { "type": "number" },
+        "order": { "type": "number" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "icon": { "type": "string" }
+      },
+      "required": ["courseId", "level", "title"]
+    },
+    "AcademyLesson": {
+      "title": "AcademyLesson",
+      "type": "object",
+      "properties": {
+        "moduleId": { "type": "string" },
+        "level": { "type": "number" },
+        "order": { "type": "number" },
+        "title": { "type": "string" },
+        "objective": { "type": "string" },
+        "theoryText": { "type": "string" },
+        "targetBpm": { "type": "number" },
+        "timeSignature": { "type": "string" },
+        "exercise": { "type": "object" },
+        "checkpoints": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["title", "level", "objective"]
+    },
+    "UserAcademyProgress": {
+      "title": "UserAcademyProgress",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "currentLevel": { "type": "number" },
+        "currentInstrument": { "type": "string" },
+        "completedLessons": { "type": "array", "items": { "type": "string" } },
+        "lessonScores": { "type": "object" },
+        "practiceTimeMinutes": { "type": "number" },
+        "lastPracticedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "currentLevel", "completedLessons"]
     }
   },
   "firestore": {
@@ -388,6 +481,26 @@
     "/rehearsals/{rehearsalId}": {
       "schema": "Rehearsal",
       "description": "Band rehearsal plans and setlists"
+    },
+    "/missions/{missionId}": {
+      "schema": "Mission",
+      "description": "Worship ministry missions, service coordination and live sync"
+    },
+    "/academy_courses/{courseId}": {
+      "schema": "AcademyCourse",
+      "description": "Virtuo Academy canonical courses and curricula"
+    },
+    "/academy_modules/{moduleId}": {
+      "schema": "AcademyModule",
+      "description": "Academy modules organizing lessons by pedagogical levels"
+    },
+    "/academy_lessons/{lessonId}": {
+      "schema": "AcademyLesson",
+      "description": "Academy individual interactive lessons and exercises"
+    },
+    "/user_academy_progress/{userId}": {
+      "schema": "UserAcademyProgress",
+      "description": "Student progression, completed lessons, scores and practice time"
     }
   }
 }

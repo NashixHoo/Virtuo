@@ -5,17 +5,47 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#07101F">
 
-<title>Virtuo</title>
+<title>VIRTUO — A plataforma do músico virtuoso</title>
 <meta name="description" content="A plataforma do músico virtuoso">
-<meta property="og:title" content="Virtuo">
+<meta property="og:title" content="VIRTUO — A plataforma do músico virtuoso">
 <meta property="og:description" content="A plataforma do músico virtuoso">
 
 <link rel="manifest" href="manifest.json">
 <link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="src/styles/aura.css">
 <link rel="icon" href="assets/icon.svg">
+
+<script>
+  // Safe early global navigation handler for immediate event accessibility
+  function show(name) {
+    if (typeof window._virtuoShow === 'function') {
+      window._virtuoShow(name);
+    } else if (typeof window.show === 'function' && window.show !== show) {
+      window.show(name);
+    } else {
+      window._pendingScreen = name;
+    }
+  }
+  window.show = show;
+</script>
 </head>
 
 <body>
+
+<!-- Virtuo Pulse: Cápsula Flutuante Contextual (Max 44px) -->
+<div 
+  id="virtuo-pulse-container" 
+  style="
+    position: fixed; 
+    top: 14px; 
+    left: 50%; 
+    transform: translate(-50%, -10px) scale(0.96); 
+    z-index: 9999; 
+    opacity: 0; 
+    pointer-events: none; 
+    transition: opacity 160ms cubic-bezier(0.16, 1, 0.3, 1), transform 160ms cubic-bezier(0.16, 1, 0.3, 1);
+  "
+></div>
 
 <div class="background"></div>
 
@@ -34,45 +64,61 @@ CRIADO POR NASHIX HOO
 </div>
 
 <div style="display:flex; align-items:center; gap:8px;">
-  <button class="ai-header-btn" onclick="show('ai')" title="Virtuo AI 2.0 - Inteligência Musical">
+  <button class="ai-header-btn" onclick="window.show('ai')" title="Virtuo AI 2.0 - Inteligência Musical">
     <span>✨</span>
     <span>IA</span>
   </button>
-  <div id="header-avatar" class="avatar" onclick="show('profile')" style="cursor:pointer;" title="Meu Perfil">✦</div>
+  <button 
+    id="header-notif-btn" 
+    class="ai-header-btn" 
+    onclick="window.show('notifications')" 
+    title="Notificações e Alertas Ministeriais"
+    style="position:relative; width:38px; padding:0; justify-content:center;"
+  >
+    <span style="font-size:16px;">🔔</span>
+    <span id="header-notif-badge" style="display:none; position:absolute; top:-2px; right:-2px; width:9px; height:9px; border-radius:50%; background:#ef4444; border:2px solid #07101F;"></span>
+  </button>
+  <div id="header-avatar" class="avatar" onclick="window.show('profile')" style="cursor:pointer;" title="Meu Perfil">✦</div>
 </div>
 
 </header>
 
 <!-- Barra de Atalhos Rápidos para Culto e Ensaio (1 Toque) -->
 <nav class="quick-toolbar" id="quick-tools-strip" aria-label="Ferramentas Musicais Rápidas">
-  <button onclick="show('ai')" id="quick-btn-ai" title="Virtuo AI 2.0 - Inteligência Musical">
+  <button onclick="window.show('missions')" id="quick-btn-missions" title="Missões do Louvor & Live Sync">
+    <span>🕊️</span> Missões
+  </button>
+  <button onclick="window.show('ai')" id="quick-btn-ai" title="Virtuo AI 2.0 - Inteligência Musical">
     <span>✨</span> Virtuo AI
   </button>
-  <button onclick="show('library')" id="quick-btn-library" title="Acessar Cifras e Músicas">
+  <button onclick="window.show('library')" id="quick-btn-library" title="Acessar Cifras e Músicas">
     <span>📜</span> Cifra
   </button>
-  <button onclick="show('tuner')" id="quick-btn-tuner" title="Afinador Cromático de Alta Precisão">
+  <button onclick="window.show('tuner')" id="quick-btn-tuner" title="Afinador Cromático de Alta Precisão">
     <span>🎯</span> Afinador
   </button>
-  <button onclick="show('vocal')" id="quick-btn-vocal" title="Virtuo Vocal (Afinador e Treinamento)">
+  <button onclick="window.show('academy')" id="quick-btn-academy" title="Virtuo Academy (Ensino Musical do Nível 0 ao Profissional)">
+    <span>🎓</span> Academy
+  </button>
+  <button onclick="window.show('vocal')" id="quick-btn-vocal" title="Virtuo Vocal (Afinador e Treinamento)">
     <span>🎤</span> Vocal
   </button>
-  <button onclick="show('performance')" id="quick-btn-performance" title="Virtuo Performance (Acompanhamento em Tempo Real)">
+  <button onclick="window.show('performance')" id="quick-btn-performance" title="Virtuo Performance (Acompanhamento em Tempo Real)">
     <span>🎯</span> Performance
   </button>
-  <button onclick="show('coach')" id="quick-btn-coach" title="Treinador de Transição de Acordes">
+  <button onclick="window.show('coach')" id="quick-btn-coach" title="Treinador de Transição de Acordes">
     <span>⚡</span> Coach
   </button>
-  <button onclick="show('band')" id="quick-btn-band" title="Modo Banda & Metrônomo">
+  <button onclick="window.show('band')" id="quick-btn-band" title="Modo Banda & Metrônomo">
     <span>🥁</span> Banda
   </button>
-  <button onclick="show('ensaio')" id="quick-btn-ensaio" title="Sessões de Ensaio e Repertório">
+  <button onclick="window.show('ensaio')" id="quick-btn-ensaio" title="Sessões de Ensaio e Repertório">
     <span>📋</span> Ensaio
   </button>
   <button onclick="window.openMinisterModeQuick()" id="quick-btn-minister" title="Modo Ministro de Palco">
     <span>📖</span> Ministro
   </button>
-  <button onclick="show('diagnostics')" id="quick-btn-diagnostics" title="Diagnóstico e Saúde do Sistema">
+  <button onclick="window.show('diagnostics')" id="quick-btn-diagnostics" title="Diagnóstico e Saúde do Sistema">
     <span>📊</span> Saúde
   </button>
 </nav>
@@ -81,32 +127,37 @@ CRIADO POR NASHIX HOO
 
 <nav class="tabbar">
 
-<button onclick="show('home')" id="tab-btn-home">
+<button onclick="window.show('home')" id="tab-btn-home">
 🏠
 <span>Início</span>
 </button>
 
-<button onclick="show('library')" id="tab-btn-library">
+<button onclick="window.show('library')" id="tab-btn-library">
 🎵
 <span>Biblioteca</span>
 </button>
 
-<button onclick="show('ensaio')" id="tab-btn-ensaio">
+<button onclick="window.show('academy')" id="tab-btn-academy">
+🎓
+<span>Ensino</span>
+</button>
+
+<button onclick="window.show('ensaio')" id="tab-btn-ensaio">
 🎸
 <span>Ensaio</span>
 </button>
 
-<button onclick="show('band')" id="tab-btn-band">
+<button onclick="window.show('band')" id="tab-btn-band">
 🥁
 <span>Banda</span>
 </button>
 
-<button onclick="show('comunidade')" id="tab-btn-comunidade">
+<button onclick="window.show('comunidade')" id="tab-btn-comunidade">
 👥
 <span>Comunidade</span>
 </button>
 
-<button onclick="show('profile')" id="tab-btn-profile">
+<button onclick="window.show('profile')" id="tab-btn-profile">
 👤
 <span>Perfil</span>
 </button>

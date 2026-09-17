@@ -30,15 +30,80 @@ function escapeHtml(str) {
 }
 
 export function renderVirtuoAiScreen(activeSong, allSongs, aiChatHistory = [], isAiReplying = false) {
-  const song = activeSong || (allSongs && allSongs[0]) || {
-    title: "Mistério na Olaria",
-    artist: "Raquel Pereira",
-    originalKey: "Cm",
-    bpm: 74,
-    difficulty: "Médio",
-    structure: "Intro • Verso 1 • Verso 2 • Refrão • Final",
-    chords: "[Intro] Cm  G/B  Ab7M  Fm9\n[Refrão] Cm  G/B  Ab7M  Fm9"
-  };
+  const song = activeSong || (allSongs && allSongs[0]) || null;
+
+  if (!song) {
+    return `
+    <div class="virtuo-ai-container" style="max-width: 860px; margin: 0 auto; padding-bottom: 80px;">
+      <section class="glass" style="border: 1px solid rgba(126, 231, 255, 0.3); background: linear-gradient(135deg, rgba(14, 165, 233, 0.12), rgba(99, 102, 241, 0.08));">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span class="badge-celestial" style="font-size:11px; padding:4px 12px;">✨ VIRTUO AI 2.0</span>
+            <span style="font-size:11px; color:#94a3b8;">Diretor Musical & Análise Harmônica</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <span class="status-dot"></span>
+            <span style="font-size:11px; color:#7EE7FF; font-weight:600;">Operante</span>
+          </div>
+        </div>
+
+        <div style="margin-top: 18px; text-align:center; padding: 24px 16px;">
+          <div style="font-size:40px; margin-bottom:12px;">🎼</div>
+          <h2 class="hero" style="font-size: 22px; margin-bottom: 8px;">Direção Musical com Inteligência</h2>
+          <p class="subtitle" style="margin: 0 auto 20px; font-size: 14px; max-width:540px; color:#94a3b8; line-height:1.6;">
+            A biblioteca está pronta para receber seu novo repertório revisado. Você pode cadastrar uma música na Biblioteca para obter diagnósticos harmônicos completos, ou conversar diretamente com o Diretor Musical Virtuo abaixo.
+          </p>
+          <div style="display:flex; justify-content:center; gap:12px; flex-wrap:wrap;">
+            <button class="button primary" onclick="show('library')">📚 Adicionar Música</button>
+            <button class="button secondary" onclick="show('academy')">🎓 Virtuo Academy</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Chat Diretor Musical Global -->
+      <section class="glass" style="margin-top:16px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <h3 style="font-size:16px; margin:0; color:#7EE7FF; display:flex; align-items:center; gap:8px;">
+            <span>💬</span> Consultoria Musical
+          </h3>
+          <span class="pill" style="font-size:10px;">ASSISTENTE DE LOUVOR</span>
+        </div>
+
+        <div id="ai-view-chat-history" style="min-height: 220px; max-height: 400px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding: 12px; background: rgba(0,0,0,0.3); border-radius: 12px; border: 1px solid rgba(255,255,255,0.06); margin-bottom: 12px;">
+          ${aiChatHistory.length === 0 ? `
+            <div style="text-align: center; color: #94a3b8; font-size: 13px; margin: auto; padding: 20px;">
+              <p style="margin-bottom: 8px;">Olá! Eu sou o <strong>Diretor Musical Virtuo</strong>.</p>
+              <p style="margin: 0; font-size: 12px;">Posso orientar sobre condução vocal, arranjos para banda, transposição harmônica e metodologia de estudo.</p>
+            </div>
+          ` : aiChatHistory.map(msg => `
+            <div style="align-self: ${msg.role === 'user' ? 'flex-end' : 'flex-start'}; max-width: 85%; padding: 10px 14px; border-radius: 14px; font-size: 13px; line-height: 1.5; ${msg.role === 'user' ? 'background: rgba(14, 165, 233, 0.25); color: #fff; border: 1px solid rgba(14, 165, 233, 0.4);' : 'background: rgba(255,255,255,0.05); color: #e2e8f0; border: 1px solid rgba(255,255,255,0.1);'}">
+              ${escapeHtml(msg.text)}
+            </div>
+          `).join('')}
+          ${isAiReplying ? `
+            <div style="align-self: flex-start; max-width: 80%; padding: 8px 12px; border-radius: 12px; font-size: 12px; background: rgba(255,255,255,0.05); color: #7EE7FF;">
+              Digitando orientações musicais...
+            </div>
+          ` : ''}
+        </div>
+
+        <div style="display: flex; gap: 8px;">
+          <input 
+            type="text" 
+            id="ai-view-chat-input" 
+            class="form-input" 
+            placeholder="Pergunte sobre arranjos, dinâmica, tonalidades..." 
+            style="flex: 1; margin: 0;"
+            onkeydown="if(event.key==='Enter') window.sendVirtuoAiViewMessage()"
+          />
+          <button class="button primary" onclick="window.sendVirtuoAiViewMessage()" ${isAiReplying ? 'disabled' : ''}>
+            Enviar
+          </button>
+        </div>
+      </section>
+    </div>
+    `;
+  }
 
   const key = song.originalKey || song.key || "G";
   const bpm = Number(song.bpm) || 74;

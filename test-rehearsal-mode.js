@@ -73,6 +73,15 @@ async function runTests() {
   const controller = new RehearsalController();
   await controller.init("user-test-1");
 
+  // Fixtures isoladas para o ambiente de testes do Modo Ensaio
+  const TEST_SONGS_FIXTURES = [
+    { id: "demo-misterio-olaria", title: "Mistério na Olaria", bpm: 74, originalKey: "Cm", chords: "[Intro] Cm  G/B  Ab7M  Fm9\n[Refrão] Cm  G/B  Ab7M  Fm9", easyChords: "[Intro] Cm  G  Ab  Fm" },
+    { id: "demo-o-escudo", title: "O Escudo", bpm: 68, originalKey: "Em", chords: "[Intro] Em  C  G  D", easyChords: "[Intro] Em  C  G  D" },
+    { id: "demo-deus-impossivel", title: "Deus do Impossível", bpm: 72, originalKey: "D", chords: "[Intro] D  A/C#  Bm7  G\n[Refrão] D  A  Bm7  G", easyChords: "[Intro] D  A  Bm  G" }
+  ];
+  TEST_SONGS_FIXTURES.forEach(s => controller.songsMap.set(s.id, s));
+  controller.allSongsList = TEST_SONGS_FIXTURES;
+
   // 1. Criar ensaio
   await test("1. Criar ensaio", async () => {
     const prevCount = controller.rehearsals.length;

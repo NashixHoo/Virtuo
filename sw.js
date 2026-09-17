@@ -48,7 +48,17 @@ const APP_SHELL_FILES = [
   "./src/features/diagnostics/diagnostics-view.js",
   "./src/performance/performance-monitor.js",
   "./src/features/admin/index.js",
-  "./src/features/admin/song-manager.js"
+  "./src/features/admin/song-manager.js",
+  "./src/styles/aura.css",
+  "./src/design/design-system.js",
+  "./src/audio/startup-chime.js",
+  "./src/features/home/greeting.js",
+  "./src/features/home/home-view.js",
+  "./src/features/home/index.js",
+  "./src/features/pulse/pulse.js",
+  "./src/features/pulse/index.js",
+  "./src/features/splash/splash.js",
+  "./src/features/splash/index.js"
 ];
 
 self.addEventListener("install", event => {

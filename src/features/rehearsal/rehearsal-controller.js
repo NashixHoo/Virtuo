@@ -8,7 +8,7 @@ import { RehearsalsService, CANONICAL_INSTRUMENTS, REHEARSAL_STATUSES, DEFAULT_D
 import { calculateKey, getSemitoneDistance, DEMO_SONGS } from "../../music/index.js";
 import { musicIntelligence } from "../../music/music-intelligence.js";
 import { virtuoMinister } from "../minister/index.js";
-import { virtuoMetronome } from "../../audio/index.js";
+import { virtuoMetronome, virtuoBand } from "../../audio/index.js";
 
 export class RehearsalController {
   constructor() {
@@ -24,6 +24,19 @@ export class RehearsalController {
     this.rehearsalAnalysis = null;
     this.isAnalysisOpen = false;
     this.subscribers = new Set();
+    this.activePlayingSongIndex = null;
+
+    // Conecta ouvintes da Banda Virtual para sincronia de tela em tempo real
+    if (typeof virtuoBand !== "undefined" && virtuoBand.onStateChange) {
+      virtuoBand.onStateChange((bandState) => {
+        if (this.activePlayingSongIndex !== null) {
+          if (!bandState.isPlaying && this.activePlayingSongIndex !== null) {
+            this.activePlayingSongIndex = null;
+          }
+          this._notify();
+        }
+      });
+    }
   }
 
   /**
@@ -187,7 +200,7 @@ export class RehearsalController {
     const active = this.getActiveRehearsal();
     if (!active) return;
 
-    const song = this.songsMap.get(songId) || DEMO_SONGS.find(s => s.id === songId);
+    const song = this.songsMap.get(songId) || DEMO_SONGS.find(s => s.id === songId) || { id: songId, bpm: 74, title: songId, originalKey: "C" };
     if (!song) return;
 
     active.songs = active.songs || [];
@@ -404,6 +417,48 @@ export class RehearsalController {
 
     virtuoMetronome.useSongBpm(bpm);
     virtuoMetronome.start();
+  }
+
+  /**
+   * Toca a canção do ensaio com a Banda Virtual Real (arranjos acústicos sincronizados)
+   */
+  playSongWithBand(index) {
+    const active = this.getActiveRehearsal();
+    if (!active || !active.songs || !active.songs[index]) return;
+
+    // Se já estiver tocando esta mesma música, pausa ou desliga
+    if (this.activePlayingSongIndex === index && virtuoBand.isPlaying) {
+      virtuoBand.pause();
+      this.activePlayingSongIndex = null;
+      this._notify();
+      return;
+    }
+
+    const item = active.songs[index];
+    const song = this.songsMap.get(item.songId) || DEMO_SONGS.find(s => s.id === item.songId) || {
+      id: item.songId,
+      title: "Louvor do Ensaio",
+      originalKey: "G",
+      bpm: item.bpm || 74
+    };
+
+    const keyOffset = item.keyOffset || 0;
+    const isEasy = item.playMode === "easy";
+    const bpm = item.bpm || song.bpm || 74;
+
+    virtuoBand.loadSong(song, keyOffset, isEasy, bpm);
+    virtuoBand.start();
+    this.activePlayingSongIndex = index;
+    this._notify();
+  }
+
+  /**
+   * Interrompe a execução da banda virtual no ensaio
+   */
+  stopBand() {
+    virtuoBand.stop();
+    this.activePlayingSongIndex = null;
+    this._notify();
   }
 
   /**

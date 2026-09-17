@@ -130,7 +130,29 @@ if (typeof window !== "undefined") {
 }
 
 export function renderPerformanceScreen(availableSongs = []) {
-  const songs = (availableSongs && availableSongs.length > 0) ? availableSongs : DEMO_SONGS;
+  const songs = (availableSongs && availableSongs.length > 0) ? availableSongs : [];
+  if (songs.length === 0) {
+    return `
+      <section class="glass performance-screen-container" style="max-width:780px; margin:0 auto; text-align:center; padding:36px 20px;">
+        <div style="display:flex; justify-content:center; margin-bottom:14px;">
+          <span class="pill" style="background:rgba(126,231,255,0.15); color:#7EE7FF; border-color:#7EE7FF;">
+            🎯 VIRTUO PERFORMANCE
+          </span>
+        </div>
+        <div style="font-size:48px; margin-bottom:12px;">🎤</div>
+        <h2 style="font-size:22px; margin-top:0; margin-bottom:8px;">Acompanhamento de Performance</h2>
+        <p class="subtitle" style="max-width:520px; margin:0 auto 24px; color:#94a3b8; font-size:14px; line-height:1.6;">
+          A biblioteca musical está pronta para novos louvores revisados. Você pode adicionar músicas à biblioteca ou utilizar os módulos de Treino Vocal e Afinador Pro agora mesmo.
+        </p>
+        <div style="display:flex; justify-content:center; gap:12px; flex-wrap:wrap;">
+          <button class="button primary" onclick="show('vocal')">🎙️ Treino Vocal & Afinação</button>
+          <button class="button secondary" onclick="show('tuner')">🎯 Afinador Pro</button>
+          <button class="button secondary" onclick="show('library')">📚 Biblioteca</button>
+        </div>
+      </section>
+    `;
+  }
+
   virtuoPerformance.init(songs);
 
   const song = virtuoPerformance.selectedSong || songs[0];

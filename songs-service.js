@@ -40,276 +40,11 @@ import {
   normalizeSearchText
 } from "./src/database/index.js";
 
-// Músicas de demonstração originais com acordes ricos, Easy Play e tom canônico Cm para Mistério na Olaria
-export const DEMO_SONGS = [
-  {
-    id: "demo-misterio-olaria",
-    title: "Mistério na Olaria",
-    artist: "Raquel Pereira",
-    artistName: "Raquel Pereira",
-    originalKey: "Cm",
-    bpm: 74,
-    timeSignature: "4/4",
-    difficulty: "Fácil",
-    capo: 0,
-    genres: ["Pentecostal", "Gospel"],
-    tags: ["louvor", "avivamento", "olaria"],
-    instruments: ["Violão", "Guitarra", "Teclado", "Baixo", "Bateria", "Vocal"],
-    structure: "Intro • Verso 1 • Refrão • Verso 2 • Refrão • Final",
-    youtubeUrl: "https://www.youtube.com/results?search_query=Mistério+na+Olaria+Raquel+Pereira",
-    spotifyUrl: "https://open.spotify.com/search/Mistério%20na%20Olaria%20Raquel%20Pereira",
-    chords: `[Intro] Cm  Fm9  Ab7M  G
-
-[Verso 1]
-Cm              Fm9
-Eu fui na olaria ver o vaso se formar
-Ab7M            G
-O oleiro trabalhava sem cessar
-Cm              Fm9
-Se o vaso quebrava, tornava a refazer
-Ab7M            G
-Com paciência e poder
-
-[Refrão]
-Cm              G/B
-É mistério na olaria de Jeová
-Ab7M            Fm9
-Ele quebra, ele molda no lugar
-Cm              G/B
-Se você se humilhar nas mãos do Criador
-Ab7M            Fm9
-Ele faz vaso novo com amor
-
-[Verso 2]
-Cm              Fm9
-Desce como barro no chão do oleiro
-Ab7M            G
-Deixa ele tirar o que não presta por inteiro
-Cm              Fm9
-Sai de lá brilhando cheio da unção
-Ab7M            G
-Um vaso de honra nesta geração
-
-[Refrão]
-Cm              G/B
-É mistério na olaria de Jeová
-Ab7M            Fm9
-Ele quebra, ele molda no lugar
-Cm              G/B
-Se você se humilhar nas mãos do Criador
-Ab7M            Fm9
-Ele faz vaso novo com amor`,
-    easyChords: `[Intro] Cm  Fm  Ab  G
-
-[Verso]
-Cm          Fm
-Eu fui na olaria ver o vaso se formar
-Ab          G
-O oleiro trabalhava sem cessar
-
-[Refrão]
-Cm          G
-É mistério na olaria de Jeová
-Ab          Fm
-Ele quebra, ele molda no lugar`,
-    lyrics: null,
-    lyricsStatus: LYRICS_STATUS.UNAVAILABLE,
-    status: SONG_STATUS.PUBLISHED,
-    visibility: SONG_VISIBILITY.PUBLIC,
-    verified: true,
-    verifiedBy: "virtuo-master",
-    verificationStatus: "verified",
-    sourceType: SOURCE_TYPES.OFFICIAL,
-    sourceName: "VIRTUO Oficial",
-    createdBy: "virtuo-master"
-  },
-  {
-    id: "demo-o-escudo",
-    title: "O Escudo",
-    artist: "Aline Barros / Voz da Verdade",
-    artistName: "Aline Barros / Voz da Verdade",
-    originalKey: "Em",
-    bpm: 68,
-    timeSignature: "4/4",
-    difficulty: "Médio",
-    capo: 0,
-    genres: ["Worship", "Gospel"],
-    tags: ["adom", "protecao", "escudo"],
-    instruments: ["Violão", "Guitarra", "Teclado", "Baixo", "Bateria", "Vocal"],
-    structure: "Intro • Verso • Refrão • Ponte • Final",
-    youtubeUrl: "https://www.youtube.com/results?search_query=O+Escudo+Voz+da+Verdade",
-    spotifyUrl: "https://open.spotify.com/search/O%20Escudo",
-    chords: `[Intro] Em  C  G  D
-
-[Verso 1]
-Em                   C
-Por toda a minha vida, ó Senhor, te louvarei
-G                    D
-Pois meu fôlego é a tua vida, e nunca me cansarei
-Em                   C
-Posso ouvir a tua voz, é mais doce que o mel
-G                    D
-Que me tira desta cova e me leva até o céu
-
-[Refrão]
-Em                   C
-Já cheguei até aqui e eu não posso desistir
-G                    D
-Pois a pedra preciosa eu já encontrei
-Em                   C
-Existe um Deus no céu que cuida de você
-G                    D
-Ele é o teu escudo, nada vai temer`,
-    easyChords: `[Intro] Em  C  G  D
-
-[Verso]
-Em        C
-Por toda a minha vida te louvarei
-G         D
-Pois meu fôlego é tua vida
-
-[Refrão]
-Em        C
-Existe um Deus no céu que cuida de você
-G         D
-Ele é o teu escudo, nada vai temer`,
-    lyrics: null,
-    lyricsStatus: LYRICS_STATUS.UNAVAILABLE,
-    status: SONG_STATUS.PUBLISHED,
-    visibility: SONG_VISIBILITY.PUBLIC,
-    verified: true,
-    verifiedBy: "virtuo-master",
-    verificationStatus: "verified",
-    sourceType: SOURCE_TYPES.OFFICIAL,
-    sourceName: "VIRTUO Oficial",
-    createdBy: "virtuo-master"
-  },
-  {
-    id: "demo-deus-impossivel",
-    title: "Deus do Impossível",
-    artist: "Toque no Altar",
-    artistName: "Toque no Altar",
-    originalKey: "D",
-    bpm: 72,
-    timeSignature: "4/4",
-    difficulty: "Médio",
-    capo: 0,
-    genres: ["Worship", "Gospel"],
-    tags: ["fe", "milagre", "clamor"],
-    instruments: ["Violão", "Guitarra", "Teclado", "Baixo", "Bateria", "Vocal"],
-    structure: "Intro • Verso • Refrão • Solo • Refrão",
-    youtubeUrl: "https://www.youtube.com/results?search_query=Deus+do+Impossivel+Toque+no+Altar",
-    spotifyUrl: "https://open.spotify.com/search/Deus%20do%20Impossivel",
-    chords: `[Intro] D  A/C#  Bm7  G
-
-[Verso 1]
-D                 A/C#
-Quando tudo diz que não
-Bm7               G
-A tua voz me encoraja a prosseguir
-D                 A/C#
-Quando as forças se acabam
-Bm7               G
-O teu poder se aperfeiçoa em mim
-
-[Refrão]
-D                 A
-O Deus do impossível não desiste de você
-Bm7               G
-Ele faz o milagre acontecer
-D                 A
-Abre porta no deserto, faz a fonte brotar
-Bm7               G
-Com sua destra fiel vai te sustentar`,
-    easyChords: `[Intro] D  A  Bm  G
-
-[Verso]
-D          A
-Quando tudo diz que não
-Bm         G
-A tua voz me encoraja a prosseguir
-
-[Refrão]
-D          A
-O Deus do impossível não desiste de você
-Bm         G
-Ele faz o milagre acontecer`,
-    lyrics: null,
-    lyricsStatus: LYRICS_STATUS.UNAVAILABLE,
-    status: SONG_STATUS.PUBLISHED,
-    visibility: SONG_VISIBILITY.PUBLIC,
-    verified: true,
-    verifiedBy: "virtuo-master",
-    verificationStatus: "verified",
-    sourceType: SOURCE_TYPES.OFFICIAL,
-    sourceName: "VIRTUO Oficial",
-    createdBy: "virtuo-master"
-  },
-  {
-    id: "demo-fogo-santo",
-    title: "Fogo Santo",
-    artist: "Virtuo Worship",
-    artistName: "Virtuo Worship",
-    originalKey: "C",
-    bpm: 76,
-    timeSignature: "4/4",
-    difficulty: "Fácil",
-    capo: 0,
-    genres: ["Worship", "Gospel"],
-    tags: ["avivamento", "espirito santo", "adoracao"],
-    instruments: ["Violão", "Guitarra", "Teclado", "Baixo", "Bateria", "Vocal"],
-    structure: "Intro • Verso • Refrão • Espontâneo",
-    youtubeUrl: "https://www.youtube.com/results?search_query=Fogo+Santo+Worship",
-    spotifyUrl: "https://open.spotify.com/search/Fogo%20Santo",
-    chords: `[Intro] C  G  Am  F
-
-[Verso 1]
-C                 G
-Enche este lugar com tua glória
-Am                F
-Vem queimar em nossos corações
-C                 G
-Somos tua igreja reunida
-Am                F
-Esperando o teu mover chegar
-
-[Refrão]
-C                 G
-Fogo santo, queima aqui
-Am                F
-Tua presença é o nosso anseio
-C                 G
-Purifica, faz fluir
-Am                F
-Um avivamento verdadeiro`,
-    easyChords: `[Intro] C  G  Am  F
-
-[Verso]
-C          G
-Enche este lugar com tua glória
-Am         F
-Vem queimar em nossos corações
-
-[Refrão]
-C          G
-Fogo santo, queima aqui
-Am         F
-Tua presença é o nosso anseio`,
-    lyrics: null,
-    lyricsStatus: LYRICS_STATUS.UNAVAILABLE,
-    status: SONG_STATUS.PUBLISHED,
-    visibility: SONG_VISIBILITY.PUBLIC,
-    verified: true,
-    verifiedBy: "virtuo-master",
-    verificationStatus: "verified",
-    sourceType: SOURCE_TYPES.OFFICIAL,
-    sourceName: "VIRTUO Oficial",
-    createdBy: "virtuo-master"
-  }
-];
+// Banco de músicas limpo e pronto para novo repertório autêntico e verificado
+export const DEMO_SONGS = [];
 
 // Instâncias migradas em memória para acesso imediato e garantido
-export const CANONICAL_MIGRATED_DEMO_SONGS = SongMigration.migrateAll(DEMO_SONGS);
+export const CANONICAL_MIGRATED_DEMO_SONGS = [];
 
 export const SongsRepository = {
   // Chave de cache local para as últimas 10 músicas consultadas (Modo Offline)
@@ -325,15 +60,15 @@ export const SongsRepository = {
       const q = query(songsCol, orderBy("createdAt", "desc"));
       const snap = await getDocs(q);
       if (snap.empty) {
-        return CANONICAL_MIGRATED_DEMO_SONGS;
+        return [];
       }
       return snap.docs.map(docSnap => {
         const raw = { id: docSnap.id, ...docSnap.data() };
         return SongMigration.migrateLegacySong(raw);
       });
     } catch (err) {
-      console.warn("[SongsRepository.getAllSongs] Aviso Firestore, fallback para canônicas:", err.message);
-      return CANONICAL_MIGRATED_DEMO_SONGS;
+      console.warn("[SongsRepository.getAllSongs] Firestore indisponível:", err.message);
+      return [];
     }
   },
 
@@ -357,7 +92,7 @@ export const SongsRepository = {
       const q = query(songsCol, ...constraints);
       const snap = await getDocs(q);
       let list = snap.empty 
-        ? CANONICAL_MIGRATED_DEMO_SONGS 
+        ? [] 
         : snap.docs.map(d => SongMigration.migrateLegacySong({ id: d.id, ...d.data() }));
 
       // Filtros em memória adicionais (evita necessidade excessiva de índices compostos)
@@ -384,14 +119,7 @@ export const SongsRepository = {
       return list;
     } catch (err) {
       console.warn("[SongsRepository.getPublishedSongs] Fallback local:", err.message);
-      let list = [...CANONICAL_MIGRATED_DEMO_SONGS];
-      if (filters.genre) {
-        const gNorm = normalizeSearchText(filters.genre);
-        list = list.filter(s => Array.isArray(s.genres) && s.genres.some(g => normalizeSearchText(g) === gNorm));
-      }
-      if (filters.key) list = list.filter(s => s.originalKey === filters.key);
-      if (filters.difficulty) list = list.filter(s => s.difficulty === filters.difficulty);
-      return list;
+      return [];
     }
   },
 
@@ -490,10 +218,21 @@ export const SongsRepository = {
   getOfflineRecentSongs() {
     try {
       const raw = localStorage.getItem(this.OFFLINE_CACHE_KEY);
-      return raw ? JSON.parse(raw) : CANONICAL_MIGRATED_DEMO_SONGS.slice(0, 4);
+      if (!raw) return [];
+      const list = JSON.parse(raw);
+      return Array.isArray(list) ? list : [];
     } catch {
-      return CANONICAL_MIGRATED_DEMO_SONGS.slice(0, 4);
+      return [];
     }
+  },
+
+  /**
+   * Limpa o cache offline de músicas
+   */
+  clearOfflineCache() {
+    try {
+      localStorage.removeItem(this.OFFLINE_CACHE_KEY);
+    } catch {}
   },
 
   /**
@@ -519,13 +258,12 @@ export const SongsRepository = {
   },
 
   /**
-   * Obtém uma música por ID no Firestore com fallback offline e demo.
+   * Obtém uma música por ID no Firestore com fallback offline.
    */
   async getSongById(songId) {
     if (!songId) return null;
     const offlineSongs = this.getOfflineRecentSongs();
     const offlineFound = offlineSongs.find(s => s.id === songId);
-    const demoFound = CANONICAL_MIGRATED_DEMO_SONGS.find(s => s.id === songId);
 
     try {
       const songRef = doc(db, "songs", songId);
@@ -536,11 +274,10 @@ export const SongsRepository = {
         return fullSong;
       }
     } catch (err) {
-      console.warn("[SongsRepository.getSongById] Fallback para cache offline/demo:", err.message);
+      console.warn("[SongsRepository.getSongById] Fallback para cache offline:", err.message);
     }
 
     if (offlineFound) return SongMigration.migrateLegacySong(offlineFound);
-    if (demoFound) return demoFound;
     return null;
   },
 
@@ -556,20 +293,18 @@ export const SongsRepository = {
           const songs = snapshot.docs.map(d => SongMigration.migrateLegacySong({ id: d.id, ...d.data() }));
           onUpdate(songs);
         } else {
-          const offline = this.getOfflineRecentSongs();
-          onUpdate(offline.length > 0 ? offline : CANONICAL_MIGRATED_DEMO_SONGS);
+          onUpdate([]);
         }
       }, (err) => {
         console.warn("[SongsRepository.subscribeToSongs] Aviso stream Firestore:", err.message);
         const offline = this.getOfflineRecentSongs();
-        const fallback = offline.length > 0 ? offline : CANONICAL_MIGRATED_DEMO_SONGS;
         if (onError) onError(err);
-        else onUpdate(fallback);
+        else onUpdate(offline);
       });
     } catch (err) {
       console.warn("[SongsRepository.subscribeToSongs] Exceção:", err.message);
       const offline = this.getOfflineRecentSongs();
-      onUpdate(offline.length > 0 ? offline : CANONICAL_MIGRATED_DEMO_SONGS);
+      onUpdate(offline);
       return () => {};
     }
   },
@@ -958,24 +693,45 @@ export const SongsRepository = {
   },
 
   /**
-   * Semeia as músicas padrão para o Firestore caso a coleção esteja vazia.
-   * Utiliza a versão migrada canônica (garantindo Mistério Na Olaria em Cm).
+   * Semeia músicas padrão: Mantido vazio na fase atual para garantir que
+   * apenas novos louvores autênticos e corretos sejam adicionados.
    */
   async seedDefaultSongs(currentUserId) {
-    const songsCol = collection(db, "songs");
-    const snap = await getDocs(songsCol);
-    if (snap.empty) {
-      for (const song of CANONICAL_MIGRATED_DEMO_SONGS) {
-        const { id, ...data } = song;
-        await addDoc(songsCol, {
-          ...data,
-          createdBy: currentUserId || "virtuo-master",
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp()
-        });
-      }
-      return true;
-    }
+    // A biblioteca permanece estritamente vazia nesta etapa
     return false;
+  },
+
+  /**
+   * Remove com segurança registros de louvores antigos/incorretos do Firestore,
+   * preservando estritamente: usuários, autenticação, perfis, bandas, playlists,
+   * posts, lives, grooves, bass_lines, configurações e segurança.
+   */
+  async purgeLegacySongsFromFirestore(adminUid) {
+    try {
+      const songsCol = collection(db, "songs");
+      const snap = await getDocs(songsCol);
+      if (snap.empty) return { deletedCount: 0 };
+
+      const legacyTitles = ["Mistério na Olaria", "O Escudo", "Deus do Impossível", "Fogo Santo"];
+      let deletedCount = 0;
+
+      for (const d of snap.docs) {
+        const data = d.data();
+        const docId = d.id;
+        const isLegacyDemo = docId.startsWith("demo-") || 
+                             legacyTitles.some(t => (data.title || "").includes(t)) ||
+                             data.createdBy === "virtuo-master";
+        if (isLegacyDemo) {
+          await deleteDoc(doc(db, "songs", docId));
+          deletedCount++;
+        }
+      }
+
+      this.clearOfflineCache();
+      return { deletedCount };
+    } catch (err) {
+      console.warn("[SongsRepository.purgeLegacySongsFromFirestore] Erro na limpeza:", err.message);
+      return { deletedCount: 0, error: err.message };
+    }
   }
 };
