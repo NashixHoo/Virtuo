@@ -97,7 +97,11 @@ export {
 export {
   SoundProvider,
   SyntheticSoundProvider,
-  HybridSoundProvider
+  SampleSoundProvider,
+  HybridSoundProvider,
+  SFZSoundProvider,
+  SoundFontSoundProvider,
+  SoundProviderFactory
 } from "./sound-provider.js";
 
 export {

@@ -128,6 +128,62 @@ export class RehearsalController {
   }
 
   /**
+   * Abre o ensaio vinculado a uma Missão aprovada ou cria um novo com transporte integral:
+   * músicas, tom, BPM, Easy Play, ordem do repertório e seções.
+   * Evita duplicar ensaios caso já exista um ensaio da mesma missão.
+   * @param {Object} mission
+   * @param {string} userUid
+   */
+  async openOrCreateRehearsalForMission(mission, userUid = null) {
+    if (!mission) return null;
+
+    // 1. Procura se já existe ensaio vinculado à missão
+    const existing = this.rehearsals.find(r => r.missionId === mission.id);
+    if (existing) {
+      this.activeRehearsalId = existing.id;
+      this._notify();
+      return existing;
+    }
+
+    // 2. Mapeia as músicas da missão transportando parâmetros musicais integrais
+    const formattedSongs = (mission.songs || []).map((s, idx) => {
+      return {
+        songId: s.id || s.songId,
+        order: s.order || (idx + 1),
+        key: s.key || s.originalKey || "G",
+        keyOffset: s.keyOffset || 0,
+        bpm: Number(s.bpm) || 74,
+        playMode: s.easyPlay ? "easy" : "original",
+        section: s.currentSection || s.section || "Intro",
+        status: s.status === "ready" ? REHEARSAL_STATUSES.REHEARSED : 
+               (s.status === "studying" ? REHEARSAL_STATUSES.IN_PROGRESS : REHEARSAL_STATUSES.NOT_REHEARSED)
+      };
+    });
+
+    const newRehearsalPayload = {
+      name: `Ensaio: ${mission.title}`,
+      date: mission.eventDate || new Date().toISOString().slice(0, 10),
+      description: `Repertório aprovado para ministração em ${mission.churchName || 'Igreja'}.`,
+      missionId: mission.id,
+      instruments: ["guitar", "acoustic_guitar", "bass", "keyboard", "drums", "vocals"],
+      songs: formattedSongs
+    };
+
+    try {
+      const newId = await RehearsalsService.createRehearsal(newRehearsalPayload, userUid);
+      const created = await RehearsalsService.getRehearsalById(newId);
+      const finalObj = created || { id: newId, ...newRehearsalPayload };
+      this.rehearsals.unshift(finalObj);
+      this.activeRehearsalId = finalObj.id;
+      this._notify();
+      return finalObj;
+    } catch (err) {
+      console.warn("[RehearsalController.openOrCreateRehearsalForMission] Erro ao criar ensaio:", err);
+      return null;
+    }
+  }
+
+  /**
    * Salva novo ensaio no serviço.
    */
   async saveNewRehearsal(data, userUid = null) {

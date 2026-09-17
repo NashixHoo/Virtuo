@@ -482,6 +482,17 @@ class MissionsController {
     this._notify();
     return saved;
   }
+
+  /**
+   * Transporta a missão aprovada para o Modo Ensaio de forma integrada
+   * Requisito 13: Transporta músicas, tom, BPM, Easy Play, ordem do repertório e seções
+   */
+  async openRehearsal(missionId, userUid = null) {
+    const mission = await this.getMissionById(missionId);
+    if (!mission) throw new Error("Missão não encontrada");
+    const { rehearsalController } = await import("../rehearsal/rehearsal-controller.js");
+    return await rehearsalController.openOrCreateRehearsalForMission(mission, userUid);
+  }
 }
 
 export const missionsController = new MissionsController();

@@ -4,18 +4,30 @@
 // Firestore + LocalStorage fallback com resolução segura de conflitos
 // =============================================================
 
-import { db } from "../../../firebase-config.js";
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  setDoc,
-  updateDoc,
-  deleteDoc,
-  query,
-  orderBy
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+let firestoreCtx = null;
+
+async function getFirestoreMissionsCtx() {
+  if (firestoreCtx) return firestoreCtx;
+  if (typeof window !== "undefined" && window.location && typeof window.location.href === "string") {
+    try {
+      const fbConfig = await import("../../../firebase-config.js");
+      const firestoreMod = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+      firestoreCtx = {
+        db: fbConfig.db,
+        collection: firestoreMod.collection,
+        doc: firestoreMod.doc,
+        getDoc: firestoreMod.getDoc,
+        getDocs: firestoreMod.getDocs,
+        setDoc: firestoreMod.setDoc,
+        deleteDoc: firestoreMod.deleteDoc
+      };
+      return firestoreCtx;
+    } catch (e) {
+      console.warn("[MissionsRepository] Firestore fallback:", e.message);
+    }
+  }
+  return null;
+}
 
 const STORAGE_KEY = "virtuo_missions_cache_v2";
 const SYNC_QUEUE_KEY = "virtuo_missions_sync_queue";
@@ -180,19 +192,22 @@ class MissionsRepository {
     const localList = Object.values(this._cache);
 
     // Se estivermos em ambiente de navegador com Firestore ativo, tenta buscar remoto
-    if (typeof window !== "undefined" && db) {
+    if (typeof window !== "undefined") {
       try {
-        const q = collection(db, "missions");
-        const snap = await getDocs(q);
-        if (!snap.empty) {
-          const updatedCache = { ...this._cache };
-          snap.forEach((docSnap) => {
-            const remoteItem = { id: docSnap.id, ...docSnap.data() };
-            const localItem = updatedCache[docSnap.id];
-            updatedCache[docSnap.id] = this.resolveConflict(localItem, remoteItem);
-          });
-          this._saveToCache(updatedCache);
-          return Object.values(updatedCache).sort((a, b) => new Date(b.eventDate) - new Date(a.eventDate));
+        const ctx = await getFirestoreMissionsCtx();
+        if (ctx && ctx.db) {
+          const q = ctx.collection(ctx.db, "missions");
+          const snap = await ctx.getDocs(q);
+          if (!snap.empty) {
+            const updatedCache = { ...this._cache };
+            snap.forEach((docSnap) => {
+              const remoteItem = { id: docSnap.id, ...docSnap.data() };
+              const localItem = updatedCache[docSnap.id];
+              updatedCache[docSnap.id] = this.resolveConflict(localItem, remoteItem);
+            });
+            this._saveToCache(updatedCache);
+            return Object.values(updatedCache).sort((a, b) => new Date(b.eventDate) - new Date(a.eventDate));
+          }
         }
       } catch (err) {
         // Modo offline silencioso e gracioso
@@ -209,14 +224,17 @@ class MissionsRepository {
     if (!id) return null;
     if (this._cache[id]) return this._cache[id];
 
-    if (typeof window !== "undefined" && db) {
+    if (typeof window !== "undefined") {
       try {
-        const snap = await getDoc(doc(db, "missions", id));
-        if (snap.exists()) {
-          const remote = { id: snap.id, ...snap.data() };
-          this._cache[id] = remote;
-          this._saveToCache(this._cache);
-          return remote;
+        const ctx = await getFirestoreMissionsCtx();
+        if (ctx && ctx.db) {
+          const snap = await ctx.getDoc(ctx.doc(ctx.db, "missions", id));
+          if (snap.exists()) {
+            const remote = { id: snap.id, ...snap.data() };
+            this._cache[id] = remote;
+            this._saveToCache(this._cache);
+            return remote;
+          }
         }
       } catch {}
     }
@@ -246,9 +264,12 @@ class MissionsRepository {
     this._saveToCache(this._cache);
 
     // 2. Sincroniza com Firestore se disponível
-    if (typeof window !== "undefined" && db) {
+    if (typeof window !== "undefined") {
       try {
-        await setDoc(doc(db, "missions", updated.id), updated, { merge: true });
+        const ctx = await getFirestoreMissionsCtx();
+        if (ctx && ctx.db) {
+          await ctx.setDoc(ctx.doc(ctx.db, "missions", updated.id), updated, { merge: true });
+        }
       } catch (err) {
         // Enfileira para sync futuro
         this._enqueueForSync(updated.id);
@@ -266,9 +287,12 @@ class MissionsRepository {
     delete this._cache[id];
     this._saveToCache(this._cache);
 
-    if (typeof window !== "undefined" && db) {
+    if (typeof window !== "undefined") {
       try {
-        await deleteDoc(doc(db, "missions", id));
+        const ctx = await getFirestoreMissionsCtx();
+        if (ctx && ctx.db) {
+          await ctx.deleteDoc(ctx.doc(ctx.db, "missions", id));
+        }
       } catch {}
     }
   }

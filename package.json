@@ -8,7 +8,7 @@
     "start": "node server.js",
     "build": "echo 'Build complete'",
     "lint": "node -c server.js && node -c app.js",
-    "test": "node test-music-database.js && node test-musical-engine.js && node test-minister-mode.js && node test-metronome-engine.js && node test-rehearsal-mode.js && node test-community-and-band.js && node test-admin-song-manager.js && node test-performance-benchmark.js && node test-music-intelligence-v2.js && node test-vocal-performance.js && node test-vocal-pro.js && node test-band-engine-v2.js && node test-experience-system.js && node test-tuner-pro.js && node test-academy.js && node test-chord-engine.js && node test-real-band-engine.js && node test-real-sound-engine.js && node test-branding-kit-v3.js && node test-virtuo-conductor.js && node test-band-musical-accompaniment.js && node test-real-band-engine-2.js"
+    "test": "node test-music-database.js && node test-musical-engine.js && node test-minister-mode.js && node test-metronome-engine.js && node test-rehearsal-mode.js && node test-community-and-band.js && node test-admin-song-manager.js && node test-performance-benchmark.js && node test-music-intelligence-v2.js && node test-vocal-performance.js && node test-vocal-pro.js && node test-band-engine-v2.js && node test-experience-system.js && node test-tuner-pro.js && node test-academy.js && node test-chord-engine.js && node test-real-band-engine.js && node test-real-sound-engine.js && node test-branding-kit-v3.js && node test-virtuo-conductor.js && node test-band-musical-accompaniment.js && node test-real-band-engine-2.js && node test-v2-2-production-integration.js"
   },
   "dependencies": {
     "@google/genai": "^2.22.0",

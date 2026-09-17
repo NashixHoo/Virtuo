@@ -104,18 +104,28 @@ export const DEFAULT_DEMO_REHEARSAL = {
 
 const LOCAL_STORAGE_KEY = "virtuo_local_rehearsals_v1";
 
+let inMemoryRehearsals = null;
+
 function loadLocalRehearsals() {
+  if (inMemoryRehearsals) return inMemoryRehearsals;
+  if (typeof localStorage === "undefined") {
+    inMemoryRehearsals = [DEFAULT_DEMO_REHEARSAL];
+    return inMemoryRehearsals;
+  }
   try {
     const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (!raw) return [DEFAULT_DEMO_REHEARSAL];
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) && parsed.length > 0 ? parsed : [DEFAULT_DEMO_REHEARSAL];
+    inMemoryRehearsals = Array.isArray(parsed) && parsed.length > 0 ? parsed : [DEFAULT_DEMO_REHEARSAL];
+    return inMemoryRehearsals;
   } catch {
     return [DEFAULT_DEMO_REHEARSAL];
   }
 }
 
 function saveLocalRehearsals(rehearsals) {
+  inMemoryRehearsals = rehearsals;
+  if (typeof localStorage === "undefined") return;
   try {
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(rehearsals));
   } catch (err) {
@@ -198,6 +208,7 @@ export const RehearsalsService = {
       name: (rehearsalData.name || "Novo Ensaio").trim(),
       date: (rehearsalData.date || new Date().toISOString().slice(0, 10)).trim(),
       description: (rehearsalData.description || "").trim(),
+      missionId: rehearsalData.missionId || null,
       ownerId: currentUid,
       createdBy: currentUid,
       instruments: Array.isArray(rehearsalData.instruments) ? rehearsalData.instruments : ["guitar", "bass", "drums", "keyboard", "vocals"],

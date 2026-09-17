@@ -5,14 +5,37 @@
 // Integrado com Firestore onSnapshot para sincronização entre dispositivos remotos
 // =============================================================
 
-import { db } from "../../../firebase-config.js";
-import {
-  doc,
-  onSnapshot,
-  updateDoc
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+let firestoreLiveCtx = null;
+
+async function getLiveFirestoreCtx() {
+  if (firestoreLiveCtx) return firestoreLiveCtx;
+  if (typeof window !== "undefined" && window.location && typeof window.location.href === "string") {
+    try {
+      const fbConfig = await import("../../../firebase-config.js");
+      const firestoreMod = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+      firestoreLiveCtx = {
+        db: fbConfig.db,
+        doc: firestoreMod.doc,
+        onSnapshot: firestoreMod.onSnapshot,
+        updateDoc: firestoreMod.updateDoc
+      };
+      return firestoreLiveCtx;
+    } catch (e) {
+      console.warn("[LiveSyncEngine] Firestore fallback:", e.message);
+    }
+  }
+  return null;
+}
 
 const CHANNEL_NAME = "virtuo_live_sync_bus_v2";
+
+export const LIVE_SYNC_EVENTS = {
+  SET_SONG: "SET_SONG",
+  TRANSPOSE: "TRANSPOSE",
+  SET_SECTION: "SET_SECTION",
+  SET_BPM: "SET_BPM",
+  SET_EASY_PLAY: "SET_EASY_PLAY"
+};
 
 class LiveSyncEngine {
   constructor() {
@@ -89,27 +112,28 @@ class LiveSyncEngine {
     }
 
     // Listener Firestore online em tempo real
-    if (typeof window !== "undefined" && db && missionId) {
-      try {
-        const missionRef = doc(db, "missions", missionId);
-        this._firestoreUnsubscribe = onSnapshot(missionRef, (snap) => {
-          if (snap.exists()) {
-            const data = snap.data();
-            this._handleIncomingSync({
-              missionId,
-              currentSongId: data.currentSongId,
-              currentKey: data.currentKey,
-              currentBpm: data.currentBpm,
-              isEasyPlay: data.isEasyPlay,
-              currentSection: data.currentSection,
-              lastUpdatedBy: data.lastUpdatedBy,
-              timestamp: Date.now()
-            }, "firestore");
-          }
-        }, (err) => {
-          // Fallback offline silencioso
-        });
-      } catch (err) {}
+    if (typeof window !== "undefined" && missionId) {
+      getLiveFirestoreCtx().then(ctx => {
+        if (!ctx || !ctx.db) return;
+        try {
+          const missionRef = ctx.doc(ctx.db, "missions", missionId);
+          this._firestoreUnsubscribe = ctx.onSnapshot(missionRef, (snap) => {
+            if (snap.exists()) {
+              const data = snap.data();
+              this._handleIncomingSync({
+                missionId,
+                currentSongId: data.currentSongId,
+                currentKey: data.currentKey,
+                currentBpm: data.currentBpm,
+                isEasyPlay: data.isEasyPlay,
+                currentSection: data.currentSection,
+                lastUpdatedBy: data.lastUpdatedBy,
+                timestamp: Date.now()
+              }, "firestore");
+            }
+          }, () => {});
+        } catch {}
+      }).catch(() => {});
     }
 
     this._notifyListeners();
@@ -192,18 +216,21 @@ class LiveSyncEngine {
     const localLatency = performance.now() - startTime;
 
     // 4. Se online, envia para Firestore
-    if (typeof window !== "undefined" && db && this.state.missionId) {
-      try {
-        const missionRef = doc(db, "missions", this.state.missionId);
-        updateDoc(missionRef, {
-          currentSongId: this.state.currentSongId || null,
-          currentKey: this.state.currentKey || "C",
-          currentBpm: Number(this.state.currentBpm) || 70,
-          isEasyPlay: Boolean(this.state.isEasyPlay),
-          currentSection: this.state.currentSection || "Intro",
-          updatedAt: new Date().toISOString()
-        }).catch(() => {});
-      } catch {}
+    if (typeof window !== "undefined" && this.state.missionId) {
+      getLiveFirestoreCtx().then(ctx => {
+        if (!ctx || !ctx.db) return;
+        try {
+          const missionRef = ctx.doc(ctx.db, "missions", this.state.missionId);
+          ctx.updateDoc(missionRef, {
+            currentSongId: this.state.currentSongId || null,
+            currentKey: this.state.currentKey || "C",
+            currentBpm: Number(this.state.currentBpm) || 70,
+            isEasyPlay: Boolean(this.state.isEasyPlay),
+            currentSection: this.state.currentSection || "Intro",
+            updatedAt: new Date().toISOString()
+          }).catch(() => {});
+        } catch {}
+      }).catch(() => {});
     }
 
     return {
@@ -211,6 +238,82 @@ class LiveSyncEngine {
       latencyMs: Number(localLatency.toFixed(2)),
       state: this.state
     };
+  }
+
+  /**
+   * Status de conexão do Live Sync com detecção de rede e Firestore
+   * Requisito 15: Notificar claramente se estiver offline
+   */
+  getConnectionStatus() {
+    const isOnline = typeof navigator !== "undefined" ? Boolean(navigator.onLine) : true;
+    return {
+      connected: Boolean(this._activeMissionId),
+      isOnline,
+      activeMissionId: this._activeMissionId,
+      channelActive: Boolean(this._broadcastChannel),
+      firestoreSynced: Boolean(this._firestoreUnsubscribe),
+      state: { ...this.state }
+    };
+  }
+
+  /**
+   * Evento Canônico: SET_SONG
+   */
+  async setSong(songId, songKey = "C", songBpm = 70, title = "", updatedBy = null) {
+    return await this.broadcastUpdate({
+      eventType: LIVE_SYNC_EVENTS.SET_SONG,
+      currentSongId: songId,
+      currentSongTitle: title,
+      currentKey: songKey,
+      currentBpm: Number(songBpm) || 70,
+      currentSection: "Intro",
+      lastUpdatedBy: updatedBy
+    });
+  }
+
+  /**
+   * Evento Canônico: TRANSPOSE
+   */
+  async transpose(targetKey, keyOffset = 0, updatedBy = null) {
+    return await this.broadcastUpdate({
+      eventType: LIVE_SYNC_EVENTS.TRANSPOSE,
+      currentKey: targetKey,
+      keyOffset: keyOffset,
+      lastUpdatedBy: updatedBy
+    });
+  }
+
+  /**
+   * Evento Canônico: SET_SECTION
+   */
+  async setSection(sectionName, updatedBy = null) {
+    return await this.broadcastUpdate({
+      eventType: LIVE_SYNC_EVENTS.SET_SECTION,
+      currentSection: sectionName,
+      lastUpdatedBy: updatedBy
+    });
+  }
+
+  /**
+   * Evento Canônico: SET_BPM
+   */
+  async setBpm(bpm, updatedBy = null) {
+    return await this.broadcastUpdate({
+      eventType: LIVE_SYNC_EVENTS.SET_BPM,
+      currentBpm: Number(bpm) || 70,
+      lastUpdatedBy: updatedBy
+    });
+  }
+
+  /**
+   * Evento Canônico: SET_EASY_PLAY
+   */
+  async setEasyPlay(isEasy, updatedBy = null) {
+    return await this.broadcastUpdate({
+      eventType: LIVE_SYNC_EVENTS.SET_EASY_PLAY,
+      isEasyPlay: Boolean(isEasy),
+      lastUpdatedBy: updatedBy
+    });
   }
 }
 

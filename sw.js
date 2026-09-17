@@ -1,5 +1,5 @@
-// Virtuo PWA Service Worker (v2.1.0-prod)
-const CACHE_NAME = "virtuo-v2.1.0";
+// Virtuo PWA Service Worker (v2.2.0-prod)
+const CACHE_NAME = "virtuo-v2.2.0";
 
 const APP_SHELL_FILES = [
   "./",
@@ -20,6 +20,9 @@ const APP_SHELL_FILES = [
   "./src/music/music-intelligence.js",
   "./src/features/ai/virtuo-ai-view.js",
   "./src/audio/index.js",
+  "./src/audio/sound-provider.js",
+  "./src/audio/sample-registry.js",
+  "./src/audio/musical-events.js",
   "./src/audio/metronome.js",
   "./src/audio/metronome-controller.js",
   "./src/audio/metronome-view.js",
@@ -32,10 +35,16 @@ const APP_SHELL_FILES = [
   "./src/features/rehearsal/index.js",
   "./src/features/rehearsal/rehearsal-controller.js",
   "./src/features/rehearsal/rehearsal-view.js",
+  "./src/features/gear/index.js",
+  "./src/features/gear/gear-schema.js",
+  "./src/features/gear/gear-service.js",
+  "./src/features/gear/gear-view.js",
+  "./src/services/user-activity.js",
   "./src/services/rehearsals.js",
   "./src/services/community.js",
   "./songs-service.js",
   "./src/database/index.js",
+  "./src/academy/solfege-bona-schema.js",
   "./src/features/tuner/tuner-view.js",
   "./src/features/vocal/index.js",
   "./src/features/vocal/vocal-view.js",

@@ -96,15 +96,27 @@ class AcademyServiceClass {
 
     // 1. Tenta carregar do Firestore
     const ctx = await getFirestoreCtx();
-    if (ctx && ctx.db) {
+    if (ctx && ctx.db && userId && userId !== "guest") {
       try {
         const ref = ctx.doc(ctx.db, "user_academy_progress", userId);
         const snap = await ctx.getDoc(ref);
+        const local = this._getLocalProgress(userId);
         if (snap.exists()) {
-          const data = snap.data();
-          this.cachedProgress = { ...data, userId };
-          this._saveLocalProgress(userId, this.cachedProgress);
-          return this.cachedProgress;
+          const remote = snap.data();
+          const merged = this.reconcileProgress(local, remote);
+          this.cachedProgress = merged;
+          this._saveLocalProgress(userId, merged);
+
+          // Se o merge integrou lições do offline, envia de volta ao Firestore
+          if ((merged.completedLessons?.length || 0) > (remote.completedLessons?.length || 0) ||
+              (merged.practiceTimeMinutes || 0) > (remote.practiceTimeMinutes || 0)) {
+            ctx.setDoc(ref, merged, { merge: true }).catch(() => {});
+          }
+          return merged;
+        } else if (local && local.completedLessons && local.completedLessons.length > 0) {
+          ctx.setDoc(ref, local, { merge: true }).catch(() => {});
+          this.cachedProgress = local;
+          return local;
         }
       } catch (err) {
         console.warn("[AcademyService.getUserProgress] Falha ao ler Firestore:", err.message);
@@ -115,6 +127,48 @@ class AcademyServiceClass {
     const local = this._getLocalProgress(userId);
     this.cachedProgress = local;
     return local;
+  }
+
+  /**
+   * Reconciliação sem perda de dados entre estado offline local e remoto Firestore
+   * Requisito 19: Merge correto unindo aulas concluídas e respeitando timestamps mais recentes
+   */
+  reconcileProgress(local, remote) {
+    if (!remote) return local || createEmptyUserAcademyProgress();
+    if (!local) return remote;
+
+    const completedLessons = Array.from(new Set([
+      ...(Array.isArray(local.completedLessons) ? local.completedLessons : []),
+      ...(Array.isArray(remote.completedLessons) ? remote.completedLessons : [])
+    ]));
+
+    const lessonScores = { ...(remote.lessonScores || {}) };
+    if (local.lessonScores) {
+      for (const [lessonId, score] of Object.entries(local.lessonScores)) {
+        lessonScores[lessonId] = Math.max(score, lessonScores[lessonId] || 0);
+      }
+    }
+
+    const practiceTimeMinutes = Math.max(
+      local.practiceTimeMinutes || 0,
+      remote.practiceTimeMinutes || 0
+    );
+
+    const localTime = new Date(local.updatedAt || 0).getTime();
+    const remoteTime = new Date(remote.updatedAt || 0).getTime();
+    const useLocalMeta = localTime > remoteTime;
+
+    return {
+      ...remote,
+      ...local,
+      completedLessons,
+      lessonScores,
+      practiceTimeMinutes,
+      currentInstrument: useLocalMeta ? (local.currentInstrument || remote.currentInstrument) : (remote.currentInstrument || local.currentInstrument),
+      currentLevel: this._calculateCurrentLevel(completedLessons),
+      lastPracticedAt: localTime > remoteTime ? local.lastPracticedAt : (remote.lastPracticedAt || local.lastPracticedAt),
+      updatedAt: new Date(Math.max(localTime, remoteTime, Date.now())).toISOString()
+    };
   }
 
   /**

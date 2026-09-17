@@ -83,6 +83,7 @@ import { notificationsService, renderNotificationsScreen } from "./src/features/
 import { momentsService, renderMomentCelebrationScreen } from "./src/features/moments/index.js";
 import { renderAcademyScreen } from "./src/academy/academy-view.js";
 import { VirtuoAcademyService } from "./src/academy/academy-service.js";
+import { GearView } from "./src/features/gear/index.js";
 
 // Conecta o repositório musical profissional ao painel administrativo
 adminSongManager.setRepository(SongsRepository);
@@ -1810,6 +1811,15 @@ const screens = {
 
   get academy() {
     return renderAcademyScreen();
+  },
+
+  get gear() {
+    const gearUid = currentUser ? currentUser.uid : "guest";
+    setTimeout(() => {
+      const gv = new GearView("app-gear-container", { userId: gearUid });
+      gv.init();
+    }, 10);
+    return `<div id="app-gear-container" style="min-height: 80vh;"></div>`;
   },
 
   get tuner() {

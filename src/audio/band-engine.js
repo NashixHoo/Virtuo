@@ -26,6 +26,7 @@ import { MusicalArrangement } from "./musical-arrangement.js";
 import { SampleManager } from "./sample-manager.js";
 import { SamplePlayer } from "./sample-player.js";
 import { RealSoundEngine } from "./real-sound-engine.js";
+import { SoundProviderFactory } from "./sound-provider.js";
 
 // =============================================================
 // PRESETS COMPATÍVEIS COM V1 E V2
@@ -251,6 +252,10 @@ export class VirtuoBandEngine {
     // Modo Easy Band
     this.isEasyBand = false;
 
+    // Provedor sonoro abstrato (sample | synthetic | sfz | soundfont)
+    this.soundProviderType = "sample";
+    this.soundProvider = null;
+
     // Recomendações Smart Band
     this.smartRecommendation = null;
 
@@ -383,6 +388,90 @@ export class VirtuoBandEngine {
       this.grooveEngine,
       this.sampleManager
     );
+
+    // 5. Instanciação e Conexão do Provedor de Som Abstrato
+    this.soundProvider = SoundProviderFactory.create(this.soundProviderType, {
+      realSoundEngine: this.realSoundEngine,
+      soundLibrary: this.soundLibrary,
+      fallbackSoundLibrary: this.soundLibrary
+    });
+    this.arrangementEngine.setSoundProvider(this.soundProvider);
+  }
+
+  /**
+   * Alterna o provedor tímbrico dinamicamente sem alterar o Band Engine
+   * @param {"sample" | "synthetic" | "sfz" | "soundfont"} type
+   */
+  setSoundProviderType(type) {
+    const validTypes = SoundProviderFactory.getAvailableTypes();
+    const targetType = validTypes.includes(type) ? type : "sample";
+    this.soundProviderType = targetType;
+
+    if (this.audioCtx && this.arrangementEngine) {
+      this.soundProvider = SoundProviderFactory.create(targetType, {
+        realSoundEngine: this.realSoundEngine,
+        soundLibrary: this.soundLibrary,
+        fallbackSoundLibrary: this.soundLibrary
+      });
+      this.arrangementEngine.setSoundProvider(this.soundProvider);
+    }
+    this._notify();
+    return this.soundProvider;
+  }
+
+  /**
+   * Retorna metadados e status operacional do SoundProvider ativo
+   */
+  getSoundProviderStatus() {
+    return {
+      type: this.soundProviderType,
+      providerName: this.soundProvider?.getName ? this.soundProvider.getName() : this.soundProviderType,
+      metadata: this.soundProvider?.getMetadata ? this.soundProvider.getMetadata() : null,
+      realSoundStatus: this.getRealSoundStatus()
+    };
+  }
+
+  /**
+   * Valida se o AudioContext está ativo e desimpedido pelo navegador mobile
+   */
+  isAudioUnlocked() {
+    return !!(this.audioCtx && this.audioCtx.state === "running");
+  }
+
+  /**
+   * Destrava o AudioContext sob interação do usuário (touch/click)
+   */
+  async unlockAudio() {
+    this._initAudio();
+    if (this.audioCtx && this.audioCtx.state === "suspended") {
+      try {
+        await this.audioCtx.resume();
+      } catch (err) {
+        console.warn("[BandEngine] Não foi possível destravar AudioContext:", err);
+      }
+    }
+    return this.isAudioUnlocked();
+  }
+
+  /**
+   * Limpeza e liberação de nós ao sair do Modo Ensaio / Modo Banda
+   * Requisito 9: Controle rigoroso de memória sem recriação excessiva de AudioContext
+   */
+  cleanup() {
+    this.stop();
+    if (this.samplePlayer && typeof this.samplePlayer.stopAll === "function") {
+      this.samplePlayer.stopAll();
+    }
+    this.currentStep = 0;
+    this.currentBar = 0;
+    this._notify();
+  }
+
+  /**
+   * Descarte seguro de referências transitórias
+   */
+  dispose() {
+    this.cleanup();
   }
 
   /**

@@ -289,6 +289,20 @@ service cloud.firestore {
       allow delete: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
     }
 
+    // User Gear Collection (Meu Equipamento): private to owner or admin
+    match /user_gear/{userId} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow create, update: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow delete: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+    }
+
+    // User Activity Collection (Favoritos, Músicas Recentes, Último Ensaio): private to owner or admin
+    match /user_activity/{userId} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow create, update: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow delete: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+    }
+
     // Default deny all other collections
     match /{document=**} {
       allow read, write: if false;
