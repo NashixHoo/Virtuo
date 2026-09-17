@@ -24,7 +24,7 @@ export function renderLiveSyncToolbar(mission, isLeader = true) {
 
   return `
     <div 
-      class="glass live-sync-toolbar"
+      class="glass live-sync-toolbar virtuo-card virtuo-horizon" 
       id="live-sync-strip"
       style="
         background: linear-gradient(180deg, rgba(14, 27, 53, 0.95), rgba(8, 14, 26, 0.98));

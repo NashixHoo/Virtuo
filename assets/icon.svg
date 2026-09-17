@@ -1,9 +1,57 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <linearGradient id="sqBgIcon" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0E1B35"/>
+      <stop offset="100%" stop-color="#07101F"/>
+    </linearGradient>
 
-<rect width="512" height="512" rx="110" fill="#07101F"/>
+    <linearGradient id="metalLeftIcon" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.95"/>
+      <stop offset="25%" stop-color="#D2EBF7"/>
+      <stop offset="50%" stop-color="#89C4E1"/>
+      <stop offset="75%" stop-color="#4B86AA"/>
+      <stop offset="100%" stop-color="#1A4363"/>
+    </linearGradient>
 
-<circle cx="256" cy="256" r="170" fill="#3AA9FF" opacity=".18"/>
+    <linearGradient id="metalRightIcon" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#E8F8FF"/>
+      <stop offset="30%" stop-color="#B2E7FA"/>
+      <stop offset="60%" stop-color="#55ACD4"/>
+      <stop offset="85%" stop-color="#245F85"/>
+      <stop offset="100%" stop-color="#0E2D44"/>
+    </linearGradient>
 
-<path d="M256 70 L286 190 L406 220 L286 250 L256 370 L226 250 L106 220 L226 190 Z" fill="white"/>
+    <linearGradient id="metalFacetIcon" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.8"/>
+      <stop offset="50%" stop-color="#7EE7FF" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#1E5275" stop-opacity="0.6"/>
+    </linearGradient>
 
+    <radialGradient id="horizonGlowIcon" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#7EE7FF" stop-opacity="0.75"/>
+      <stop offset="35%" stop-color="#7EE7FF" stop-opacity="0.30"/>
+      <stop offset="70%" stop-color="#0E1B35" stop-opacity="0.10"/>
+      <stop offset="100%" stop-color="#07101F" stop-opacity="0"/>
+    </radialGradient>
+
+    <filter id="glowIcon" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="10" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+
+  <rect x="16" y="16" width="480" height="480" rx="108" fill="url(#sqBgIcon)" stroke="rgba(126, 231, 255, 0.22)" stroke-width="3"/>
+
+  <ellipse cx="256" cy="385" rx="160" ry="38" fill="url(#horizonGlowIcon)"/>
+
+  <g filter="url(#glowIcon)">
+    <path d="M 126 120 L 186 120 L 256 370 L 212 370 Z" fill="url(#metalLeftIcon)"/>
+    <path d="M 386 120 L 326 120 C 300 186, 278 252, 256 370 L 300 370 C 328 265, 356 186, 386 120 Z" fill="url(#metalRightIcon)"/>
+    <polygon points="212,370 256,370 300,370 256,404" fill="url(#metalFacetIcon)"/>
+    <path d="M 126 120 L 256 404 L 386 120" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" opacity="0.6"/>
+    <path d="M 186 120 L 256 370 C 278 252, 300 186, 326 120" fill="none" stroke="#7EE7FF" stroke-width="2" stroke-linecap="round" opacity="0.8"/>
+  </g>
+
+  <circle cx="256" cy="404" r="3.5" fill="#FFFFFF"/>
+  <circle cx="256" cy="404" r="8" fill="#7EE7FF" opacity="0.5"/>
 </svg>

@@ -16,6 +16,21 @@ export class GrooveEngine {
     this.nextQueuedSection = null;
   }
 
+  normalizeSectionName(section) {
+    if (!section) return "verse";
+    const s = String(section).toLowerCase().trim();
+    if (s.includes("intro")) return "intro";
+    if (s.includes("refr") || s.includes("chorus")) return "chorus";
+    if (s.includes("pré") || s.includes("pre")) return "pre_chorus";
+    if (s.includes("pont") || s.includes("bridge")) return "bridge";
+    if (s.includes("solo")) return "solo";
+    if (s.includes("break") || s.includes("parada")) return "break";
+    if (s.includes("espont") || s.includes("spontan")) return "spontaneous";
+    if (s.includes("fim") || s.includes("final") || s.includes("outro")) return "outro";
+    if (s.includes("vers") || s.includes("estrofe")) return "verse";
+    return s;
+  }
+
   setPreset(preset) {
     if (BAND_STYLE_PATTERNS[preset]) {
       this.currentPreset = preset;
@@ -23,7 +38,7 @@ export class GrooveEngine {
   }
 
   setSection(section) {
-    this.currentSection = section || "verse";
+    this.currentSection = this.normalizeSectionName(section);
   }
 
   setIntensity(intensity) {
@@ -36,7 +51,7 @@ export class GrooveEngine {
   }
 
   queueSectionTransition(nextSection) {
-    this.nextQueuedSection = nextSection;
+    this.nextQueuedSection = this.normalizeSectionName(nextSection);
     this.isTransitioning = true;
   }
 
@@ -46,6 +61,64 @@ export class GrooveEngine {
       this.nextQueuedSection = null;
     }
     this.isTransitioning = false;
+  }
+
+  getPattern(section = null, intensity = null, style = null) {
+    return this.getCurrentPattern(style, section, intensity);
+  }
+
+  getCurrentPattern(style = null, section = null, intensity = null) {
+    if (this.isEasyBand) {
+      return {
+        kick: [0, 4],
+        snare: [4],
+        hihat: [0, 2, 4, 6],
+        bass: [0, 4],
+        keyboard: [0],
+        guitar: [0, 2, 4, 6]
+      };
+    }
+    const presetName = style || this.currentPreset;
+    const sectionName = this.normalizeSectionName(section || this.currentSection);
+    const effIntensity = intensity !== null && intensity !== undefined ? intensity : this.intensity;
+    const styleData = BAND_STYLE_PATTERNS[presetName] || BAND_STYLE_PATTERNS.Worship;
+    const sectionData = (styleData.sections && styleData.sections[sectionName]) || styleData.sections?.verse || {};
+    const isBreak = sectionName === "break";
+    const shouldUseRide = !isBreak && (sectionName === "chorus" || sectionName === "bridge" || sectionName === "solo" || effIntensity >= 4);
+    const ride = shouldUseRide ? [0, 2, 4, 6] : [];
+    const snareGhost = effIntensity >= 3 && !isBreak ? [3, 7] : [];
+
+    return {
+      kick: sectionData.kick || [0, 4],
+      snare: sectionData.snare || [4],
+      snareGhost,
+      hihat: sectionData.hihat || [0, 2, 4, 6],
+      ride,
+      bass: sectionData.bass || [0, 4],
+      keyboard: sectionData.keyboard || [0],
+      guitar: sectionData.guitar || [0, 2, 4, 6],
+      ...sectionData
+    };
+  }
+
+  isTransitionBar(barOrStep = 0, total = 8) {
+    if (!this.isTransitioning && !this.nextQueuedSection) return false;
+    return barOrStep >= (total - 2);
+  }
+
+  getActivePatternForStep(step, totalSteps = 8) {
+    if (this.isTransitionBar(step, totalSteps)) {
+      const styleData = BAND_STYLE_PATTERNS[this.currentPreset] || BAND_STYLE_PATTERNS.Worship;
+      const fillData = styleData.sections?.fill || {};
+      return {
+        kick: fillData.kick || [0, 2, 4, 6],
+        snare: fillData.snare || [2, 4, 6, 7],
+        hihat: fillData.hihat || [0, 1, 2, 3, 4, 5, 6, 7],
+        toms: fillData.toms || [4, 5, 6, 7],
+        ...fillData
+      };
+    }
+    return this.getCurrentPattern();
   }
 
   getIntensityMultiplier() {
@@ -59,7 +132,8 @@ export class GrooveEngine {
    */
   getStepEvents(step, totalSteps = 8) {
     const styleData = BAND_STYLE_PATTERNS[this.currentPreset] || BAND_STYLE_PATTERNS.Worship;
-    let sectionData = (styleData.sections && styleData.sections[this.currentSection]) || styleData.sections?.verse || {};
+    const normSection = this.normalizeSectionName(this.currentSection);
+    let sectionData = (styleData.sections && styleData.sections[normSection]) || styleData.sections?.verse || {};
 
     if (this.isEasyBand) {
       // Simplificação do Easy Band para ritmos retos e acessíveis
@@ -69,35 +143,47 @@ export class GrooveEngine {
     const isTransitionBar = this.nextQueuedSection && step >= (totalSteps - 4);
     const fillData = styleData.sections?.fill || {};
 
-    const kickSteps = isTransitionBar && fillData.kick ? fillData.kick : (sectionData.kick || []);
-    const snareSteps = isTransitionBar && fillData.snare ? fillData.snare : (sectionData.snare || []);
-    const hihatSteps = isTransitionBar && fillData.hihat ? fillData.hihat : (sectionData.hihat || []);
-    const crashSteps = sectionData.crash || [];
+    const isBreak = normSection === "break";
+
+    const kickSteps = isBreak ? [0] : (isTransitionBar && fillData.kick ? fillData.kick : (sectionData.kick || []));
+    const snareSteps = isBreak ? [] : (isTransitionBar && fillData.snare ? fillData.snare : (sectionData.snare || []));
+    const hihatSteps = isBreak ? [0, 4] : (isTransitionBar && fillData.hihat ? fillData.hihat : (sectionData.hihat || []));
+    const crashSteps = isBreak ? [] : (sectionData.crash || []);
     const tomSteps = isTransitionBar && fillData.toms ? fillData.toms : [];
 
-    const bassSteps = sectionData.bass || [0, 4];
+    const bassSteps = isBreak ? [0] : (sectionData.bass || [0, 4]);
     const kbSteps = sectionData.keyboard || [0];
-    const gtSteps = sectionData.guitar || [0, 2, 4, 6];
+    const gtSteps = isBreak ? [0] : (sectionData.guitar || [0, 2, 4, 6]);
 
     // Cálculo de velocidade e acentos
     const intensityScale = this.getIntensityMultiplier();
     const isDownbeat = step === 0;
     const isBackbeat = step === 4 || (totalSteps === 6 && step === 3);
 
+    // Condução com Ride Cymbal: presente em refrão, ponte ou intensidades altas
+    const shouldUseRide = !isBreak && (normSection === "chorus" || normSection === "bridge" || normSection === "solo" || this.intensity >= 4);
+    const rideSteps = shouldUseRide ? [0, 2, 4, 6] : [];
+
+    // Ghost notes na caixa para dar swing e realismo humano
+    const isGhostStep = !isBackbeat && (step === 3 || step === 7) && this.intensity >= 3 && !isBreak;
+
     return {
       drums: {
         playKick: kickSteps.includes(step),
         kickVelocity: isDownbeat ? 1.0 * intensityScale : 0.85 * intensityScale,
 
-        playSnare: snareSteps.includes(step),
-        snareVelocity: (isBackbeat ? 1.0 : 0.7) * intensityScale,
-        snareIsGhost: !isBackbeat && (step % 2 !== 0),
+        playSnare: snareSteps.includes(step) || isGhostStep,
+        snareVelocity: isGhostStep ? 0.35 * intensityScale : ((isBackbeat ? 1.0 : 0.7) * intensityScale),
+        snareIsGhost: isGhostStep || (!isBackbeat && (step % 2 !== 0)),
 
-        playHihat: hihatSteps.includes(step),
+        playHihat: !shouldUseRide && hihatSteps.includes(step),
         hihatVelocity: (step % 2 === 0 ? 0.75 : 0.5) * intensityScale,
         hihatIsOpen: this.intensity >= 4 && (step % 2 !== 0),
 
-        playCrash: crashSteps.includes(step) && this.intensity >= 3,
+        playRide: shouldUseRide && rideSteps.includes(step),
+        rideVelocity: (step % 2 === 0 ? 0.85 : 0.6) * intensityScale,
+
+        playCrash: (crashSteps.includes(step) || (isTransitionBar && step === 0)) && this.intensity >= 3 && !isBreak,
         crashVelocity: 0.9 * intensityScale,
 
         playTom: tomSteps.includes(step),
@@ -107,7 +193,7 @@ export class GrooveEngine {
       bass: {
         play: bassSteps.includes(step),
         velocity: (isDownbeat ? 1.0 : 0.85) * intensityScale,
-        duration: this.intensity <= 2 ? 0.65 : 0.38
+        duration: this.intensity <= 2 ? 0.65 : (isBreak ? 1.2 : 0.38)
       },
       keyboard: {
         play: kbSteps.includes(step),
@@ -118,7 +204,7 @@ export class GrooveEngine {
         play: gtSteps.includes(step),
         velocity: (step % 2 === 0 ? 0.9 : 0.7) * intensityScale,
         direction: step % 2 === 0 ? "down" : "up",
-        duration: 0.45
+        duration: isBreak ? 1.0 : 0.45
       }
     };
   }

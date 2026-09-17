@@ -53,7 +53,7 @@ export function renderMissionsListScreen(missions = [], currentUser = null, acti
       
       <!-- Cabeçalho Principal -->
       <section 
-        class="glass" 
+        class="glass virtuo-card virtuo-horizon" 
         style="
           padding: 20px; 
           border-radius: ${DESIGN_TOKENS.radii.lg};

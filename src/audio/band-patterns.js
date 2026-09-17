@@ -14,6 +14,8 @@ export const BAND_SECTIONS = [
   { id: "pre_chorus", label: "Pré-Refrão", defaultIntensity: 3 },
   { id: "chorus", label: "Refrão", defaultIntensity: 4 },
   { id: "bridge", label: "Ponte", defaultIntensity: 3 },
+  { id: "solo", label: "Solo", defaultIntensity: 4 },
+  { id: "break", label: "Break", defaultIntensity: 1 },
   { id: "spontaneous", label: "Espontâneo", defaultIntensity: 2 },
   { id: "outro", label: "Final", defaultIntensity: 5 }
 ];

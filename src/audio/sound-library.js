@@ -9,8 +9,10 @@
 export const SOUND_LIBRARY_METADATA = {
   source: "Virtuo Internal Sound Engine (Web Audio Synthesis & Acoustic Modeling)",
   license: "MIT",
+  type: "Acoustic Procedural Synthesis (Web Audio API)",
   attribution: "Virtuo Musical Architecture",
-  version: "2.1.0"
+  version: "2.1.0",
+  instruments: ["drums", "bass", "keyboard", "guitar", "metronome"]
 };
 
 export class SoundLibrary {
@@ -205,7 +207,7 @@ export class SoundLibrary {
   }
 
   /**
-   * Prato Crash / Condução com wash metálico sustentado
+   * Prato Crash com wash metálico sustentado
    */
   triggerCrash(time, velocity = 1.0) {
     if (!this.audioCtx || !this.channels.drums || !this.noiseBuffer) return;
@@ -230,6 +232,51 @@ export class SoundLibrary {
       gain.connect(this.channels.drums);
       noise.start(t);
       noise.stop(t + 1.45);
+    } catch {}
+  }
+
+  /**
+   * Prato Ride (Condução) com ping brilhante de cúpula e ressonância metálica
+   */
+  triggerRide(time, velocity = 1.0) {
+    if (!this.audioCtx || !this.channels.drums) return;
+    try {
+      const t = time;
+      const vol = Math.min(1.0, Math.max(0.1, velocity * 0.55));
+
+      // 1. Ping de cúpula (Bell ping ~4800Hz)
+      const osc = this.audioCtx.createOscillator();
+      const oscGain = this.audioCtx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(4850, t);
+      oscGain.gain.setValueAtTime(vol * 0.4, t);
+      oscGain.gain.exponentialRampToValueAtTime(0.001, t + 0.38);
+
+      osc.connect(oscGain);
+      oscGain.connect(this.channels.drums);
+      osc.start(t);
+      osc.stop(t + 0.4);
+
+      // 2. Wash e corpo do prato de condução
+      if (this.noiseBuffer) {
+        const noise = this.audioCtx.createBufferSource();
+        noise.buffer = this.noiseBuffer;
+
+        const filter = this.audioCtx.createBiquadFilter();
+        filter.type = "bandpass";
+        filter.frequency.setValueAtTime(6800, t);
+        filter.Q.setValueAtTime(2.2, t);
+
+        const noiseGain = this.audioCtx.createGain();
+        noiseGain.gain.setValueAtTime(vol * 0.35, t);
+        noiseGain.gain.exponentialRampToValueAtTime(0.001, t + 0.85);
+
+        noise.connect(filter);
+        filter.connect(noiseGain);
+        noiseGain.connect(this.channels.drums);
+        noise.start(t);
+        noise.stop(t + 0.9);
+      }
     } catch {}
   }
 
@@ -282,6 +329,10 @@ export class SoundLibrary {
     } catch {}
   }
 
+  triggerBassNote(time, freq, duration = 0.4, velocity = 1.0, filterCutoff = 360) {
+    return this.triggerBass(time, freq, duration, velocity, filterCutoff);
+  }
+
   // -----------------------------------------------------------
   // 3. PIANO ACÚSTICO & TECLADO CELESTIAL (KEYBOARD)
   // -----------------------------------------------------------
@@ -289,6 +340,10 @@ export class SoundLibrary {
   /**
    * Acordes de Piano Acústico, Pad Celestial ou Electric Keys
    */
+  triggerPianoVoicing(time, chordFrequencies, mode = "pad", duration = 1.8, velocity = 1.0) {
+    return this.triggerKeyboardChord(time, chordFrequencies, mode, duration, velocity);
+  }
+
   triggerKeyboardChord(time, chordFrequencies, mode = "pad", duration = 1.8, velocity = 1.0) {
     if (!this.audioCtx || !this.channels.keyboard || !Array.isArray(chordFrequencies)) return;
     try {
@@ -433,7 +488,7 @@ export class SoundLibrary {
         gain.gain.linearRampToValueAtTime(vol * 0.35, t + 0.006);
         gain.gain.exponentialRampToValueAtTime(0.001, t + duration);
       } else if (style === "ambient" || style === "worship") {
-        // Shimmer com sustain longo e ambiência
+        // Shimmer com sustain longo e ambiência celestial
         osc.type = "sine";
         osc.frequency.setValueAtTime(freq, t);
         osc.detune.setValueAtTime(4, t);
@@ -444,16 +499,28 @@ export class SoundLibrary {
         gain.gain.setValueAtTime(0.001, t);
         gain.gain.linearRampToValueAtTime(vol * 0.25, t + 0.08);
         gain.gain.exponentialRampToValueAtTime(0.001, t + Math.max(1.0, duration * 2));
+      } else if (style === "crunch" || style === "drive") {
+        // Guitarra com saturação harmônica e corpo denso
+        osc.type = "sawtooth";
+        osc.frequency.setValueAtTime(freq, t);
+
+        filter.type = "lowpass";
+        filter.frequency.setValueAtTime(style === "drive" ? 2200 : 1600, t);
+        filter.Q.setValueAtTime(1.8, t);
+
+        gain.gain.setValueAtTime(0.001, t);
+        gain.gain.linearRampToValueAtTime(vol * (style === "drive" ? 0.32 : 0.28), t + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + duration);
       } else {
-        // Dedilhado / Arpeggio acústico natural
+        // Padrão: Guitarra Clean cristalina e dedilhado natural
         osc.type = "triangle";
         osc.frequency.setValueAtTime(freq, t);
 
         filter.type = "lowpass";
-        filter.frequency.setValueAtTime(1750, t);
+        filter.frequency.setValueAtTime(1850, t);
 
         gain.gain.setValueAtTime(0.001, t);
-        gain.gain.linearRampToValueAtTime(vol * 0.3, t + 0.01);
+        gain.gain.linearRampToValueAtTime(vol * 0.3, t + 0.008);
         gain.gain.exponentialRampToValueAtTime(0.001, t + duration);
       }
 

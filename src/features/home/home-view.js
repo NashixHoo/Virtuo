@@ -46,7 +46,7 @@ export function renderHojeScreen({
       
       <!-- ================= BLOCO 1: SAUDAÇÃO ================= -->
       <section 
-        class="glass" 
+        class="glass virtuo-card virtuo-horizon" 
         id="hoje-bloco-saudacao"
         style="
           position:relative; 
@@ -98,7 +98,7 @@ export function renderHojeScreen({
 
       <!-- ================= BLOCO 2: MISSÃO ATUAL ================= -->
       <section 
-        class="glass" 
+        class="glass virtuo-card" 
         id="hoje-bloco-missao"
         style="
           padding:18px 20px; 
@@ -165,7 +165,7 @@ export function renderHojeScreen({
 
       <!-- ================= BLOCO 3: CONTINUAR ================= -->
       <section 
-        class="glass" 
+        class="glass virtuo-card" 
         id="hoje-bloco-continuar"
         style="
           padding:18px 20px; 

@@ -10,6 +10,7 @@ export class VirtuoClock {
     this.audioCtx = audioCtx;
     this.bpm = 74;
     this.meter = "4/4";
+    this.beatsPerBar = 4;
     this.totalStepsPerBar = 8; // 8 colcheias em 4/4, 6 colcheias em 6/8
 
     this.isPlaying = false;
@@ -38,11 +39,18 @@ export class VirtuoClock {
     this.meter = meter === "6/8" ? "6/8" : (meter === "3/4" ? "3/4" : "4/4");
     if (this.meter === "6/8") {
       this.totalStepsPerBar = 6;
+      this.beatsPerBar = 6;
     } else if (this.meter === "3/4") {
       this.totalStepsPerBar = 6;
+      this.beatsPerBar = 3;
     } else {
       this.totalStepsPerBar = 8;
+      this.beatsPerBar = 4;
     }
+  }
+
+  getBeatDuration() {
+    return 60.0 / this.bpm;
   }
 
   getStepDuration() {
@@ -56,6 +64,10 @@ export class VirtuoClock {
 
   start() {
     if (this.isPlaying && !this.isPaused) return;
+    if (this.timerId) {
+      clearTimeout(this.timerId);
+      this.timerId = null;
+    }
     this.isPlaying = true;
     this.isPaused = false;
 

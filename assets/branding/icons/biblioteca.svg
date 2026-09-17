@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bibGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="50%" stop-color="#7EE7FF"/>
+      <stop offset="100%" stop-color="#1A4363"/>
+    </linearGradient>
+  </defs>
+  <!-- Livro / Repertório Aberto com Clave de Sol / V Estilizado -->
+  <path d="M 32 18 C 38 14, 48 14, 54 16 L 54 48 C 48 46, 38 46, 32 50 C 26 46, 16 46, 10 48 L 10 16 C 16 14, 26 14, 32 18 Z" fill="#0E1B35" stroke="url(#bibGrad)" stroke-width="2.5" stroke-linejoin="round"/>
+  <!-- Lombada Central -->
+  <line x1="32" y1="18" x2="32" y2="50" stroke="#7EE7FF" stroke-width="2.5"/>
+  <!-- Linhas Musicais nas Páginas -->
+  <line x1="16" y1="24" x2="26" y2="24" stroke="#7EE7FF" stroke-width="1.5" stroke-linecap="round" opacity="0.8"/>
+  <line x1="16" y1="30" x2="26" y2="30" stroke="#64748B" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="16" y1="36" x2="24" y2="36" stroke="#64748B" stroke-width="1.5" stroke-linecap="round"/>
+
+  <line x1="38" y1="24" x2="48" y2="24" stroke="#7EE7FF" stroke-width="1.5" stroke-linecap="round" opacity="0.8"/>
+  <line x1="38" y1="30" x2="48" y2="30" stroke="#64748B" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="40" y1="36" x2="48" y2="36" stroke="#64748B" stroke-width="1.5" stroke-linecap="round"/>
+  <!-- Nota Musical Pequena -->
+  <circle cx="24" cy="36" r="2" fill="#F5C542"/>
+  <line x1="26" y1="36" x2="26" y2="30" stroke="#F5C542" stroke-width="1.2"/>
+</svg>

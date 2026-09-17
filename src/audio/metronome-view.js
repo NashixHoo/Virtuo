@@ -349,13 +349,54 @@ export function renderBandScreenComponent(state) {
           </div>
           <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:10px;">
             ${[
-              { id: "drums", name: "BATERIA", icon: "🥁", desc: "Kick, Snare, HiHat, Toms", hasOptions: false },
-              { id: "bass", name: "BAIXO", icon: "🎸", desc: "Fundamental & Quinta Harmônica", hasOptions: false },
-              { id: "keyboard", name: "TECLADO", icon: "🎹", desc: "Pad Celestial, Piano, Keys", hasOptions: "mode", options: ["pad", "piano", "keys"] },
-              { id: "guitar", name: "GUITARRA", icon: "🎸", desc: "Arpejo, Batida, Shimmer", hasOptions: "pattern", options: ["arpeggio", "strum", "ambient", "worship"] }
+              { 
+                id: "drums", 
+                name: "BATERIA", 
+                icon: "🥁", 
+                desc: "Kick, Snare, HiHat, Toms", 
+                hasOptions: false 
+              },
+              { 
+                id: "bass", 
+                name: "BAIXO", 
+                icon: "🎸", 
+                desc: "Fundamental, Quinta & Condução", 
+                hasOptions: "bassMode", 
+                options: [
+                  { id: "BASS_EASY", label: "Fácil" },
+                  { id: "BASS_NORMAL", label: "Normal" },
+                  { id: "BASS_GROOVE", label: "Groove" }
+                ] 
+              },
+              { 
+                id: "keyboard", 
+                name: "TECLADO", 
+                icon: "🎹", 
+                desc: "Pad Celestial, Piano, Worship", 
+                hasOptions: "mode", 
+                options: [
+                  { id: "pad", label: "Pad" },
+                  { id: "piano", label: "Piano" },
+                  { id: "KEYS_WORSHIP", label: "Worship" }
+                ] 
+              },
+              { 
+                id: "guitar", 
+                name: "GUITARRA", 
+                icon: "🎸", 
+                desc: "Arpejo, Batida, Worship", 
+                hasOptions: "pattern", 
+                options: [
+                  { id: "arpeggio", label: "Arpejo" },
+                  { id: "strum", label: "Batida" },
+                  { id: "worship", label: "Worship" },
+                  { id: "ballad", label: "Balada" }
+                ] 
+              }
             ].map(trk => {
               const trackState = virtuoBand.getState().tracks[trk.id] || { volume: 0.7, muted: false, solo: false, active: true };
               const volPct = Math.round(trackState.volume * 100);
+              const currentBassMode = virtuoBand.getState().bassMode || "BASS_NORMAL";
               return `
                 <div class="band-channel-card" id="track-channel-${trk.id}" style="padding:12px; background:rgba(255,255,255,0.02); border:1px solid ${trackState.solo ? 'rgba(126,231,255,0.4)' : (trackState.muted ? 'rgba(239,68,68,0.3)' : 'rgba(255,255,255,0.08)')}; border-radius:14px;">
                   <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
@@ -404,16 +445,29 @@ export function renderBandScreenComponent(state) {
                     <span style="font-size:11px; color:#7EE7FF; font-weight:700; width:34px; text-align:right;" id="val-vol-${trk.id}">${volPct}%</span>
                   </div>
 
-                  <!-- Seletores de Estilo/Modo Específico (Teclado e Guitarra) -->
+                  <!-- Seletores de Estilo/Modo Específico (Baixo, Teclado e Guitarra) -->
+                  ${trk.hasOptions === "bassMode" ? `
+                    <div style="display:flex; gap:4px; margin-top:8px;">
+                      ${trk.options.map(opt => `
+                        <button 
+                          class="tag-btn ${currentBassMode === opt.id ? 'active' : ''}" 
+                          style="padding:2px 8px; font-size:10px; text-transform:capitalize;"
+                          onclick="window.setBassMode('${opt.id}')"
+                        >
+                          ${opt.label}
+                        </button>
+                      `).join("")}
+                    </div>
+                  ` : ''}
                   ${trk.hasOptions === "mode" ? `
                     <div style="display:flex; gap:4px; margin-top:8px;">
                       ${trk.options.map(opt => `
                         <button 
-                          class="tag-btn ${trackState.mode === opt ? 'active' : ''}" 
+                          class="tag-btn ${trackState.mode === opt.id ? 'active' : ''}" 
                           style="padding:2px 8px; font-size:10px; text-transform:capitalize;"
-                          onclick="window.setKeyboardMode('${opt}')"
+                          onclick="window.setKeyboardMode('${opt.id}')"
                         >
-                          ${opt}
+                          ${opt.label}
                         </button>
                       `).join("")}
                     </div>
@@ -422,11 +476,11 @@ export function renderBandScreenComponent(state) {
                     <div style="display:flex; gap:4px; margin-top:8px;">
                       ${trk.options.map(opt => `
                         <button 
-                          class="tag-btn ${trackState.pattern === opt ? 'active' : ''}" 
+                          class="tag-btn ${trackState.pattern === opt.id ? 'active' : ''}" 
                           style="padding:2px 8px; font-size:10px; text-transform:capitalize;"
-                          onclick="window.setGuitarPattern('${opt}')"
+                          onclick="window.setGuitarPattern('${opt.id}')"
                         >
-                          ${opt}
+                          ${opt.label}
                         </button>
                       `).join("")}
                     </div>
@@ -732,3 +786,25 @@ export function renderBandScreenComponent(state) {
     </section>
   `;
 }
+
+// Binds seguros para eventos de clique do Modo Banda no DOM do navegador
+if (typeof window !== "undefined") {
+  window.toggleTrackSolo = (id) => virtuoBand.toggleTrackSolo(id);
+  window.toggleTrackMute = (id) => virtuoBand.toggleTrackMute(id);
+  window.setTrackVolume = (id, v) => virtuoBand.setTrackVolume(id, v);
+  window.setBassMode = (m) => virtuoBand.setBassMode(m);
+  window.setKeyboardMode = (m) => virtuoBand.setKeyboardMode(m);
+  window.setGuitarPattern = (p) => virtuoBand.setGuitarPattern(p);
+  window.toggleBandPlay = () => virtuoBand.togglePlay();
+  window.setBandPreset = (p) => virtuoBand.setPreset(p);
+  window.setBandSection = (s) => virtuoBand.setSection(s);
+  window.setBandIntensity = (i) => virtuoBand.setIntensity(i);
+  window.setBandKey = (k) => virtuoBand.setKey(k);
+  window.toggleBandLoop = () => virtuoBand.toggleLoop();
+  window.setBandLoopRepeat = (r) => virtuoBand.setLoopRepeatTarget(r);
+  window.toggleBandCountIn = () => virtuoBand.toggleCountIn();
+  window.toggleBandEasy = () => virtuoBand.toggleEasyBand();
+  window.applyBandProgression = (p) => virtuoBand.loadProgression(p);
+  window.applySongSmartBand = (song) => virtuoBand.applySmartBandRecommendation(song);
+}
+

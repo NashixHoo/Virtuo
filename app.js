@@ -2694,6 +2694,12 @@ function show(name) {
 
   currentScreen = targetName;
 
+  // Atualiza fundo contextual do Brand Kit V3
+  const bg = document.querySelector(".background");
+  if (bg) {
+    bg.className = `background screen-${targetName}`;
+  }
+
   if (typeof screens === "undefined") {
     window._pendingScreen = targetName;
     return;

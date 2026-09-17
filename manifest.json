@@ -5,9 +5,15 @@
   "lang": "pt-BR",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#020611",
+  "background_color": "#07101F",
   "theme_color": "#07101F",
   "icons": [
+    {
+      "src": "assets/branding/logo/logo-icon-square.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
     {
       "src": "assets/icon.svg",
       "sizes": "any",

@@ -30,7 +30,11 @@ export function midiToFrequency(midi) {
  * Converte nome de nota e oitava para frequência em Hertz
  */
 export function noteToFrequency(noteName, octave = 4) {
-  const midi = noteToMidi(noteName, octave);
+  if (!noteName) return 440;
+  const noteStr = String(noteName).trim();
+  const hasOctave = /[0-9]/.test(noteStr);
+  const target = hasOctave ? noteStr : `${noteStr}${octave}`;
+  const midi = noteToMidi(target, octave);
   return midiToFrequency(midi);
 }
 
@@ -44,6 +48,14 @@ export class HarmonicEngine {
 
     // Cache de acordes analisados para performance instantânea (< 0.1ms)
     this.chordCache = new Map();
+    this.lastKeyboardVoicing = null;
+    this.bassMode = "BASS_NORMAL"; // "BASS_EASY" | "BASS_NORMAL" | "BASS_GROOVE"
+  }
+
+  setBassMode(mode) {
+    if (["BASS_EASY", "BASS_NORMAL", "BASS_GROOVE"].includes(mode)) {
+      this.bassMode = mode;
+    }
   }
 
   setKey(key) {
@@ -199,46 +211,72 @@ export class HarmonicEngine {
   /**
    * Analisa e retorna informações detalhadas do acorde atual
    */
-  getCurrentChordInfo() {
-    const rawSymbol = this.currentChord || this.currentKey || "G";
-    const resolvedSymbol = this.isEasyPlay ? toEasyPlay(rawSymbol).simplified : rawSymbol;
+  getCurrentChordInfo(chordSymbol = null, isEasy = null) {
+    const rawSymbol = String(chordSymbol || this.currentChord || this.currentKey || "G").trim() || "G";
+    const useEasy = isEasy !== null ? Boolean(isEasy) : this.isEasyPlay;
+    let epSymbol = rawSymbol;
+    try {
+      const ep = toEasyPlay(rawSymbol);
+      if (ep && (ep.easyChord || ep.simplified)) {
+        epSymbol = ep.easyChord || ep.simplified;
+      }
+    } catch {}
 
-    const cacheKey = `${resolvedSymbol}:${this.isEasyPlay}`;
-    if (this.chordCache.has(cacheKey)) {
-      return this.chordCache.get(cacheKey);
-    }
+    const resolvedSymbol = useEasy ? epSymbol : rawSymbol;
+    const symbolStr = String(resolvedSymbol || "G");
+
+    let parsed = null;
+    try {
+      parsed = parseChordSymbol(symbolStr);
+    } catch {}
 
     let chordData = null;
     try {
-      chordData = buildChord(resolvedSymbol);
+      chordData = buildChord(symbolStr);
     } catch {}
 
-    if (!chordData) {
-      // Fallback seguro se buildChord retornar null ou falhar
-      const parsed = parseChordSymbol(resolvedSymbol);
-      chordData = {
-        root: parsed?.root || "G",
-        bassNote: parsed?.bassNote || parsed?.root || "G",
-        theoreticalNotes: [parsed?.root || "G"],
-        quality: { isMinor: !!(parsed?.modifier && parsed.modifier.includes("m")) }
-      };
+    const root = parsed?.root || chordData?.root || "G";
+    const bassNote = parsed?.bass || chordData?.bassNote || root;
+    let notes = parsed?.notes && parsed.notes.length > 0
+      ? parsed.notes
+      : (Array.isArray(chordData?.theoreticalNotes) && chordData.theoreticalNotes.length > 0
+        ? chordData.theoreticalNotes
+        : [root]);
+
+    // Garantia arquitetural: um acorde NUNCA é reduzido a uma única nota
+    if (!notes || notes.length <= 1) {
+      try {
+        const rootMidi = noteToMidi(`${root}4`);
+        const isMin = String(symbolStr).includes("m") && !String(symbolStr).toLowerCase().includes("maj");
+        const thirdMidi = rootMidi + (isMin ? 3 : 4);
+        const fifthMidi = rootMidi + 7;
+        notes = [root, normalizeNote(CHROMATIC_SHARPS[thirdMidi % 12]), normalizeNote(CHROMATIC_SHARPS[fifthMidi % 12])];
+      } catch {
+        notes = [root];
+      }
     }
+
+    const isMinor = !!(
+      (parsed?.quality && parsed.quality.includes("minor")) ||
+      (chordData?.quality && chordData.quality.isMinor) ||
+      (symbolStr.includes("m") && !symbolStr.toLowerCase().includes("maj"))
+    );
 
     const info = {
       raw: rawSymbol,
-      symbol: resolvedSymbol,
-      root: chordData.root || "G",
-      bassNote: chordData.bassNote || chordData.root || "G",
-      notes: Array.isArray(chordData.theoreticalNotes) && chordData.theoreticalNotes.length > 0
-        ? chordData.theoreticalNotes
-        : [chordData.root || "G"],
-      isMinor: !!(chordData.quality && chordData.quality.isMinor),
+      symbol: symbolStr,
+      originalChord: rawSymbol,
+      easyPlayChord: epSymbol,
+      isEasyPlay: this.isEasyPlay,
+      root,
+      bassNote,
+      notes,
+      isMinor,
       progressionIndex: this.progressionIndex,
       progressionLength: this.activeProgression.length,
       nextChordSymbol: this.getNextChordSymbol()
     };
 
-    this.chordCache.set(cacheKey, info);
     return info;
   }
 
@@ -251,25 +289,22 @@ export class HarmonicEngine {
 
   /**
    * Retorna a frequência exata para a linha do baixo em cada step
-   * NUNCA toca uma nota fixa:
-   * - Step 0 (tempo 1): Fundamental ou baixo invertido (ex: D/F# toca F#)
-   * - Step 2 (tempo 2): Fundamental ou terça
-   * - Step 4 (tempo 3): Quinta justa (ou fundamental se suave)
-   * - Step 6/7 (tempo 4 / condução): Oitava ou nota de aproximação cromática para o próximo acorde!
    */
-  getBassFrequency(step, totalSteps = 8, style = "Worship", intensity = 3) {
-    const currentInfo = this.getCurrentChordInfo();
-    const bassNoteName = currentInfo.bassNote || currentInfo.root;
+  getBassFrequency(step, totalSteps = 8, style = "Worship", intensity = 3, explicitBassMode = null, explicitChord = null, explicitNextChord = null) {
+    const currentInfo = explicitChord || this.getCurrentChordInfo();
+    const bassNoteName = currentInfo.bass || currentInfo.bassNote || currentInfo.root || "G";
+    const mode = explicitBassMode || (this.isEasyPlay ? "BASS_EASY" : this.bassMode);
 
-    // Oitava 2 é o registro natural do contrabaixo (E1 a G2)
-    const fundamentalFreq = noteToFrequency(bassNoteName, 2);
+    // Oitava 1 é o registro fundamental acústico do contrabaixo (E1 ~41Hz, G1 ~49Hz)
+    const fundamentalFreq = noteToFrequency(bassNoteName, 1);
 
     // Quinta justa (7 semitons acima)
     const fifthFreq = fundamentalFreq * 1.498307;
     // Oitava justa (12 semitons acima)
     const octaveFreq = fundamentalFreq * 2.0;
     // Terça (maior: 4 semitons, menor: 3 semitons)
-    const thirdFreq = currentInfo.isMinor ? fundamentalFreq * 1.189207 : fundamentalFreq * 1.259921;
+    const isMinor = currentInfo.isMinor || (currentInfo.quality && currentInfo.quality.includes("minor"));
+    const thirdFreq = isMinor ? fundamentalFreq * 1.189207 : fundamentalFreq * 1.259921;
 
     // Se estiver em compasso 6/8
     if (totalSteps === 6) {
@@ -279,6 +314,35 @@ export class HarmonicEngine {
     }
 
     // Compasso 4/4 (8 steps de colcheia)
+    if (mode === "BASS_EASY") {
+      // Fundamental no tempo 1, quinta no tempo 3 (se intensidade permitir)
+      if (step === 0) return fundamentalFreq;
+      if (step === 4) return intensity >= 3 ? fifthFreq : fundamentalFreq;
+      return fundamentalFreq;
+    }
+
+    if (mode === "BASS_GROOVE") {
+      // Fundamental, terça, antecipação rítmica, quinta, oitava e aproximação cromática
+      if (step === 0) return fundamentalFreq;
+      if (step === 2) return thirdFreq;
+      if (step === 3) return fundamentalFreq; // Síncope / antecipação
+      if (step === 4) return fifthFreq;
+      if (step === 5) return octaveFreq;
+      if (step === 6 || step === 7) {
+        const nextRaw = explicitNextChord ? (explicitNextChord.bass || explicitNextChord.root) : this.getNextChordSymbol();
+        let parsedNext = null;
+        try { parsedNext = parseChordSymbol(nextRaw); } catch {}
+        const nextRoot = parsedNext?.bass || parsedNext?.root || String(nextRaw).replace(/[^A-Ga-g#b]/g, "");
+        if (nextRoot && nextRoot !== bassNoteName) {
+          const nextTargetFreq = noteToFrequency(nextRoot, 1);
+          return nextTargetFreq * 0.943874; // Aproximação cromática meio tom abaixo
+        }
+        return octaveFreq;
+      }
+      return fundamentalFreq;
+    }
+
+    // Padrão: BASS_NORMAL
     // 1. Tempo 1 (Step 0): SEMPRE a fundamental ou o baixo da inversão
     if (step === 0) {
       return fundamentalFreq;
@@ -295,14 +359,15 @@ export class HarmonicEngine {
     }
 
     // 4. Último tempo do compasso (Step 6 ou 7): Condução / Walking Bass dinâmico
-    // Prepara aproximação harmônica para o próximo acorde!
     if (step === 6 || step === 7) {
-      if (this.activeProgression.length > 1 && intensity >= 3) {
-        const nextInfo = this.getCurrentChordInfo();
-        const nextRoot = this.getNextChordSymbol().replace(/[^A-Ga-g#b]/g, "");
+      if ((this.activeProgression.length > 1 || explicitNextChord) && intensity >= 3) {
+        const nextRaw = explicitNextChord ? (explicitNextChord.bass || explicitNextChord.root) : this.getNextChordSymbol();
+        let parsedNext = null;
+        try { parsedNext = parseChordSymbol(nextRaw); } catch {}
+        const nextRoot = parsedNext?.bass || parsedNext?.root || String(nextRaw).replace(/[^A-Ga-g#b]/g, "");
         if (nextRoot && nextRoot !== bassNoteName) {
           // Aproximação cromática meio-tom abaixo da próxima fundamental
-          const nextTargetFreq = noteToFrequency(nextRoot, 2);
+          const nextTargetFreq = noteToFrequency(nextRoot, 1);
           const approachHalfStep = nextTargetFreq * 0.943874; // -1 semitom
           return approachHalfStep;
         }
@@ -313,34 +378,59 @@ export class HarmonicEngine {
     return fundamentalFreq;
   }
 
+  getBassFrequencyForStep(step, totalSteps = 8, style = "Worship", intensity = 3, bassMode = null) {
+    return this.getBassFrequency(step, totalSteps, style, intensity, bassMode);
+  }
+
   /**
-   * Retorna frequências para o teclado (Pad ou Piano) com voice leading natural
+   * Retorna frequências para o teclado (Pad, Piano ou Worship) com voice leading natural
    */
-  getKeyboardFrequencies(mode = "pad", octave = 4) {
-    const currentInfo = this.getCurrentChordInfo();
+  getKeyboardFrequencies(mode = "pad", octave = 4, explicitChord = null) {
+    const currentInfo = explicitChord || this.getCurrentChordInfo();
+    const chordSymbol = currentInfo.symbol || currentInfo.raw || "G";
+    const normMode = String(mode).toLowerCase();
 
     try {
-      // Utiliza os voicings reais gerados pelo Virtuo Chord Engine
-      const voicings = getPianoVoicings(currentInfo.symbol);
+      const voicings = getPianoVoicings(chordSymbol);
       if (voicings && voicings.length > 0) {
-        // Seleciona o voicing da posição fundamental ou 1ª inversão
-        const selectedVoicing = mode === "pad" ? (voicings[0] || voicings[1]) : voicings[0];
-        if (selectedVoicing && Array.isArray(selectedVoicing.notes)) {
-          return selectedVoicing.notes.map((noteName, idx) => {
-            // Distribui as notas suavemente nas oitavas 3 e 4
+        // Encontra o voicing que minimiza saltos interválicos em relação ao último voicing
+        let bestVoicing = voicings[0];
+        if (this.lastKeyboardVoicing && voicings.length > 1) {
+          let minDistance = Infinity;
+          for (const v of voicings) {
+            const freqs = v.notes.map((n, i) => noteToFrequency(n, i === 0 ? 3 : 4));
+            const avgDist = Math.abs(freqs[0] - this.lastKeyboardVoicing[0]);
+            if (avgDist < minDistance) {
+              minDistance = avgDist;
+              bestVoicing = v;
+            }
+          }
+        } else if (normMode.includes("pad") && voicings.length > 1) {
+          bestVoicing = voicings[1] || voicings[0];
+        }
+
+        if (bestVoicing && Array.isArray(bestVoicing.notes)) {
+          const freqs = bestVoicing.notes.map((noteName, idx) => {
             const noteOctave = idx === 0 ? 3 : (idx === 1 ? 4 : 4);
             return noteToFrequency(noteName, noteOctave);
           });
+          this.lastKeyboardVoicing = freqs;
+          return freqs;
         }
       }
     } catch {}
 
-    // Fallback acústico com notas teóricas
-    const notes = currentInfo.notes;
-    return notes.slice(0, 4).map((noteName, idx) => {
+    const notes = currentInfo.notes && currentInfo.notes.length > 0 ? currentInfo.notes : [currentInfo.root || "G"];
+    const freqs = notes.slice(0, 4).map((noteName, idx) => {
       const noteOctave = idx === 0 ? 3 : 4;
       return noteToFrequency(noteName, noteOctave);
     });
+    this.lastKeyboardVoicing = freqs;
+    return freqs;
+  }
+
+  getKeyboardVoicingFrequencies(octave = 4, mode = "pad") {
+    return this.getKeyboardFrequencies(mode, octave);
   }
 
   /**
@@ -348,14 +438,15 @@ export class HarmonicEngine {
    */
   getGuitarFrequencies(octave = 3) {
     const currentInfo = this.getCurrentChordInfo();
-    const notes = currentInfo.notes;
-
-    // Constrói arranjo de 4 cordas abertas no registro médio do violão
     const rootFreq = noteToFrequency(currentInfo.root, octave);
     const fifthFreq = rootFreq * 1.498307;
     const thirdFreq = currentInfo.isMinor ? rootFreq * 1.189207 : rootFreq * 1.259921;
     const octaveFreq = rootFreq * 2.0;
 
     return [rootFreq, fifthFreq, thirdFreq * 2.0, octaveFreq];
+  }
+
+  getGuitarStrumFrequencies(intensity = 3, octave = 3) {
+    return this.getGuitarFrequencies(octave);
   }
 }

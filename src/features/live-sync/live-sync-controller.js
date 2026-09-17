@@ -7,11 +7,15 @@
 import { liveSyncEngine } from "./live-sync-engine.js";
 import { notificationsService, NOTIFICATION_TYPES } from "../notifications/notifications-service.js";
 import { virtuoPulse } from "../pulse/index.js";
+import { virtuoConductor } from "../../audio/virtuo-conductor.js";
+import { HorizonWaveManager } from "../../design/horizon-wave.js";
 
 class LiveSyncController {
   constructor() {
     this._pendingKeyChange = null;
     this._onStateChangeCallbacks = new Set();
+    this._lastSection = null;
+    this._lastKey = null;
 
     // Conecta ouvintes do engine
     liveSyncEngine.subscribe((state) => {
@@ -27,12 +31,30 @@ class LiveSyncController {
   _handleEngineStateChange(state) {
     // Atualiza Virtuo Pulse se estiver ativo
     if (virtuoPulse) {
-      if (state.currentKey) {
+      if (state.currentKey && typeof virtuoPulse.setTom === "function") {
         virtuoPulse.setTom(state.currentKey);
       }
-      if (state.currentBpm) {
+      if (state.currentBpm && typeof virtuoPulse.setBpm === "function") {
         virtuoPulse.setBpm(state.currentBpm);
       }
+    }
+
+    // Reflete a seção definida pelo ministro no Virtuo Conductor e dispara Horizon Wave nos clientes
+    if (state.currentSection && state.currentSection !== this._lastSection) {
+      this._lastSection = state.currentSection;
+      virtuoConductor.setSection(state.currentSection);
+      HorizonWaveManager.triggerHorizonWave();
+    }
+
+    // Reflete troca de tom no Conductor
+    if (state.currentKey && state.currentKey !== this._lastKey) {
+      this._lastKey = state.currentKey;
+      virtuoConductor.notifyKeyChanged(state.currentKey);
+    }
+
+    // Se houver sessão ativa, notifica o Conductor
+    if (state.connected) {
+      virtuoConductor.notifyLiveConnected(state);
     }
 
     for (const cb of this._onStateChangeCallbacks) {

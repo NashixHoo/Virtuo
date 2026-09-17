@@ -6,13 +6,16 @@
 // =============================================================
 
 import { DESIGN_TOKENS } from "../../design/design-system.js";
+import { virtuoConductor, CONDUCTOR_EVENTS } from "../../audio/virtuo-conductor.js";
+import { HorizonWaveManager } from "../../design/horizon-wave.js";
 
 export const PULSE_STATES = {
   SONG_ACTIVE: 'song_active',
   LIVE: 'live',
   KEY_SYNCED: 'key_synced',
   NEW_MISSION: 'new_mission',
-  REHEARSAL_STARTED: 'rehearsal_started'
+  REHEARSAL_STARTED: 'rehearsal_started',
+  SECTION_ACTIVE: 'section_active'
 };
 
 export class VirtuoPulseController {
@@ -171,6 +174,14 @@ export class VirtuoPulseController {
         clickHandler = `show('ensaio')`;
         break;
 
+      case PULSE_STATES.SECTION_ACTIVE:
+        icon = '🎵';
+        badgeText = (this.data.section || 'SEÇÃO').toUpperCase();
+        badgeColor = DESIGN_TOKENS.colors.celestialBlue;
+        message = `Intensidade ${this.data.intensity || 2}/5`;
+        clickHandler = `show('ensaio')`;
+        break;
+
       default:
         icon = '✦';
         badgeText = 'STATUS';
@@ -255,6 +266,43 @@ export class VirtuoPulseController {
 
 export const virtuoPulse = new VirtuoPulseController();
 
+// Vinculação contextual com o Virtuo Conductor
 if (typeof window !== 'undefined') {
   window.virtuoPulse = virtuoPulse;
+
+  // Escuta mudanças de tom: dispara status e onda no horizonte
+  virtuoConductor.on(CONDUCTOR_EVENTS.KEY_CHANGED, (payload) => {
+    virtuoPulse.setState(PULSE_STATES.KEY_SYNCED, { key: payload.newKey }, 3800);
+    HorizonWaveManager.triggerHorizonWave();
+  });
+
+  // Escuta transições de seção da banda
+  virtuoConductor.on(CONDUCTOR_EVENTS.SECTION_CHANGE, (payload) => {
+    virtuoPulse.setState(PULSE_STATES.SECTION_ACTIVE, {
+      section: payload.section,
+      intensity: payload.suggestedIntensity
+    }, 3200);
+  });
+
+  // Escuta início de reprodução musical
+  virtuoConductor.on(CONDUCTOR_EVENTS.SONG_STARTED, (payload) => {
+    virtuoPulse.setState(PULSE_STATES.SONG_ACTIVE, {
+      title: payload.song?.title || 'Banda Virtual',
+      key: payload.key
+    });
+    HorizonWaveManager.triggerHorizonWave();
+  });
+
+  // Escuta término de música
+  virtuoConductor.on(CONDUCTOR_EVENTS.SONG_ENDED, () => {
+    virtuoPulse.clear();
+  });
+
+  // Escuta missões ativas
+  virtuoConductor.on(CONDUCTOR_EVENTS.MISSION_READY, (payload) => {
+    virtuoPulse.setState(PULSE_STATES.NEW_MISSION, {
+      title: payload.mission?.title || 'Nova Missão'
+    }, 5000);
+    HorizonWaveManager.triggerMissionGold();
+  });
 }

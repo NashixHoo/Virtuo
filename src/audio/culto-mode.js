@@ -4,6 +4,8 @@
 // Montagem de sequência de louvores com Tom, BPM, Banda e Dinâmica
 // =============================================================
 
+import { HorizonWaveManager } from "../design/horizon-wave.js";
+
 export class CultoModeController {
   constructor() {
     this.storageKey = "virtuo_culto_setlist_v2";
@@ -134,6 +136,7 @@ export class CultoModeController {
   selectSong(index) {
     if (index >= 0 && index < this.songsSequence.length) {
       this.currentIndex = index;
+      HorizonWaveManager.triggerCultoAura(true);
       this._notify();
       return this.songsSequence[index];
     }
@@ -143,6 +146,7 @@ export class CultoModeController {
   nextSong() {
     if (this.currentIndex < this.songsSequence.length - 1) {
       this.currentIndex++;
+      HorizonWaveManager.triggerCultoAura(true);
       this._notify();
       return this.songsSequence[this.currentIndex];
     }
@@ -152,6 +156,7 @@ export class CultoModeController {
   previousSong() {
     if (this.currentIndex > 0) {
       this.currentIndex--;
+      HorizonWaveManager.triggerCultoAura(true);
       this._notify();
       return this.songsSequence[this.currentIndex];
     }

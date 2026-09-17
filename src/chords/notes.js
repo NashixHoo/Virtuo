@@ -76,13 +76,13 @@ export function enharmonicEquivalent(note) {
  * @param {string} noteWithOctave 
  * @returns {number} Número MIDI (0-127) ou -1 se inválido
  */
-export function noteToMidi(noteWithOctave) {
+export function noteToMidi(noteWithOctave, fallbackOctave = 4) {
   if (!noteWithOctave || typeof noteWithOctave !== "string") return -1;
   const match = noteWithOctave.trim().match(/^([A-Ga-g][b#]?)(-?[0-9]+)?$/);
   if (!match) return -1;
 
   const noteName = match[1].charAt(0).toUpperCase() + match[1].slice(1);
-  const octave = match[2] !== undefined ? parseInt(match[2], 10) : 4;
+  const octave = match[2] !== undefined ? parseInt(match[2], 10) : (typeof fallbackOctave === "number" ? fallbackOctave : 4);
   const semitone = NOTE_SEMITONES[noteName];
   if (semitone === undefined) return -1;
 

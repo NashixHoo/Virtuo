@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="100%" height="100%">
+  <defs>
+    <linearGradient id="liveIconGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="60%" stop-color="#7EE7FF"/>
+      <stop offset="100%" stop-color="#1A4363"/>
+    </linearGradient>
+  </defs>
+  <!-- Torre / Antena de Transmissão Live com Feixes de Palco -->
+  <circle cx="32" cy="32" r="5" fill="#7EE7FF"/>
+  <circle cx="32" cy="32" r="2" fill="#FFFFFF"/>
+  <!-- Ondas Concêntricas de Transmissão -->
+  <path d="M 23 23 C 18 28, 18 36, 23 41" fill="none" stroke="#7EE7FF" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M 41 23 C 46 28, 46 36, 41 41" fill="none" stroke="#7EE7FF" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M 16 16 C 7 25, 7 39, 16 48" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" opacity="0.8"/>
+  <path d="M 48 16 C 57 25, 57 39, 48 48" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" opacity="0.8"/>
+  <!-- Base em V Metálico -->
+  <path d="M 24 54 L 32 40 L 40 54 Z" fill="url(#liveIconGrad)"/>
+</svg>

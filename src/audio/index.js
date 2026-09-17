@@ -68,3 +68,57 @@ export {
   CultoModeController,
   virtuoCulto
 } from "./culto-mode.js";
+
+export {
+  SampleManager
+} from "./sample-manager.js";
+
+export {
+  SamplePlayer
+} from "./sample-player.js";
+
+export {
+  RealSoundEngine
+} from "./real-sound-engine.js";
+
+export {
+  SAMPLE_REGISTRY,
+  validateSampleLicense,
+  getSamplesForInstrument
+} from "./sample-registry.js";
+
+export {
+  VirtuoConductor,
+  virtuoConductor,
+  CONDUCTOR_STATES,
+  CONDUCTOR_EVENTS
+} from "./virtuo-conductor.js";
+
+export {
+  SoundProvider,
+  SyntheticSoundProvider,
+  HybridSoundProvider
+} from "./sound-provider.js";
+
+export {
+  MusicalArrangement,
+  CANONICAL_SECTIONS,
+  DEFAULT_SECTION_DYNAMICS
+} from "./musical-arrangement.js";
+
+export {
+  InstrumentPlayer,
+  BassPlayer,
+  PianoPlayer,
+  GuitarPlayer,
+  AcousticGuitarPlayer,
+  DrumPlayer
+} from "./instrument-players.js";
+
+export {
+  MusicalEvent,
+  BassNoteEvent,
+  KeyboardChordEvent,
+  GuitarStrumEvent,
+  DrumEvent
+} from "./musical-events.js";

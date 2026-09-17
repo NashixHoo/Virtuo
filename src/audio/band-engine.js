@@ -14,6 +14,7 @@ import { BAND_STYLE_PATTERNS, BAND_SECTIONS } from "./band-patterns.js";
 import { BandHarmony } from "./band-harmony.js";
 import { VirtuoMusicIntelligence } from "../music/music-intelligence.js";
 import { virtuoCulto } from "./culto-mode.js";
+import { virtuoConductor } from "./virtuo-conductor.js";
 
 // Sub-motores canônicos da arquitetura Virtuo Real Band Engine
 import { SoundLibrary, SOUND_LIBRARY_METADATA } from "./sound-library.js";
@@ -21,6 +22,10 @@ import { VirtuoClock } from "./virtuo-clock.js";
 import { HarmonicEngine } from "./harmonic-engine.js";
 import { GrooveEngine } from "./groove-engine.js";
 import { ArrangementEngine } from "./arrangement-engine.js";
+import { MusicalArrangement } from "./musical-arrangement.js";
+import { SampleManager } from "./sample-manager.js";
+import { SamplePlayer } from "./sample-player.js";
+import { RealSoundEngine } from "./real-sound-engine.js";
 
 // =============================================================
 // PRESETS COMPATÍVEIS COM V1 E V2
@@ -208,7 +213,12 @@ export class VirtuoBandEngine {
     this.grooveEngine = new GrooveEngine();
     this.clock = new VirtuoClock(null);
     this.soundLibrary = null;
+    this.sampleManager = null;
+    this.samplePlayer = null;
+    this.realSoundEngine = null;
     this.arrangementEngine = null;
+    this.arrangement = null;
+    this.bassMode = "BASS_NORMAL"; // "BASS_EASY" | "BASS_NORMAL" | "BASS_GROOVE"
 
     // Estado de reprodução
     this.isPlaying = false;
@@ -355,10 +365,42 @@ export class VirtuoBandEngine {
       channelNode.connect(this.masterCompressor);
     });
 
-    // 4. Instancia a SoundLibrary realista e o ArrangementEngine
+    // 4. Instancia a SoundLibrary realista, SampleManager, SamplePlayer e RealSoundEngine
     this.soundLibrary = new SoundLibrary(this.audioCtx, this.channels);
+    this.sampleManager = new SampleManager(this.audioCtx);
+    this.samplePlayer = new SamplePlayer(this.audioCtx);
+    this.realSoundEngine = new RealSoundEngine(
+      this.audioCtx,
+      this.channels,
+      this.sampleManager,
+      this.samplePlayer,
+      this.soundLibrary
+    );
     this.synths = this.soundLibrary; // Retrocompatibilidade completa com chamadas diretas a synths
-    this.arrangementEngine = new ArrangementEngine(this.soundLibrary, this.harmonicEngine, this.grooveEngine);
+    this.arrangementEngine = new ArrangementEngine(
+      this.realSoundEngine,
+      this.harmonicEngine,
+      this.grooveEngine,
+      this.sampleManager
+    );
+  }
+
+  /**
+   * Pré-carrega samples reais de um instrumento
+   */
+  async preloadInstrument(instrument) {
+    if (!this.sampleManager) return 0;
+    return await this.sampleManager.preload(instrument);
+  }
+
+  /**
+   * Retorna o status de prontidão e samples do Real Sound Engine
+   */
+  getRealSoundStatus() {
+    if (!this.realSoundEngine) {
+      return { ready: false, sampleCacheSize: 0, fallbackActive: true };
+    }
+    return this.realSoundEngine.getEngineStatus();
   }
 
   // -----------------------------------------------------------
@@ -392,12 +434,18 @@ export class VirtuoBandEngine {
       if (this.nextQueuedSection) {
         this.grooveEngine.clearQueuedTransition();
         this.currentSection = this.grooveEngine.currentSection;
+        virtuoConductor.setSection(this.currentSection);
         this.nextQueuedSection = null;
       }
 
-      // Contabiliza iterações de loop
-      if (this.isLooping && this.loopRepeatTarget > 0) {
+      // Notifica o Conductor do novo compasso musical
+      virtuoConductor.notifyBarTick(newBar, 0);
+
+      // Contabiliza iterações de loop (após ciclo completo da progressão ou a cada compasso se escopo for 'bar')
+      const isLoopCycleComplete = (this.loopScope === "bar") ? true : (this.harmonicEngine.progressionIndex === 0);
+      if (this.isLooping && this.loopRepeatTarget > 0 && isLoopCycleComplete) {
         this.loopCurrentIteration++;
+        virtuoConductor.notifyLoopIteration(this.loopCurrentIteration, this.loopRepeatTarget);
         if (this.loopCurrentIteration >= this.loopRepeatTarget) {
           this.stop();
           return;
@@ -462,6 +510,8 @@ export class VirtuoBandEngine {
       hasCountIn: this.hasCountIn,
       isCountingIn: this.isCountingIn,
       isEasyBand: this.isEasyBand,
+      bassMode: this.bassMode,
+      arrangement: this.arrangement,
       soundLibraryMetadata: SOUND_LIBRARY_METADATA,
       presetsList: Object.keys(BAND_PRESETS),
       sectionsList: BAND_SECTIONS,
@@ -471,6 +521,10 @@ export class VirtuoBandEngine {
 
   getPresets() {
     return BAND_PRESETS;
+  }
+
+  get conductor() {
+    return virtuoConductor;
   }
 
   // -----------------------------------------------------------
@@ -498,6 +552,11 @@ export class VirtuoBandEngine {
 
     this.currentStep = 0;
     this.currentBar = 0;
+
+    // Notifica Conductor do início de reprodução
+    virtuoConductor.notifySongStarted(null, this.currentKey, metroBpm);
+    virtuoConductor.setSection(this.currentSection);
+
     this._notify();
 
     this.clock.start();
@@ -524,6 +583,9 @@ export class VirtuoBandEngine {
     if (this.harmonicEngine.activeProgression.length > 0) {
       this.currentChord = this.harmonicEngine.activeProgression[0];
     }
+
+    virtuoConductor.notifySongEnded();
+
     this._notify();
   }
 
@@ -539,6 +601,13 @@ export class VirtuoBandEngine {
     this.harmonicEngine.setProgression(progression);
     this.currentChord = this.harmonicEngine.getCurrentChordInfo().symbol;
     this.setBpm(bpm);
+
+    // Constrói arranjo canônico 2.0
+    this.arrangement = MusicalArrangement.fromProgression(progression, key, bpm, this.meter, this.currentPreset);
+    if (this.arrangementEngine) {
+      this.arrangementEngine.setArrangement(this.arrangement);
+    }
+
     this._notify();
     return this.harmonicEngine.activeProgression;
   }
@@ -566,6 +635,12 @@ export class VirtuoBandEngine {
 
     if (isEasy) {
       this.setEasyBand(true);
+    }
+
+    // Constrói arranjo canônico 2.0
+    this.arrangement = MusicalArrangement.fromSong(song, keyOffset, isEasy, targetBpm);
+    if (this.arrangementEngine) {
+      this.arrangementEngine.setArrangement(this.arrangement);
     }
 
     this._notify();
@@ -610,6 +685,7 @@ export class VirtuoBandEngine {
     this.currentKey = String(key).trim();
     this.harmonicEngine.setKey(this.currentKey);
     this.currentChord = this.harmonicEngine.currentChord;
+    virtuoConductor.notifyKeyChanged(this.currentKey);
     this._notify();
   }
 
@@ -633,14 +709,20 @@ export class VirtuoBandEngine {
       this.grooveEngine.setSection(sectionId);
       this.intensity = valid.defaultIntensity;
       this.grooveEngine.setIntensity(this.intensity);
+      virtuoConductor.setSection(sectionId);
       this._notify();
     }
+  }
+
+  setSectionWithFill(sectionId) {
+    this.setSection(sectionId, true);
   }
 
   setIntensity(level) {
     const parsed = parseInt(level, 10);
     this.intensity = Math.max(0, Math.min(5, isNaN(parsed) ? 3 : parsed));
     this.grooveEngine.setIntensity(this.intensity);
+    virtuoConductor.emit("INTENSITY_CHANGE", { intensity: this.intensity });
     this._notify();
   }
 
@@ -686,6 +768,7 @@ export class VirtuoBandEngine {
     const clamped = Math.max(40, Math.min(240, parseInt(bpm, 10) || 74));
     virtuoMetronome.setBpm(clamped);
     this.clock.setBpm(clamped);
+    virtuoConductor.notifyBpmChanged(clamped);
     this._notify();
   }
 
@@ -721,9 +804,23 @@ export class VirtuoBandEngine {
     }
   }
 
+  setTrackMute(trackId, muted) {
+    if (this.tracks[trackId]) {
+      this.tracks[trackId].muted = !!muted;
+      this._notify();
+    }
+  }
+
   toggleTrackSolo(trackId) {
     if (this.tracks[trackId]) {
       this.tracks[trackId].solo = !this.tracks[trackId].solo;
+      this._notify();
+    }
+  }
+
+  setTrackSolo(trackId, solo) {
+    if (this.tracks[trackId]) {
+      this.tracks[trackId].solo = !!solo;
       this._notify();
     }
   }
@@ -735,16 +832,36 @@ export class VirtuoBandEngine {
     }
   }
 
+  setBassMode(mode) {
+    const validModes = ["BASS_EASY", "BASS_NORMAL", "BASS_GROOVE"];
+    if (validModes.includes(mode)) {
+      this.bassMode = mode;
+      this.harmonicEngine.setBassMode(mode);
+      if (this.arrangementEngine?.bassPlayer) {
+        this.arrangementEngine.bassPlayer.setMode(mode);
+      }
+      this._notify();
+    }
+  }
+
   setKeyboardMode(mode) {
-    if (["pad", "piano", "keys"].includes(mode) && this.tracks.keyboard) {
+    const validModes = ["pad", "piano", "keys", "KEYS_PAD", "KEYS_PIANO", "KEYS_WORSHIP", "worship"];
+    if (validModes.includes(mode) && this.tracks.keyboard) {
       this.tracks.keyboard.mode = mode;
+      if (this.arrangementEngine?.pianoPlayer) {
+        this.arrangementEngine.pianoPlayer.setMode(mode);
+      }
       this._notify();
     }
   }
 
   setGuitarPattern(pattern) {
-    if (["strum", "arpeggio", "ambient", "worship"].includes(pattern) && this.tracks.guitar) {
+    const validPatterns = ["strum", "arpeggio", "ambient", "worship", "ballad", "pop", "soft", "energetic"];
+    if (validPatterns.includes(pattern) && this.tracks.guitar) {
       this.tracks.guitar.pattern = pattern;
+      if (this.arrangementEngine?.guitarPlayer) {
+        this.arrangementEngine.guitarPlayer.setPattern(pattern);
+      }
       this._notify();
     }
   }

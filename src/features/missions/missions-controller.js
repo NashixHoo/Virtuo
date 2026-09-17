@@ -8,6 +8,8 @@ import { missionsRepository } from "./missions-repository.js";
 import { notificationsService, NOTIFICATION_TYPES } from "../notifications/notifications-service.js";
 import { momentsService } from "../moments/moments-service.js";
 import { liveSyncController } from "../live-sync/live-sync-controller.js";
+import { HorizonWaveManager } from "../../design/horizon-wave.js";
+import { virtuoConductor } from "../../audio/virtuo-conductor.js";
 
 class MissionsController {
   constructor() {
@@ -342,6 +344,10 @@ class MissionsController {
       leaderName: saved.leaderName
     });
 
+    // Recompensa visual: flash dourado discreto de celebração
+    HorizonWaveManager.triggerMissionGold();
+    virtuoConductor.emit("MISSION_COMPLETED", { mission: saved });
+
     this._notify();
     return { saved, moment };
   }
@@ -468,6 +474,10 @@ class MissionsController {
       message: `${name} (${instrument}) confirmou presença para o culto.`,
       missionId
     });
+
+    // Recompensa visual e notificação do Conductor
+    HorizonWaveManager.triggerMissionGold();
+    virtuoConductor.notifyCheckInCompleted({ uid, name, instrument });
 
     this._notify();
     return saved;

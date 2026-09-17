@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" width="100%" height="100%">
+  <defs>
+    <!-- Gradiente Metálico Haste Esquerda -->
+    <linearGradient id="splMetalLeft" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.98"/>
+      <stop offset="25%" stop-color="#D2EBF7"/>
+      <stop offset="50%" stop-color="#89C4E1"/>
+      <stop offset="75%" stop-color="#4B86AA"/>
+      <stop offset="100%" stop-color="#1A4363"/>
+    </linearGradient>
+
+    <!-- Gradiente Metálico Haste Direita com Curva Interna -->
+    <linearGradient id="splMetalRight" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#E8F8FF"/>
+      <stop offset="30%" stop-color="#B2E7FA"/>
+      <stop offset="60%" stop-color="#55ACD4"/>
+      <stop offset="85%" stop-color="#245F85"/>
+      <stop offset="100%" stop-color="#0E2D44"/>
+    </linearGradient>
+
+    <!-- Gradiente Metálico Faceta Central -->
+    <linearGradient id="splMetalFacet" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.9"/>
+      <stop offset="50%" stop-color="#7EE7FF" stop-opacity="1"/>
+      <stop offset="100%" stop-color="#1E5275" stop-opacity="0.8"/>
+    </linearGradient>
+
+    <!-- Glow do Horizonte Expandido para Splash -->
+    <radialGradient id="splHorizonGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#7EE7FF" stop-opacity="0.85"/>
+      <stop offset="25%" stop-color="#7EE7FF" stop-opacity="0.45"/>
+      <stop offset="55%" stop-color="#0E1B35" stop-opacity="0.20"/>
+      <stop offset="100%" stop-color="#07101F" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Feixe de Luz Superior da Splash -->
+    <linearGradient id="splLightBeam" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" stop-color="#7EE7FF" stop-opacity="0.25"/>
+      <stop offset="50%" stop-color="#7EE7FF" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="#7EE7FF" stop-opacity="0"/>
+    </linearGradient>
+
+    <filter id="splGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="16" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+
+  <!-- Feixe de Luz Celestial Vertical -->
+  <polygon points="260,0 340,0 480,500 120,500" fill="url(#splLightBeam)"/>
+
+  <!-- Grande Horizon Glow sob o Vértice do V -->
+  <ellipse cx="300" cy="380" rx="260" ry="60" fill="url(#splHorizonGlow)"/>
+
+  <!-- Símbolo V Principal -->
+  <g filter="url(#splGlow)">
+    <!-- Haste Esquerda Reta -->
+    <path d="M 160 110 L 226 110 L 300 365 L 254 365 Z" fill="url(#splMetalLeft)"/>
+
+    <!-- Haste Direita com Leve Curva Interna -->
+    <path d="M 440 110 L 374 110 C 346 180, 322 250, 300 365 L 346 365 C 376 255, 408 180, 440 110 Z" fill="url(#splMetalRight)"/>
+
+    <!-- Vértice Chanfrado Metálico -->
+    <polygon points="254,365 300,365 346,365 300,402" fill="url(#splMetalFacet)"/>
+
+    <!-- Linhas de Contorno Refletivo -->
+    <path d="M 160 110 L 300 402 L 440 110" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" opacity="0.75"/>
+    <path d="M 226 110 L 300 365 C 322 250, 346 180, 374 110" fill="none" stroke="#7EE7FF" stroke-width="2.5" stroke-linecap="round" opacity="0.9"/>
+  </g>
+
+  <!-- Ponto de Brilho no Vértice -->
+  <circle cx="300" cy="402" r="5" fill="#FFFFFF"/>
+  <circle cx="300" cy="402" r="14" fill="#7EE7FF" opacity="0.6"/>
+
+  <!-- Wordmark VIRTUO -->
+  <text x="306" y="475" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="40" font-weight="900" letter-spacing="12" fill="#F8FAFC">VIRTUO</text>
+  <text x="304" y="508" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="700" letter-spacing="5" fill="#7EE7FF" opacity="0.9">EXPERIENCE V3</text>
+</svg>
