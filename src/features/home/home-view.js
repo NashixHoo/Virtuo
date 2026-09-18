@@ -127,7 +127,7 @@ export function renderHojeScreen({
             <div style="display:flex; align-items:center; gap:12px; font-size:13px; color:${DESIGN_TOKENS.colors.textSecondary}; margin-bottom:14px;">
               <span>📅 ${escapeHtml(missionDate)}</span>
               <span>•</span>
-              <span>🎵 ${songCount} louvor${songCount !== 1 ? 'es' : ''}</span>
+              <span>🎵 ${songCount} música${songCount !== 1 ? 's' : ''}</span>
             </div>
             <div style="display:flex; gap:10px;">
               <button 
@@ -135,13 +135,13 @@ export function renderHojeScreen({
                 style="flex:1; padding:10px 16px; font-size:13px; display:inline-flex; align-items:center; justify-content:center; gap:6px;"
                 onclick="window.virtuoOpenMissionDetail('${activeMission.id}')"
               >
-                <span>🕊️</span> Acessar Missão
+                <span>🎵</span> Acessar Missão
               </button>
               <button 
                 class="button secondary" 
                 style="padding:10px 14px; font-size:13px;"
                 onclick="window.openMinisterModeQuick()"
-                title="Abrir no Modo Ministro de Palco"
+                title="Abrir no Modo Palco"
               >
                 <span>📖 Palco</span>
               </button>

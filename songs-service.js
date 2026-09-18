@@ -40,11 +40,13 @@ import {
   normalizeSearchText
 } from "./src/database/index.js";
 
+import { DEMO_SONGS as RAW_DEMO_SONGS } from "./src/music/demo-songs.js";
+
 // Banco de músicas limpo e pronto para novo repertório autêntico e verificado
-export const DEMO_SONGS = [];
+export const DEMO_SONGS = Array.isArray(RAW_DEMO_SONGS) ? RAW_DEMO_SONGS : [];
 
 // Instâncias migradas em memória para acesso imediato e garantido
-export const CANONICAL_MIGRATED_DEMO_SONGS = [];
+export const CANONICAL_MIGRATED_DEMO_SONGS = (DEMO_SONGS || []).map(s => SongMigration.migrateLegacySong(s));
 
 export const SongsRepository = {
   // Chave de cache local para as últimas 10 músicas consultadas (Modo Offline)
@@ -60,15 +62,18 @@ export const SongsRepository = {
       const q = query(songsCol, orderBy("createdAt", "desc"));
       const snap = await getDocs(q);
       if (snap.empty) {
-        return [];
+        return CANONICAL_MIGRATED_DEMO_SONGS;
       }
-      return snap.docs.map(docSnap => {
+      const firestoreSongs = snap.docs.map(docSnap => {
         const raw = { id: docSnap.id, ...docSnap.data() };
         return SongMigration.migrateLegacySong(raw);
       });
+      const titles = new Set(firestoreSongs.map(s => (s.title || "").toLowerCase()));
+      const missingDemo = CANONICAL_MIGRATED_DEMO_SONGS.filter(d => !titles.has((d.title || "").toLowerCase()));
+      return [...firestoreSongs, ...missingDemo];
     } catch (err) {
       console.warn("[SongsRepository.getAllSongs] Firestore indisponível:", err.message);
-      return [];
+      return CANONICAL_MIGRATED_DEMO_SONGS;
     }
   },
 
@@ -278,6 +283,8 @@ export const SongsRepository = {
     }
 
     if (offlineFound) return SongMigration.migrateLegacySong(offlineFound);
+    const demoFound = CANONICAL_MIGRATED_DEMO_SONGS.find(s => s.id === songId || (s.title && s.title.toLowerCase() === (songId || "").toLowerCase()));
+    if (demoFound) return demoFound;
     return null;
   },
 
@@ -291,20 +298,24 @@ export const SongsRepository = {
       return onSnapshot(q, (snapshot) => {
         if (!snapshot.empty) {
           const songs = snapshot.docs.map(d => SongMigration.migrateLegacySong({ id: d.id, ...d.data() }));
-          onUpdate(songs);
+          const titles = new Set(songs.map(s => (s.title || "").toLowerCase()));
+          const missingDemo = CANONICAL_MIGRATED_DEMO_SONGS.filter(d => !titles.has((d.title || "").toLowerCase()));
+          onUpdate([...songs, ...missingDemo]);
         } else {
-          onUpdate([]);
+          onUpdate(CANONICAL_MIGRATED_DEMO_SONGS);
         }
       }, (err) => {
         console.warn("[SongsRepository.subscribeToSongs] Aviso stream Firestore:", err.message);
         const offline = this.getOfflineRecentSongs();
+        const fallbackList = offline.length > 0 ? offline : CANONICAL_MIGRATED_DEMO_SONGS;
         if (onError) onError(err);
-        else onUpdate(offline);
+        else onUpdate(fallbackList);
       });
     } catch (err) {
       console.warn("[SongsRepository.subscribeToSongs] Exceção:", err.message);
       const offline = this.getOfflineRecentSongs();
-      onUpdate(offline);
+      const fallbackList = offline.length > 0 ? offline : CANONICAL_MIGRATED_DEMO_SONGS;
+      onUpdate(fallbackList);
       return () => {};
     }
   },
@@ -693,12 +704,31 @@ export const SongsRepository = {
   },
 
   /**
-   * Semeia músicas padrão: Mantido vazio na fase atual para garantir que
-   * apenas novos louvores autênticos e corretos sejam adicionados.
+   * Semeia a canção de teste canônica oficial 'Fidelidade' no Firestore com segurança.
    */
   async seedDefaultSongs(currentUserId) {
-    // A biblioteca permanece estritamente vazia nesta etapa
-    return false;
+    try {
+      const songsCol = collection(db, "songs");
+      const q = query(songsCol, where("title", "==", "Fidelidade"));
+      const snap = await getDocs(q);
+      if (snap.empty && DEMO_SONGS.length > 0) {
+        for (const song of DEMO_SONGS) {
+          const payload = { ...song };
+          delete payload.id;
+          await addDoc(songsCol, {
+            ...payload,
+            createdBy: currentUserId || "virtuo-master",
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+          });
+        }
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.warn("[SongsRepository.seedDefaultSongs] Erro ao semear:", err.message);
+      return false;
+    }
   },
 
   /**

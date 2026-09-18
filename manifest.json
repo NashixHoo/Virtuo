@@ -1,23 +1,44 @@
 {
-  "name": "VIRTUO",
+  "name": "VIRTUO — A plataforma do músico virtuoso",
   "short_name": "VIRTUO",
   "description": "A plataforma do músico virtuoso",
   "lang": "pt-BR",
   "start_url": "./",
+  "scope": "./",
   "display": "standalone",
+  "orientation": "portrait-primary",
   "background_color": "#07101F",
   "theme_color": "#07101F",
   "icons": [
     {
+      "src": "assets/branding/icon-1024.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/branding/icon-maskable-1024.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "assets/branding/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
       "src": "assets/branding/logo/logo-icon-square.svg",
       "sizes": "512x512",
       "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
-      "src": "assets/icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml"
+      "src": "assets/branding/favicon.svg",
+      "sizes": "64x64",
+      "type": "image/svg+xml",
+      "purpose": "any"
     }
   ]
 }

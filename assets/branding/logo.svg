@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="100%" height="100%">
+  <defs>
+    <!-- Gradiente Metálico Haste Esquerda -->
+    <linearGradient id="metalLeft" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.98"/>
+      <stop offset="25%" stop-color="#D2EBF7"/>
+      <stop offset="50%" stop-color="#89C4E1"/>
+      <stop offset="75%" stop-color="#4B86AA"/>
+      <stop offset="100%" stop-color="#1A4363"/>
+    </linearGradient>
+
+    <!-- Gradiente Metálico Haste Direita com Curva Interna Sutil -->
+    <linearGradient id="metalRight" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#E8F8FF"/>
+      <stop offset="30%" stop-color="#B2E7FA"/>
+      <stop offset="60%" stop-color="#55ACD4"/>
+      <stop offset="85%" stop-color="#245F85"/>
+      <stop offset="100%" stop-color="#0E2D44"/>
+    </linearGradient>
+
+    <!-- Gradiente Metálico Faceta Central -->
+    <linearGradient id="metalFacet" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.9"/>
+      <stop offset="50%" stop-color="#7EE7FF" stop-opacity="1"/>
+      <stop offset="100%" stop-color="#1E5275" stop-opacity="0.8"/>
+    </linearGradient>
+
+    <!-- Glow Celestial Suave no Horizonte sob o V -->
+    <radialGradient id="horizonGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#7EE7FF" stop-opacity="0.75"/>
+      <stop offset="35%" stop-color="#7EE7FF" stop-opacity="0.35"/>
+      <stop offset="70%" stop-color="#0E1B35" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#07101F" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Filtro de Glow Discreto e Sofisticado -->
+    <filter id="celestialGlowFilter" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="10" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+
+  <style>
+    .brand-title {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+      font-size: 52px;
+      font-weight: 900;
+      letter-spacing: 14px;
+      fill: #F8FAFC;
+    }
+    .brand-subtitle {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 6px;
+      fill: #7EE7FF;
+      opacity: 0.9;
+    }
+  </style>
+
+  <!-- Fundo Dark Oficial -->
+  <rect width="800" height="600" fill="#07101F"/>
+
+  <!-- Luz do Horizonte (Horizon Glow) sob o V -->
+  <ellipse cx="400" cy="340" rx="230" ry="50" fill="url(#horizonGlow)"/>
+
+  <!-- SÍMBOLO V OFICIAL -->
+  <g filter="url(#celestialGlowFilter)">
+    <!-- Haste Esquerda Reta -->
+    <path d="M 280 100 L 336 100 L 400 326 L 360 326 Z" fill="url(#metalLeft)"/>
+
+    <!-- Haste Direita com Curva Interna Sutil -->
+    <path d="M 520 100 L 464 100 C 440 160, 420 220, 400 326 L 440 326 C 466 230, 492 160, 520 100 Z" fill="url(#metalRight)"/>
+
+    <!-- Vértice Metálico Chanfrado -->
+    <polygon points="360,326 400,326 440,326 400,358" fill="url(#metalFacet)"/>
+
+    <!-- Realce de Borda Prateada / Azul Celestial -->
+    <path d="M 280 100 L 400 358 L 520 100" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" opacity="0.7"/>
+    <path d="M 336 100 L 400 326 C 420 220, 440 160, 464 100" fill="none" stroke="#7EE7FF" stroke-width="2" stroke-linecap="round" opacity="0.85"/>
+  </g>
+
+  <!-- Ponto de Brilho no Vértice Inferior -->
+  <circle cx="400" cy="358" r="4" fill="#FFFFFF"/>
+  <circle cx="400" cy="358" r="9" fill="#7EE7FF" opacity="0.6" filter="url(#celestialGlowFilter)"/>
+
+  <!-- Tipografia Oficial Virtuo -->
+  <text x="407" y="450" text-anchor="middle" class="brand-title">VIRTUO</text>
+  <text x="403" y="488" text-anchor="middle" class="brand-subtitle">A PLATAFORMA DO MÚSICO VIRTUOSO</text>
+</svg>

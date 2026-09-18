@@ -24,7 +24,7 @@ assert.strictEqual(DESIGN_TOKENS.motion.button, "120ms", "Motion Button deve ser
 assert.strictEqual(DESIGN_TOKENS.motion.card, "150ms", "Motion Card deve ser 150ms");
 assert.strictEqual(DESIGN_TOKENS.motion.pulse, "140ms", "Motion Pulse deve ser 140ms");
 assert.strictEqual(DESIGN_TOKENS.motion.screen, "180ms", "Motion Screen deve ser 180ms");
-assert.strictEqual(DESIGN_TOKENS.motion.splash, "1400ms", "Motion Splash deve ser 1400ms");
+assert.strictEqual(DESIGN_TOKENS.motion.splash, "2400ms", "Motion Splash deve ser 2400ms (~2.4s cinematográfico)");
 
 console.log("  ✓ Paleta oficial e Motion System auditados com 100% de conformidade.");
 
@@ -110,13 +110,14 @@ assert(brandingCss.includes("var(--virtuo-aura-cycle)"), "Virtuo Aura deve usar 
 console.log("  ✓ Horizon Glow, Virtuo Aura e Glass System validados no CSS.");
 
 // 6. Auditoria de Splash e Integração Global
-console.log("  Verificando Splash Screen (0.0s a 1.4s)...");
+console.log("  Verificando Splash Screen (0.0s a 2.4s)...");
 const splashPath = path.join("src", "features", "splash", "splash.js");
 const splashContent = fs.readFileSync(splashPath, "utf-8");
 assert(splashContent.includes("300"), "Splash deve ter etapa 0.3s (300ms)");
-assert(splashContent.includes("700"), "Splash deve ter etapa 0.7s (700ms)");
-assert(splashContent.includes("1000"), "Splash deve ter etapa 1.0s (1000ms)");
-assert(splashContent.includes("1400"), "Splash deve ter etapa 1.4s (1400ms)");
+assert(splashContent.includes("600"), "Splash deve ter etapa 0.6s (600ms)");
+assert(splashContent.includes("900"), "Splash deve ter etapa 0.9s (900ms)");
+assert(splashContent.includes("1100"), "Splash deve ter etapa 1.1s (1100ms)");
+assert(splashContent.includes("2400"), "Splash deve ter etapa 2.4s (2400ms)");
 assert(splashContent.includes("splash-blue-wave"), "Splash deve ter onda azul descendo");
 
 console.log("  ✓ Sequência cinematográfica de Splash Screen conferida.");

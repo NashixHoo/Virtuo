@@ -26,7 +26,7 @@
   --virtuo-motion-card: 150ms;
   --virtuo-motion-pulse: 140ms;
   --virtuo-motion-screen: 180ms;
-  --virtuo-motion-splash: 1400ms;
+  --virtuo-motion-splash: 2400ms;
   --virtuo-motion-wave: 600ms;
   --virtuo-aura-cycle: 10s; /* Ciclo estrito entre 8s e 12s */
 
@@ -74,7 +74,8 @@ body {
   transition: opacity var(--virtuo-motion-screen) var(--virtuo-ease-out);
 }
 
-.background.screen-home {
+.background.screen-home,
+.background.screen-hoje {
   background-image: url("../../assets/backgrounds/virtuo-background-home.svg");
 }
 
@@ -82,8 +83,27 @@ body {
   background-image: url("../../assets/backgrounds/virtuo-background-live.svg");
 }
 
-.background.screen-missions {
+.background.screen-missions,
+.background.screen-commandCenter,
+.background.screen-checkin {
   background-image: url("../../assets/backgrounds/virtuo-background-missions.svg");
+}
+
+.background.screen-tuner {
+  background-image: url("../../assets/backgrounds/virtuo-background-home.svg");
+}
+
+.background.screen-vocal {
+  background-image: url("../../assets/backgrounds/virtuo-background-home.svg");
+}
+
+.background.screen-library,
+.background.screen-songDetail {
+  background-image: url("../../assets/backgrounds/virtuo-background-home.svg");
+}
+
+.background.screen-profile {
+  background-image: url("../../assets/backgrounds/virtuo-background-home.svg");
 }
 
 .background.screen-login {
@@ -91,8 +111,29 @@ body {
 }
 
 /* =============================================================
-   4. HORIZON GLOW (LUZ AZUL NO HORIZONTE SOB O V)
+   4. HORIZON GLOW (LUZ AZUL NO HORIZONTE SOB O V E FIXO INFERIOR)
    ============================================================= */
+
+/* Horizonte Fixo na parte inferior de todas as telas principais */
+.virtuo-fixed-horizon-glow {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 90px;
+  background: radial-gradient(
+    ellipse 130% 100% at 50% 100%,
+    rgba(126, 231, 255, 0.28) 0%,
+    rgba(126, 231, 255, 0.14) 35%,
+    rgba(14, 27, 53, 0.04) 65%,
+    transparent 100%
+  );
+  filter: blur(20px);
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.95;
+  animation: horizonGlowBreath var(--virtuo-aura-cycle) ease-in-out infinite alternate;
+}
 
 .virtuo-horizon {
   position: relative;
@@ -158,9 +199,140 @@ body {
   }
 }
 
-/* Glow específico da Logo V */
+/* Logo Oficial Virtuo e Glow do V */
+.virtuo-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  filter: drop-shadow(0 0 20px rgba(126, 231, 255, 0.75));
+  transition: transform var(--virtuo-motion-btn) var(--virtuo-ease-out),
+              filter var(--virtuo-motion-card) ease;
+}
+
+.virtuo-logo:hover {
+  filter: drop-shadow(0 0 28px rgba(126, 231, 255, 0.90));
+}
+
 .virtuo-logo-glow {
   filter: drop-shadow(0 0 20px rgba(126, 231, 255, 0.75));
+}
+
+/* Glow Celestial do V e Elementos Ativos */
+.virtuo-glow {
+  box-shadow: 0 0 24px rgba(126, 231, 255, 0.40);
+  filter: drop-shadow(0 0 16px rgba(126, 231, 255, 0.50));
+}
+
+.virtuo-glow-subtle {
+  box-shadow: 0 0 12px rgba(126, 231, 255, 0.20);
+}
+
+/* =============================================================
+   VIRTUO HALO (ETAPA 2 — LUXURY EXPERIENCE)
+   Efeito celestial com respiração suave (NUNCA piscar) para:
+   - missão ativa
+   - música em execução
+   - afinador perfeito
+   - Live conectado
+   - Primeira Ministração
+   ============================================================= */
+
+.virtuo-halo {
+  position: relative;
+  transition: box-shadow 0.8s ease, border-color 0.8s ease;
+}
+
+/* 1. Missão Ativa: Halo Azul Celestial Suave */
+.virtuo-halo-mission,
+.virtuo-halo-active-mission {
+  box-shadow: 0 0 24px rgba(126, 231, 255, 0.35), 0 0 48px rgba(126, 231, 255, 0.12) !important;
+  border-color: rgba(126, 231, 255, 0.50) !important;
+  animation: haloBreathMission 4s ease-in-out infinite alternate;
+}
+
+/* 2. Música em Execução: Onda Sonora Suave */
+.virtuo-halo-music,
+.virtuo-halo-playing-music {
+  box-shadow: 0 0 28px rgba(126, 231, 255, 0.40), 0 0 52px rgba(126, 231, 255, 0.15) !important;
+  border-color: rgba(126, 231, 255, 0.60) !important;
+  animation: haloBreathMusic 3.5s ease-in-out infinite alternate;
+}
+
+/* 3. Afinador Perfeito: Halo Esmeralda / Celestial */
+.virtuo-halo-tuner,
+.virtuo-halo-perfect-tune {
+  box-shadow: 0 0 32px rgba(34, 197, 94, 0.45), 0 0 60px rgba(126, 231, 255, 0.25) !important;
+  border-color: rgba(34, 197, 94, 0.65) !important;
+  animation: haloBreathTuner 2.8s ease-in-out infinite alternate;
+}
+
+/* 4. Live Conectado: Pulso Profundo de Palco */
+.virtuo-halo-live,
+.virtuo-halo-connected-live {
+  box-shadow: 0 0 32px rgba(126, 231, 255, 0.50), 0 0 64px rgba(37, 99, 235, 0.30) !important;
+  border-color: rgba(126, 231, 255, 0.70) !important;
+  animation: haloBreathLive 4s ease-in-out infinite alternate;
+}
+
+/* 5. Primeira Ministração: Halo Dourado Celestial */
+.virtuo-halo-first-ministration,
+.virtuo-halo-celestial {
+  box-shadow: 0 0 32px rgba(245, 197, 66, 0.45), 0 0 60px rgba(126, 231, 255, 0.20) !important;
+  border-color: rgba(245, 197, 66, 0.65) !important;
+  animation: haloBreathFirstMinistration 4.5s ease-in-out infinite alternate;
+}
+
+@keyframes haloBreathMission {
+  0% {
+    box-shadow: 0 0 18px rgba(126, 231, 255, 0.25), 0 0 36px rgba(126, 231, 255, 0.08);
+  }
+  100% {
+    box-shadow: 0 0 30px rgba(126, 231, 255, 0.45), 0 0 54px rgba(126, 231, 255, 0.18);
+  }
+}
+
+@keyframes haloBreathMusic {
+  0% {
+    box-shadow: 0 0 20px rgba(126, 231, 255, 0.28), 0 0 40px rgba(126, 231, 255, 0.10);
+  }
+  100% {
+    box-shadow: 0 0 34px rgba(126, 231, 255, 0.52), 0 0 60px rgba(126, 231, 255, 0.22);
+  }
+}
+
+@keyframes haloBreathTuner {
+  0% {
+    box-shadow: 0 0 22px rgba(34, 197, 94, 0.35), 0 0 44px rgba(126, 231, 255, 0.15);
+  }
+  100% {
+    box-shadow: 0 0 38px rgba(34, 197, 94, 0.55), 0 0 68px rgba(126, 231, 255, 0.30);
+  }
+}
+
+@keyframes haloBreathLive {
+  0% {
+    box-shadow: 0 0 22px rgba(126, 231, 255, 0.35), 0 0 48px rgba(37, 99, 235, 0.20);
+  }
+  100% {
+    box-shadow: 0 0 38px rgba(126, 231, 255, 0.60), 0 0 72px rgba(37, 99, 235, 0.35);
+  }
+}
+
+@keyframes haloBreathFirstMinistration {
+  0% {
+    box-shadow: 0 0 22px rgba(245, 197, 66, 0.32), 0 0 44px rgba(126, 231, 255, 0.12);
+  }
+  100% {
+    box-shadow: 0 0 38px rgba(245, 197, 66, 0.55), 0 0 68px rgba(126, 231, 255, 0.28);
+  }
+}
+
+/* Glow burst sem reflow para feedback imediato (ex: troca de tom instantânea) */
+.virtuo-glow-burst {
+  box-shadow: 0 0 45px rgba(126, 231, 255, 0.85), 0 0 80px rgba(126, 231, 255, 0.40) !important;
+  border-color: #7EE7FF !important;
+  transition: box-shadow 0.2s ease-out, border-color 0.2s ease-out !important;
 }
 
 /* =============================================================
@@ -211,6 +383,33 @@ body {
   animation: auraBeamSway calc(var(--virtuo-aura-cycle) * 1.1) ease-in-out infinite alternate;
 }
 
+.virtuo-aura-glow {
+  position: absolute;
+  top: 20%;
+  left: 20%;
+  right: 20%;
+  height: 380px;
+  background: radial-gradient(
+    circle,
+    rgba(126, 231, 255, 0.14) 0%,
+    rgba(14, 27, 53, 0.06) 45%,
+    transparent 70%
+  );
+  filter: blur(48px);
+  animation: auraGlowPulse calc(var(--virtuo-aura-cycle) * 0.9) ease-in-out infinite alternate;
+}
+
+@keyframes auraGlowPulse {
+  0% {
+    opacity: 0.35;
+    transform: scale(0.92);
+  }
+  100% {
+    opacity: 0.80;
+    transform: scale(1.08);
+  }
+}
+
 @keyframes auraMistDrift {
   0% {
     transform: translateY(12px) scaleX(0.95);
@@ -248,7 +447,7 @@ body {
   backdrop-filter: blur(var(--virtuo-glass-blur)) !important;
   -webkit-backdrop-filter: blur(var(--virtuo-glass-blur)) !important;
   border: 1px solid var(--virtuo-border-subtle) !important;
-  border-radius: 20px !important;
+  border-radius: 28px !important;
   box-shadow: var(--virtuo-card-shadow) !important;
   transition: transform var(--virtuo-motion-card) var(--virtuo-ease-out),
               box-shadow var(--virtuo-motion-card) var(--virtuo-ease-out),
@@ -384,7 +583,448 @@ button:active,
 }
 
 /* =============================================================
-   10. ACESSIBILIDADE — PREFERS-REDUCED-MOTION
+   10. COMPONENTES UI PREMIUM (VDS OFICIAL V2.2)
+   ============================================================= */
+
+/* 1. Botões Oficiais: Primário, Secundário, Ghost (120ms) */
+.virtuo-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px 20px;
+  border-radius: 14px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  border: 1px solid transparent;
+  transition: transform var(--virtuo-motion-btn) var(--virtuo-ease-out),
+              background-color var(--virtuo-motion-btn) ease,
+              border-color var(--virtuo-motion-btn) ease,
+              box-shadow var(--virtuo-motion-btn) ease,
+              opacity var(--virtuo-motion-btn) ease !important;
+  will-change: transform;
+}
+
+.virtuo-btn:focus-visible {
+  outline: 2px solid var(--virtuo-blue);
+  outline-offset: 2px;
+}
+
+/* Primário: Azul Celestial com brilho suave */
+.virtuo-btn-primary {
+  background: var(--virtuo-blue) !important;
+  color: #07101F !important;
+  border-color: rgba(126, 231, 255, 0.4) !important;
+  box-shadow: 0 0 16px rgba(126, 231, 255, 0.35), 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+}
+
+.virtuo-btn-primary:hover:not(:disabled) {
+  background: #99EEFF !important;
+  box-shadow: 0 0 24px rgba(126, 231, 255, 0.50), 0 4px 12px rgba(0, 0, 0, 0.4) !important;
+  transform: translateY(-1px);
+}
+
+.virtuo-btn-primary:active:not(:disabled) {
+  transform: scale(0.96) !important;
+  box-shadow: 0 0 10px rgba(126, 231, 255, 0.25) !important;
+}
+
+/* Secundário: Vidro fosco */
+.virtuo-btn-secondary {
+  background: rgba(14, 27, 53, 0.70) !important;
+  color: var(--virtuo-white) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border-color: rgba(126, 231, 255, 0.22) !important;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3) !important;
+}
+
+.virtuo-btn-secondary:hover:not(:disabled) {
+  background: rgba(22, 42, 80, 0.85) !important;
+  border-color: rgba(126, 231, 255, 0.45) !important;
+  box-shadow: 0 0 16px rgba(126, 231, 255, 0.18) !important;
+  transform: translateY(-1px);
+}
+
+.virtuo-btn-secondary:active:not(:disabled) {
+  transform: scale(0.96) !important;
+}
+
+/* Ghost: Transparente */
+.virtuo-btn-ghost {
+  background: transparent !important;
+  color: var(--virtuo-blue) !important;
+  border-color: transparent !important;
+}
+
+.virtuo-btn-ghost:hover:not(:disabled) {
+  background: rgba(126, 231, 255, 0.08) !important;
+  border-color: rgba(126, 231, 255, 0.15) !important;
+}
+
+.virtuo-btn-ghost:active:not(:disabled) {
+  transform: scale(0.96) !important;
+}
+
+/* Estados de Botão */
+.virtuo-btn:disabled,
+.virtuo-btn.is-disabled {
+  opacity: 0.4 !important;
+  cursor: not-allowed !important;
+  pointer-events: none !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.virtuo-btn.is-loading {
+  pointer-events: none;
+  position: relative;
+}
+
+.virtuo-btn.is-loading .btn-content {
+  opacity: 0;
+}
+
+.virtuo-btn.is-loading .btn-spinner {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 2. Input Premium com foco azul e glow suave */
+.virtuo-input {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 16px;
+  background: rgba(14, 27, 53, 0.65);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(126, 231, 255, 0.18);
+  border-radius: 14px;
+  color: var(--virtuo-white);
+  font-family: inherit;
+  font-size: 15px;
+  line-height: 20px;
+  transition: border-color var(--virtuo-motion-btn) ease,
+              box-shadow var(--virtuo-motion-btn) ease,
+              background-color var(--virtuo-motion-btn) ease;
+  box-sizing: border-box;
+}
+
+.virtuo-input::placeholder {
+  color: #94A3B8;
+  opacity: 1;
+}
+
+.virtuo-input:focus {
+  outline: none;
+  border-color: var(--virtuo-blue);
+  box-shadow: 0 0 16px rgba(126, 231, 255, 0.35);
+  background: rgba(14, 27, 53, 0.85);
+}
+
+.virtuo-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 3. Modal Premium Oficial (180ms) */
+.virtuo-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(7, 16, 31, 0.82);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  opacity: 0;
+  transition: opacity 180ms cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity;
+}
+
+.virtuo-modal-backdrop.is-open {
+  opacity: 1;
+}
+
+.virtuo-modal-container {
+  width: 100%;
+  max-width: 520px;
+  background: rgba(14, 27, 53, 0.90);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(126, 231, 255, 0.25);
+  border-radius: 28px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.70), 0 0 32px rgba(126, 231, 255, 0.15);
+  overflow: hidden;
+  transform: scale(0.94) translateY(12px);
+  opacity: 0;
+  transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1),
+              opacity 180ms cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform, opacity;
+}
+
+.virtuo-modal-backdrop.is-open .virtuo-modal-container {
+  transform: scale(1) translateY(0);
+  opacity: 1;
+}
+
+/* 4. Toast Inteligente (Inferior, auto dismiss) */
+.virtuo-toast-host {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+  max-width: calc(100vw - 32px);
+}
+
+.virtuo-toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  background: rgba(14, 27, 53, 0.92);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(126, 231, 255, 0.28);
+  border-radius: 18px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.60), 0 0 20px rgba(126, 231, 255, 0.14);
+  color: var(--virtuo-white);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 18px;
+  opacity: 0;
+  transform: translateY(16px) scale(0.96);
+  transition: opacity 180ms cubic-bezier(0.16, 1, 0.3, 1),
+              transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+
+.virtuo-toast.is-visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.virtuo-toast.is-hiding {
+  opacity: 0;
+  transform: translateY(8px) scale(0.95);
+}
+
+/* 5. Loader Oficial: V girando suavemente (1 volta em 1.2s) com glow azul */
+.virtuo-loader-v {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  filter: drop-shadow(0 0 12px var(--virtuo-blue));
+  animation: virtuoSpinV 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  will-change: transform;
+}
+
+@keyframes virtuoSpinV {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* 6. Badges Oficiais */
+.virtuo-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  background: rgba(14, 27, 53, 0.70);
+  border: 1px solid rgba(126, 231, 255, 0.20);
+  color: var(--virtuo-white);
+}
+
+.virtuo-badge-live {
+  background: rgba(239, 68, 68, 0.15) !important;
+  border-color: rgba(239, 68, 68, 0.50) !important;
+  color: #FCA5A5 !important;
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.25);
+}
+
+.virtuo-badge-mission {
+  background: rgba(126, 231, 255, 0.14) !important;
+  border-color: var(--virtuo-blue) !important;
+  color: var(--virtuo-blue) !important;
+  box-shadow: 0 0 12px rgba(126, 231, 255, 0.20);
+}
+
+.virtuo-badge-celestial {
+  background: rgba(245, 197, 66, 0.15) !important;
+  border-color: var(--virtuo-gold) !important;
+  color: var(--virtuo-gold) !important;
+  box-shadow: 0 0 16px rgba(245, 197, 66, 0.35);
+}
+
+.virtuo-badge-owner {
+  background: rgba(245, 197, 66, 0.18) !important;
+  border-color: var(--virtuo-gold) !important;
+  color: var(--virtuo-gold) !important;
+  box-shadow: 0 0 16px rgba(245, 197, 66, 0.35);
+}
+
+.virtuo-badge-verified {
+  background: rgba(56, 189, 248, 0.15) !important;
+  border-color: rgba(56, 189, 248, 0.5) !important;
+  color: #7EE7FF !important;
+}
+
+.virtuo-badge-offline {
+  background: rgba(100, 116, 139, 0.2) !important;
+  border-color: rgba(100, 116, 139, 0.4) !important;
+  color: #94A3B8 !important;
+}
+
+.virtuo-badge-rehearsal {
+  background: rgba(168, 85, 247, 0.15) !important;
+  border-color: rgba(168, 85, 247, 0.45) !important;
+  color: #D8B4FE !important;
+}
+
+/* 7. Tipografia Oficial */
+.virtuo-type-display {
+  font-size: 36px;
+  line-height: 44px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  color: var(--virtuo-white);
+}
+
+.virtuo-type-hero {
+  font-size: 28px;
+  line-height: 34px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--virtuo-white);
+}
+
+.virtuo-type-title {
+  font-size: 22px;
+  line-height: 28px;
+  font-weight: 700;
+  color: var(--virtuo-white);
+}
+
+.virtuo-type-subtitle {
+  font-size: 16px;
+  line-height: 22px;
+  font-weight: 600;
+  color: var(--virtuo-blue);
+}
+
+.virtuo-type-body {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 400;
+  color: #E2E8F0;
+}
+
+.virtuo-type-caption {
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 400;
+  color: #94A3B8;
+}
+
+/* 8. Divider Oficial */
+.virtuo-divider {
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(126, 231, 255, 0.25) 50%,
+    transparent 100%
+  );
+  border: none;
+  margin: 16px 0;
+}
+
+/* 9. Avatar Oficial */
+.virtuo-avatar {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  overflow: hidden;
+  background: rgba(14, 27, 53, 0.85);
+  border: 2px solid rgba(126, 231, 255, 0.35);
+  box-shadow: 0 0 14px rgba(126, 231, 255, 0.15);
+  color: var(--virtuo-white);
+  font-weight: 700;
+  user-select: none;
+}
+
+/* 10. Section Oficial */
+.virtuo-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.virtuo-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* 11. Ícones de Navegação e Tabbar Oficiais (Brand DNA) */
+.tabbar-icon-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 22px;
+  margin-bottom: 2px;
+}
+
+.virtuo-nav-icon {
+  display: inline-block;
+  vertical-align: middle;
+  object-fit: contain;
+  filter: drop-shadow(0 0 3px rgba(126, 231, 255, 0.35));
+  transition: transform var(--virtuo-motion-btn) var(--virtuo-ease-out), filter var(--virtuo-motion-btn) ease;
+}
+
+.tabbar button:hover .virtuo-nav-icon,
+.tabbar button.active .virtuo-nav-icon,
+.quick-toolbar button:hover .virtuo-nav-icon,
+.quick-toolbar button.active .virtuo-nav-icon {
+  transform: scale(1.12);
+  filter: drop-shadow(0 0 8px rgba(126, 231, 255, 0.85));
+}
+
+/* =============================================================
+   12. ACESSIBILIDADE — PREFERS-REDUCED-MOTION
    ============================================================= */
 
 @media (prefers-reduced-motion: reduce) {
@@ -399,6 +1039,7 @@ button:active,
 
   .virtuo-horizon::after,
   .virtuo-aura-mist,
+  .virtuo-aura-glow,
   .virtuo-aura-beams {
     animation: none !important;
   }

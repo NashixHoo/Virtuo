@@ -1,13 +1,17 @@
 // =============================================================
-// VIRTUO EXPERIENCE SYSTEM — SPLASH PREMIUM V3
+// VIRTUO EXPERIENCE SYSTEM — SPLASH SCREEN V2.2 POLISH
 // src/features/splash/splash.js
-// Abertura oficial cinematográfica do Virtuo
+// Abertura cinematográfica, elegante e imersiva do Virtuo (2.4s)
 // Sequência estrita:
 //   0.0s - Tela escura
-//   0.3s - Brilho azul
-//   0.7s - Logo surge (V metálico oficial + horizon glow) com onda azul descendo
-//   1.0s - Startup Chime
-//   1.4s - Entrada na Home
+//   0.3s - Atmosfera azul / Horizon Glow surgindo
+//   0.6s - Logo oficial (V com glow) começando a aparecer
+//   0.9s - Logo completamente visível
+//   1.1s - Nome "VIRTUO" surge com elegância
+//   1.2s – 1.8s - Fixação da marca
+//   1.8s – 2.2s - Som de assinatura tocando em sincronia
+//   2.0s – 2.4s - Transição suave para a tela inicial
+//   2.4s - Interface pronta para uso
 // =============================================================
 
 import { playStartupChime, isStartupChimeEnabled, setStartupChimeEnabled } from "../../audio/startup-chime.js";
@@ -17,10 +21,11 @@ export class VirtuoSplashScreen {
   constructor() {
     this.container = null;
     this.isDone = false;
+    this.timers = [];
   }
 
   /**
-   * Inicializa e executa a sequência cinematográfica do Splash (1.4s)
+   * Inicializa e executa a sequência cinematográfica do Splash (~2.4s)
    * @param {Function} [onComplete] Callback acionado quando a Home estiver visível
    */
   start(onComplete = null) {
@@ -29,29 +34,34 @@ export class VirtuoSplashScreen {
       return;
     }
 
-    // Cria overlay no body
-    const overlay = document.createElement('div');
-    overlay.id = 'virtuo-splash-screen';
-    overlay.setAttribute('aria-label', 'Inicializando Virtuo');
-    overlay.style.cssText = `
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      background: #020611;
-      z-index: 99999;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      overflow: hidden;
-      transition: opacity 220ms cubic-bezier(0.16, 1, 0.3, 1), transform 220ms ease-out;
-      user-select: none;
-      -webkit-user-select: none;
-    `;
+    // Usa overlay existente do index.html ou cria novo
+    let overlay = document.getElementById('virtuo-splash-screen');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'virtuo-splash-screen';
+      overlay.setAttribute('aria-label', 'Inicializando Virtuo');
+      overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: #07101F;
+        z-index: 99999;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        transition: opacity 400ms cubic-bezier(0.16, 1, 0.3, 1), transform 400ms ease-out;
+        user-select: none;
+        -webkit-user-select: none;
+      `;
+      document.body.appendChild(overlay);
+    }
 
-    overlay.innerHTML = `
+    if (!overlay.querySelector('#splash-celestial-glow')) {
+      overlay.innerHTML = `
       <!-- Fundo de Palco Cinematográfico da Splash -->
       <div 
         id="splash-bg-stage"
@@ -62,48 +72,48 @@ export class VirtuoSplashScreen {
           background-size: cover;
           background-position: center bottom;
           opacity: 0;
-          transition: opacity 450ms ease-out;
+          transition: opacity 800ms ease-out;
           pointer-events: none;
         "
       ></div>
 
-      <!-- 0.3s: Brilho Azul Celestial -->
+      <!-- 0.3s: Atmosfera Azul Celestial / Horizon Glow -->
       <div 
         id="splash-celestial-glow"
         style="
           position: absolute;
-          width: 360px;
-          height: 360px;
+          width: 440px;
+          height: 440px;
           border-radius: 50%;
-          background: radial-gradient(circle, rgba(126, 231, 255, 0.38) 0%, rgba(14, 27, 53, 0) 70%);
+          background: radial-gradient(circle, rgba(126, 231, 255, 0.35) 0%, rgba(14, 27, 53, 0) 70%);
           opacity: 0;
           transform: scale(0.6);
-          transition: opacity 350ms ease-out, transform 400ms cubic-bezier(0.16, 1, 0.3, 1);
+          transition: opacity 600ms ease-out, transform 700ms cubic-bezier(0.16, 1, 0.3, 1);
           pointer-events: none;
         "
       ></div>
 
-      <!-- Efeito da Onda Azul Descendo da Logo -->
+      <!-- Efeito da Onda Azul Descendo do V do Horizonte -->
       <div 
         id="splash-blue-wave"
         style="
           position: absolute;
           top: 48%;
           left: 50%;
-          width: 140px;
-          height: 20px;
+          width: 160px;
+          height: 24px;
           border-radius: 50%;
-          background: radial-gradient(ellipse at center, rgba(126, 231, 255, 0.75) 0%, rgba(126, 231, 255, 0) 75%);
-          filter: blur(10px);
+          background: radial-gradient(ellipse at center, rgba(126, 231, 255, 0.8) 0%, rgba(126, 231, 255, 0) 75%);
+          filter: blur(12px);
           opacity: 0;
           transform: translate(-50%, 0) scaleX(0.5);
-          transition: opacity 300ms ease-out, transform 650ms cubic-bezier(0.16, 1, 0.3, 1);
+          transition: opacity 500ms ease-out, transform 900ms cubic-bezier(0.16, 1, 0.3, 1);
           pointer-events: none;
           z-index: 2;
         "
       ></div>
 
-      <!-- 0.7s: Container do Logo Oficial com Horizon Glow -->
+      <!-- 0.6s a 0.9s: Container do Logo Oficial com Horizon Glow -->
       <div 
         id="splash-logo-container"
         class="virtuo-horizon"
@@ -113,13 +123,13 @@ export class VirtuoSplashScreen {
           flex-direction: column;
           align-items: center;
           opacity: 0;
-          transform: translateY(14px) scale(0.90);
-          transition: opacity 350ms cubic-bezier(0.16, 1, 0.3, 1), transform 350ms cubic-bezier(0.16, 1, 0.3, 1);
+          transform: translateY(18px) scale(0.92);
+          transition: opacity 500ms cubic-bezier(0.16, 1, 0.3, 1), transform 500ms cubic-bezier(0.16, 1, 0.3, 1);
           z-index: 3;
         "
       >
         <!-- Símbolo V Metálico com Horizon Glow Integrado -->
-        <div style="width: 110px; height: 110px; display: flex; align-items: center; justify-content: center; margin-bottom: 16px; filter: drop-shadow(0 0 24px rgba(126, 231, 255, 0.55));">
+        <div style="width: 114px; height: 114px; display: flex; align-items: center; justify-content: center; margin-bottom: 18px; filter: drop-shadow(0 0 28px rgba(126, 231, 255, 0.6));">
           <svg viewBox="0 0 512 512" width="100%" height="100%">
             <defs>
               <linearGradient id="splVLeft" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -163,22 +173,28 @@ export class VirtuoSplashScreen {
           </svg>
         </div>
 
+        <!-- 1.1s: Nome VIRTUO surge com elegância -->
         <div 
+          id="splash-brand-name"
           style="
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            font-size: 24px;
+            font-size: 26px;
             font-weight: 900;
-            letter-spacing: 10px;
+            letter-spacing: 12px;
             color: #F8FAFC;
             text-transform: uppercase;
-            margin-bottom: 4px;
-            text-shadow: 0 0 16px rgba(126, 231, 255, 0.45);
+            margin-bottom: 6px;
+            opacity: 0;
+            transform: translateY(6px);
+            transition: opacity 400ms ease-out, transform 400ms ease-out;
+            text-shadow: 0 0 20px rgba(126, 231, 255, 0.5);
           "
         >
           VIRTUO
         </div>
 
         <div 
+          id="splash-tagline"
           style="
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             font-size: 11px;
@@ -186,42 +202,59 @@ export class VirtuoSplashScreen {
             letter-spacing: 4px;
             color: #7EE7FF;
             text-transform: uppercase;
-            opacity: 0.85;
+            opacity: 0;
+            transform: translateY(4px);
+            transition: opacity 400ms ease-out, transform 400ms ease-out;
           "
         >
           A PLATAFORMA DO MÚSICO VIRTUOSO
         </div>
       </div>
-    `;
+      `;
+    }
 
     // Toque para pular opcional
     overlay.addEventListener('click', () => {
       this.finish(overlay, onComplete);
     });
 
-    document.body.appendChild(overlay);
+    if (!overlay.parentNode) {
+      document.body.appendChild(overlay);
+    }
     this.container = overlay;
 
-    // Cronograma oficial estrito do Virtuo Brand Kit V3 (1.4s):
-    // 0.0s: Tela escura (já montada)
+    // Sequência de 2.4s com máxima precisão e elegância:
+    // 0.0s: Tela escura (estado inicial)
 
-    // 0.3s: Brilho azul celestial
-    setTimeout(() => {
-      if (this.isDone) return;
+    // 0.3s: Atmosfera azul / Horizon Glow surgindo
+    this.schedule(() => {
       const glow = document.getElementById('splash-celestial-glow');
       const bg = document.getElementById('splash-bg-stage');
       if (glow) {
         glow.style.opacity = '1';
-        glow.style.transform = 'scale(1.2)';
+        glow.style.transform = 'scale(1.25)';
       }
       if (bg) {
-        bg.style.opacity = '0.55';
+        bg.style.opacity = '0.6';
       }
     }, 300);
 
-    // 0.7s: Logo surge + efeito da onda azul descendo
-    setTimeout(() => {
-      if (this.isDone) return;
+    // 0.6s: Logo oficial V começando a aparecer
+    this.schedule(() => {
+      const logo = document.getElementById('splash-logo-container');
+      const wave = document.getElementById('splash-blue-wave');
+      if (logo) {
+        logo.style.opacity = '0.65';
+        logo.style.transform = 'translateY(6px) scale(0.96)';
+      }
+      if (wave) {
+        wave.style.opacity = '0.75';
+        wave.style.transform = 'translate(-50%, 90px) scaleX(1.8)';
+      }
+    }, 600);
+
+    // 0.9s: Logo completamente visível
+    this.schedule(() => {
       const logo = document.getElementById('splash-logo-container');
       const wave = document.getElementById('splash-blue-wave');
       if (logo) {
@@ -229,26 +262,59 @@ export class VirtuoSplashScreen {
         logo.style.transform = 'translateY(0) scale(1)';
       }
       if (wave) {
-        wave.style.opacity = '0.85';
-        wave.style.transform = 'translate(-50%, 140px) scaleX(2.8)';
+        wave.style.opacity = '0.9';
+        wave.style.transform = 'translate(-50%, 150px) scaleX(2.8)';
       }
-    }, 700);
+    }, 900);
 
-    // 1.0s: Startup Chime (assinatura sonora)
-    setTimeout(() => {
-      if (this.isDone) return;
+    // 1.1s: Nome "VIRTUO" surge com elegância
+    this.schedule(() => {
+      const brand = document.getElementById('splash-brand-name');
+      const tag = document.getElementById('splash-tagline');
+      if (brand) {
+        brand.style.opacity = '1';
+        brand.style.transform = 'translateY(0)';
+      }
+      if (tag) {
+        tag.style.opacity = '0.9';
+        tag.style.transform = 'translateY(0)';
+      }
+    }, 1100);
+
+    // 1.2s - 1.8s: Momento de fixação da marca (estabilidade)
+
+    // 1.8s – 2.2s: Som de assinatura tocando em sincronia
+    this.schedule(() => {
       playStartupChime().catch(() => {});
-    }, 1000);
+    }, 1800);
 
-    // 1.4s: Entrada na Home e finalização da Splash
-    setTimeout(() => {
+    // 2.0s – 2.4s: Transição suave para a tela inicial
+    this.schedule(() => {
+      if (overlay) {
+        overlay.style.opacity = '0.7';
+        overlay.style.transform = 'scale(1.01)';
+      }
+    }, 2000);
+
+    // 2.4s: Finalização da Splash e transição para a Home
+    this.schedule(() => {
       this.finish(overlay, onComplete);
-    }, 1400);
+    }, 2400);
+  }
+
+  schedule(fn, ms) {
+    const t = setTimeout(() => {
+      if (!this.isDone) fn();
+    }, ms);
+    this.timers.push(t);
   }
 
   finish(overlay, onComplete) {
     if (this.isDone) return;
     this.isDone = true;
+
+    this.timers.forEach(t => clearTimeout(t));
+    this.timers = [];
 
     if (overlay && overlay.parentNode) {
       overlay.style.opacity = '0';
@@ -260,7 +326,7 @@ export class VirtuoSplashScreen {
           overlay.parentNode.removeChild(overlay);
         }
         if (onComplete) onComplete();
-      }, 220);
+      }, 300);
     } else {
       if (onComplete) onComplete();
     }

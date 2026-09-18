@@ -1,5 +1,5 @@
-// Virtuo PWA Service Worker (v2.2.0-prod)
-const CACHE_NAME = "virtuo-v2.2.0";
+// Virtuo PWA Service Worker (v1.0.0 — Primeira Versão Oficial)
+const CACHE_NAME = "virtuo-v1.0.0-prod";
 
 const APP_SHELL_FILES = [
   "./",
@@ -10,6 +10,8 @@ const APP_SHELL_FILES = [
   "./manifest.json",
   "./assets/icon.svg",
   "./assets/stars.svg",
+  "./src/version.js",
+  "./src/i18n/index.js",
   "./src/music/index.js",
   "./src/music/transposer.js",
   "./src/music/chord-parser.js",
@@ -18,6 +20,7 @@ const APP_SHELL_FILES = [
   "./src/music/study-plan.js",
   "./src/music/demo-songs.js",
   "./src/music/music-intelligence.js",
+  "./src/music/chord-engine/index.js",
   "./src/features/ai/virtuo-ai-view.js",
   "./src/audio/index.js",
   "./src/audio/sound-provider.js",
@@ -27,7 +30,10 @@ const APP_SHELL_FILES = [
   "./src/audio/metronome-controller.js",
   "./src/audio/metronome-view.js",
   "./src/audio/band-engine.js",
+  "./src/audio/real-band-engine.js",
+  "./src/audio/real-sound-engine.js",
   "./src/audio/voice-detector.js",
+  "./src/audio/culto-mode.js",
   "./src/features/minister/index.js",
   "./src/features/minister/minister-controller.js",
   "./src/features/minister/minister-view.js",
@@ -59,7 +65,10 @@ const APP_SHELL_FILES = [
   "./src/features/admin/index.js",
   "./src/features/admin/song-manager.js",
   "./src/styles/aura.css",
+  "./src/styles/branding.css",
   "./src/design/design-system.js",
+  "./src/design/branding.js",
+  "./src/motion/motion.js",
   "./src/audio/startup-chime.js",
   "./src/features/home/greeting.js",
   "./src/features/home/home-view.js",
@@ -67,8 +76,47 @@ const APP_SHELL_FILES = [
   "./src/features/pulse/pulse.js",
   "./src/features/pulse/index.js",
   "./src/features/splash/splash.js",
-  "./src/features/splash/index.js"
+  "./src/features/splash/index.js",
+  "./src/features/aura/index.js",
+  "./src/features/aura/aura-controller.js",
+  "./src/components/ui/index.js",
+  "./src/components/ui/card.js",
+  "./src/components/ui/button.js",
+  "./src/components/ui/input.js",
+  "./src/components/ui/modal.js",
+  "./src/components/ui/badge.js",
+  "./src/components/ui/toast.js",
+  "./src/components/ui/loader.js",
+  "./src/components/ui/section.js",
+  "./src/components/ui/avatar.js",
+  "./src/components/ui/divider.js",
+  "./src/components/ui/typography.js",
+  "./assets/branding/logo.svg",
+  "./assets/branding/logo-dark.svg",
+  "./assets/branding/logo-light.svg",
+  "./assets/branding/favicon.svg",
+  "./assets/branding/icon-1024.png",
+  "./assets/branding/icon-maskable-1024.png",
+  "./assets/branding/logo/logo-principal.svg",
+  "./assets/branding/logo/logo-icon-square.svg",
+  "./assets/branding/logo/logo-splash.svg",
+  "./assets/backgrounds/home.svg",
+  "./assets/backgrounds/splash.svg",
+  "./assets/backgrounds/login.svg",
+  "./assets/backgrounds/missions.svg",
+  "./assets/backgrounds/live.svg",
+  "./assets/backgrounds/virtuo-background-home.svg",
+  "./assets/backgrounds/virtuo-background-splash.svg",
+  "./assets/backgrounds/virtuo-background-missions.svg",
+  "./assets/backgrounds/virtuo-background-live.svg",
+  "./assets/backgrounds/virtuo-background-login.svg"
 ];
+
+self.addEventListener("message", event => {
+  if (event.data && event.data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
+});
 
 self.addEventListener("install", event => {
   self.skipWaiting();

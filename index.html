@@ -54,6 +54,8 @@
   <div class="virtuo-aura-mist"></div>
   <div class="virtuo-aura-beams"></div>
 </div>
+<!-- 1. Horizon Glow Fixo na Base de Todas as Telas (Etapa 2) -->
+<div id="virtuo-fixed-horizon-glow" class="virtuo-fixed-horizon-glow" aria-hidden="true"></div>
 
 <header>
 
@@ -64,7 +66,6 @@
   </div>
 
   <div>
-    <div class="creator">CRIADO POR NASHIX HOO</div>
     <h1 style="margin:2px 0 2px; font-size:28px; letter-spacing:4px; line-height:1.1;">VIRTUO</h1>
     <p style="margin:0; font-size:12px; color:#A9BDD8;">A plataforma do músico virtuoso</p>
   </div>
@@ -72,15 +73,15 @@
 </div>
 
 <div style="display:flex; align-items:center; gap:8px;">
-  <button class="ai-header-btn" onclick="window.show('ai')" title="Virtuo AI 2.0 - Inteligência Musical">
-    <span>✨</span>
-    <span>IA</span>
+  <button class="ai-header-btn" onclick="window.show('ai')" title="Davi • Diretor Musical">
+    <span style="font-size:15px;">🎼</span>
+    <span style="font-size:11px; font-weight:700;">Davi</span>
   </button>
   <button 
     id="header-notif-btn" 
     class="ai-header-btn" 
     onclick="window.show('notifications')" 
-    title="Notificações e Alertas Ministeriais"
+    title="Notificações e Alertas"
     style="position:relative; width:38px; padding:0; justify-content:center;"
   >
     <span style="font-size:16px;">🔔</span>
@@ -91,25 +92,28 @@
 
 </header>
 
-<!-- Barra de Atalhos Rápidos para Culto e Ensaio (1 Toque) -->
+<!-- Barra de Atalhos Rápidos para Palco e Ensaio (1 Toque) -->
 <nav class="quick-toolbar" id="quick-tools-strip" aria-label="Ferramentas Musicais Rápidas">
-  <button onclick="window.show('missions')" id="quick-btn-missions" title="Missões do Louvor & Live Sync">
-    <span>🕊️</span> Missões
+  <button onclick="window.show('live')" id="quick-btn-live" title="Live Sync Palco & Sincronização em Tempo Real" style="border-color: rgba(126,231,255,0.4); background: rgba(14,27,53,0.85);">
+    <img src="assets/branding/icons/live.svg" class="virtuo-nav-icon" alt="" aria-hidden="true" style="width:18px; height:18px;"> Live
   </button>
-  <button onclick="window.show('ai')" id="quick-btn-ai" title="Virtuo AI 2.0 - Inteligência Musical">
-    <span>✨</span> Virtuo AI
+  <button onclick="window.show('missions')" id="quick-btn-missions" title="Missões Musicais & Live Sync">
+    <img src="assets/branding/icons/missoes.svg" class="virtuo-nav-icon" alt="" aria-hidden="true" style="width:18px; height:18px;"> Missões
+  </button>
+  <button onclick="window.show('ai')" id="quick-btn-ai" title="Davi • Diretor Musical">
+    <span>🎼</span> Davi
   </button>
   <button onclick="window.show('library')" id="quick-btn-library" title="Acessar Cifras e Músicas">
-    <span>📜</span> Cifra
+    <img src="assets/branding/icons/cifras.svg" class="virtuo-nav-icon" alt="" aria-hidden="true" style="width:18px; height:18px;"> Cifra
   </button>
   <button onclick="window.show('tuner')" id="quick-btn-tuner" title="Afinador Cromático de Alta Precisão">
-    <span>🎯</span> Afinador
+    <img src="assets/branding/icons/afinador.svg" class="virtuo-nav-icon" alt="" aria-hidden="true" style="width:18px; height:18px;"> Afinador
   </button>
   <button onclick="window.show('academy')" id="quick-btn-academy" title="Virtuo Academy (Ensino Musical do Nível 0 ao Profissional)">
     <span>🎓</span> Academy
   </button>
   <button onclick="window.show('vocal')" id="quick-btn-vocal" title="Virtuo Vocal (Afinador e Treinamento)">
-    <span>🎤</span> Vocal
+    <img src="assets/branding/icons/vocal.svg" class="virtuo-nav-icon" alt="" aria-hidden="true" style="width:18px; height:18px;"> Vocal
   </button>
   <button onclick="window.show('performance')" id="quick-btn-performance" title="Virtuo Performance (Acompanhamento em Tempo Real)">
     <span>🎯</span> Performance
@@ -118,7 +122,7 @@
     <span>⚡</span> Coach
   </button>
   <button onclick="window.show('band')" id="quick-btn-band" title="Modo Banda & Metrônomo">
-    <span>🥁</span> Banda
+    <img src="assets/branding/icons/banda.svg" class="virtuo-nav-icon" alt="" aria-hidden="true" style="width:18px; height:18px;"> Banda
   </button>
   <button onclick="window.show('ensaio')" id="quick-btn-ensaio" title="Sessões de Ensaio e Repertório">
     <span>📋</span> Ensaio
@@ -136,37 +140,37 @@
 <nav class="tabbar">
 
 <button onclick="window.show('home')" id="tab-btn-home">
-🏠
+<div class="tabbar-icon-wrap"><img src="assets/branding/logo/logo-principal.svg" class="virtuo-nav-icon" alt="" aria-hidden="true" style="width:20px; height:20px;"></div>
 <span>Início</span>
 </button>
 
 <button onclick="window.show('library')" id="tab-btn-library">
-🎵
+<div class="tabbar-icon-wrap"><img src="assets/branding/icons/biblioteca.svg" class="virtuo-nav-icon" alt="" aria-hidden="true" style="width:20px; height:20px;"></div>
 <span>Biblioteca</span>
 </button>
 
-<button onclick="window.show('academy')" id="tab-btn-academy">
-🎓
-<span>Ensino</span>
+<button onclick="window.show('live')" id="tab-btn-live">
+<div class="tabbar-icon-wrap"><img src="assets/branding/icons/live.svg" class="virtuo-nav-icon" alt="" aria-hidden="true" style="width:20px; height:20px;"></div>
+<span>Live</span>
 </button>
 
 <button onclick="window.show('ensaio')" id="tab-btn-ensaio">
-🎸
+<div class="tabbar-icon-wrap"><img src="assets/branding/icons/maestro.svg" class="virtuo-nav-icon" alt="" aria-hidden="true" style="width:20px; height:20px;"></div>
 <span>Ensaio</span>
 </button>
 
 <button onclick="window.show('band')" id="tab-btn-band">
-🥁
+<div class="tabbar-icon-wrap"><img src="assets/branding/icons/banda.svg" class="virtuo-nav-icon" alt="" aria-hidden="true" style="width:20px; height:20px;"></div>
 <span>Banda</span>
 </button>
 
 <button onclick="window.show('comunidade')" id="tab-btn-comunidade">
-👥
+<div class="tabbar-icon-wrap"><img src="assets/branding/icons/perfil.svg" class="virtuo-nav-icon" alt="" aria-hidden="true" style="width:20px; height:20px;"></div>
 <span>Comunidade</span>
 </button>
 
 <button onclick="window.show('profile')" id="tab-btn-profile">
-👤
+<div class="tabbar-icon-wrap"><img src="assets/branding/icons/configuracoes.svg" class="virtuo-nav-icon" alt="" aria-hidden="true" style="width:20px; height:20px;"></div>
 <span>Perfil</span>
 </button>
 

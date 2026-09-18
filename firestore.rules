@@ -22,10 +22,12 @@ service cloud.firestore {
     // Users Collection: public profile reading, owner or admin profile update
     match /users/{userId} {
       allow read: if true;
-      allow create: if isAuthenticated() && (isOwner(userId) || isAdmin()) && (!('role' in request.resource.data) || request.resource.data.role != 'admin' || isAdmin());
+      allow create: if isAuthenticated() && (isOwner(userId) || isAdmin()) && (
+        !request.resource.data.keys().hasAny(['role', 'celestialMember', 'isCelestial', 'verified', 'superAdmin', 'isAdmin']) || isAdmin()
+      );
       allow update: if isAuthenticated() && (
         isAdmin() ||
-        (isOwner(userId) && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role'])))
+        (isOwner(userId) && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'celestialMember', 'isCelestial', 'verified', 'superAdmin', 'isAdmin'])))
       );
       allow delete: if isOwner(userId) || isAdmin();
     }
@@ -237,33 +239,41 @@ service cloud.firestore {
       );
     }
 
-    // Missions Collection: worship ministry missions with RBAC & Live Sync
+    // Missions Collection: stage & presentation missions with RBAC & Live Sync
     match /missions/{missionId} {
       allow read: if isAuthenticated() && (
         isAdmin() ||
-        resource.data.pastorId == request.auth.uid ||
+        resource.data.directorId == request.auth.uid ||
         resource.data.leaderId == request.auth.uid ||
-        (resource.data.members is list) // members of the ministry can view mission
+        resource.data.ownerId == request.auth.uid ||
+        resource.data.pastorId == request.auth.uid ||
+        (resource.data.members is list) // members of the musical team can view mission
       );
 
       allow create: if isAuthenticated() && (
         isAdmin() ||
-        request.resource.data.pastorId == request.auth.uid ||
-        request.resource.data.leaderId == request.auth.uid
+        request.resource.data.directorId == request.auth.uid ||
+        request.resource.data.leaderId == request.auth.uid ||
+        request.resource.data.ownerId == request.auth.uid ||
+        request.resource.data.pastorId == request.auth.uid
       );
 
       allow update: if isAuthenticated() && (
         isAdmin() ||
-        resource.data.pastorId == request.auth.uid ||
+        resource.data.directorId == request.auth.uid ||
         resource.data.leaderId == request.auth.uid ||
+        resource.data.ownerId == request.auth.uid ||
+        resource.data.pastorId == request.auth.uid ||
         // Músico pode atualizar somente seu próprio check-in ou progresso de estudo
         request.resource.data.diff(resource.data).affectedKeys().hasAny(['members', 'progress', 'updatedAt', 'currentSongId', 'currentKey', 'currentBpm'])
       );
 
       allow delete: if isAuthenticated() && (
         isAdmin() ||
-        resource.data.pastorId == request.auth.uid ||
-        resource.data.leaderId == request.auth.uid
+        resource.data.directorId == request.auth.uid ||
+        resource.data.leaderId == request.auth.uid ||
+        resource.data.ownerId == request.auth.uid ||
+        resource.data.pastorId == request.auth.uid
       );
     }
 

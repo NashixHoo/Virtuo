@@ -38,8 +38,8 @@ export function renderVirtuoAiScreen(activeSong, allSongs, aiChatHistory = [], i
       <section class="glass" style="border: 1px solid rgba(126, 231, 255, 0.3); background: linear-gradient(135deg, rgba(14, 165, 233, 0.12), rgba(99, 102, 241, 0.08));">
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
           <div style="display:flex; align-items:center; gap:8px;">
-            <span class="badge-celestial" style="font-size:11px; padding:4px 12px;">✨ VIRTUO AI 2.0</span>
-            <span style="font-size:11px; color:#94a3b8;">Diretor Musical & Análise Harmônica</span>
+            <span class="badge-celestial" style="font-size:11px; padding:4px 12px;">🎼 DAVI • DIRETOR MUSICAL</span>
+            <span style="font-size:11px; color:#94a3b8;">Direção Musical & Análise Harmônica</span>
           </div>
           <div style="display:flex; align-items:center; gap:6px;">
             <span class="status-dot"></span>
@@ -49,9 +49,9 @@ export function renderVirtuoAiScreen(activeSong, allSongs, aiChatHistory = [], i
 
         <div style="margin-top: 18px; text-align:center; padding: 24px 16px;">
           <div style="font-size:40px; margin-bottom:12px;">🎼</div>
-          <h2 class="hero" style="font-size: 22px; margin-bottom: 8px;">Direção Musical com Inteligência</h2>
+          <h2 class="hero" style="font-size: 22px; margin-bottom: 8px;">Davi • Diretor Musical</h2>
           <p class="subtitle" style="margin: 0 auto 20px; font-size: 14px; max-width:540px; color:#94a3b8; line-height:1.6;">
-            A biblioteca está pronta para receber seu novo repertório revisado. Você pode cadastrar uma música na Biblioteca para obter diagnósticos harmônicos completos, ou conversar diretamente com o Diretor Musical Virtuo abaixo.
+            A biblioteca está pronta para receber seu novo repertório. Você pode cadastrar uma música na Biblioteca para obter diagnósticos harmônicos completos, ou conversar diretamente com Davi, Diretor Musical do Virtuo.
           </p>
           <div style="display:flex; justify-content:center; gap:12px; flex-wrap:wrap;">
             <button class="button primary" onclick="show('library')">📚 Adicionar Música</button>
@@ -64,16 +64,16 @@ export function renderVirtuoAiScreen(activeSong, allSongs, aiChatHistory = [], i
       <section class="glass" style="margin-top:16px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
           <h3 style="font-size:16px; margin:0; color:#7EE7FF; display:flex; align-items:center; gap:8px;">
-            <span>💬</span> Consultoria Musical
+            <span>💬</span> Consultoria com Davi
           </h3>
-          <span class="pill" style="font-size:10px;">ASSISTENTE DE LOUVOR</span>
+          <span class="pill" style="font-size:10px;">DIRETOR MUSICAL</span>
         </div>
 
         <div id="ai-view-chat-history" style="min-height: 220px; max-height: 400px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding: 12px; background: rgba(0,0,0,0.3); border-radius: 12px; border: 1px solid rgba(255,255,255,0.06); margin-bottom: 12px;">
           ${aiChatHistory.length === 0 ? `
             <div style="text-align: center; color: #94a3b8; font-size: 13px; margin: auto; padding: 20px;">
-              <p style="margin-bottom: 8px;">Olá! Eu sou o <strong>Diretor Musical Virtuo</strong>.</p>
-              <p style="margin: 0; font-size: 12px;">Posso orientar sobre condução vocal, arranjos para banda, transposição harmônica e metodologia de estudo.</p>
+              <p style="margin-bottom: 8px;">Olá! Eu sou <strong>Davi, Diretor Musical do Virtuo</strong>.</p>
+              <p style="margin: 0; font-size: 12px;">Posso orientar sobre condução instrumental, dinâmica da banda, transposição harmônica e metodologia de ensaio.</p>
             </div>
           ` : aiChatHistory.map(msg => `
             <div style="align-self: ${msg.role === 'user' ? 'flex-end' : 'flex-start'}; max-width: 85%; padding: 10px 14px; border-radius: 14px; font-size: 13px; line-height: 1.5; ${msg.role === 'user' ? 'background: rgba(14, 165, 233, 0.25); color: #fff; border: 1px solid rgba(14, 165, 233, 0.4);' : 'background: rgba(255,255,255,0.05); color: #e2e8f0; border: 1px solid rgba(255,255,255,0.1);'}">
@@ -82,7 +82,7 @@ export function renderVirtuoAiScreen(activeSong, allSongs, aiChatHistory = [], i
           `).join('')}
           ${isAiReplying ? `
             <div style="align-self: flex-start; max-width: 80%; padding: 8px 12px; border-radius: 12px; font-size: 12px; background: rgba(255,255,255,0.05); color: #7EE7FF;">
-              Digitando orientações musicais...
+              Davi está elaborando orientações musicais...
             </div>
           ` : ''}
         </div>
@@ -121,12 +121,12 @@ export function renderVirtuoAiScreen(activeSong, allSongs, aiChatHistory = [], i
       <section class="glass" style="border: 1px solid rgba(126, 231, 255, 0.3); background: linear-gradient(135deg, rgba(14, 165, 233, 0.12), rgba(99, 102, 241, 0.08));">
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
           <div style="display:flex; align-items:center; gap:8px;">
-            <span class="badge-celestial" style="font-size:11px; padding:4px 12px;">✨ VIRTUO AI 2.0</span>
-            <span style="font-size:11px; color:#94a3b8;">Motor Musical Local Ativo (100% Offline)</span>
+            <span class="badge-celestial" style="font-size:11px; padding:4px 12px;">🎼 DAVI • DIRETOR MUSICAL</span>
+            <span style="font-size:11px; color:#94a3b8;">Consultoria Harmônica e Condução Musical</span>
           </div>
           <div style="display:flex; align-items:center; gap:6px;">
             <span class="status-dot"></span>
-            <span style="font-size:11px; color:#7EE7FF; font-weight:600;">Music Intelligence Operante</span>
+            <span style="font-size:11px; color:#7EE7FF; font-weight:600;">Diretrizes Ativas</span>
           </div>
         </div>
 
@@ -134,7 +134,7 @@ export function renderVirtuoAiScreen(activeSong, allSongs, aiChatHistory = [], i
           <div>
             <h2 class="hero" style="font-size: 24px; margin-bottom: 4px;">${escapeHtml(song.title || "Música Selecionada")}</h2>
             <p class="subtitle" style="margin: 0; font-size: 13px;">
-              ${escapeHtml(song.artist || "Ministério de Louvor")} • Tom Original: <strong style="color:#7EE7FF;">${escapeHtml(key)}</strong> • Relativa: <strong style="color:#fde047;">${escapeHtml(analysis.relativeKey)}</strong> • ${bpm} BPM
+              ${escapeHtml(song.artist || "Banda / Artista")} • Tom Original: <strong style="color:#7EE7FF;">${escapeHtml(key)}</strong> • Relativa: <strong style="color:#fde047;">${escapeHtml(analysis.relativeKey)}</strong> • ${bpm} BPM
             </p>
           </div>
 

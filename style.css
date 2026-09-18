@@ -657,12 +657,13 @@ margin-top:8px;
 }
 
 .auth-spinner{
-width:12px;
-height:12px;
-border:2px solid rgba(126,231,255,.3);
-border-top-color:#7EE7FF;
-border-radius:50%;
-animation:spin .8s linear infinite;
+  width:14px;
+  height:14px;
+  border:2px solid rgba(126,231,255,.25);
+  border-top-color:#7EE7FF;
+  border-radius:50%;
+  box-shadow: 0 0 10px rgba(126, 231, 255, 0.5);
+  animation:spin 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 
 @keyframes spin{

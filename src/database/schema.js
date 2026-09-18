@@ -88,6 +88,9 @@ export function createEmptySong(overrides = {}) {
     timeSignature: overrides.timeSignature || "4/4",
 
     capo: typeof overrides.capo === "number" ? overrides.capo : 0,
+    shapeKey: overrides.shapeKey || overrides.shape || null,
+    testOnly: Boolean(overrides.testOnly),
+    category: overrides.category || "worship",
     difficulty: overrides.difficulty || "Fácil",
     tuning: overrides.tuning || "E A D G B E (Padrão)",
 

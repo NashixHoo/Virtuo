@@ -70,6 +70,7 @@ import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/f
 import { renderHojeScreen, startGreetingAutoUpdater } from "./src/features/home/index.js";
 import { virtuoPulse, PULSE_STATES } from "./src/features/pulse/index.js";
 import { virtuoSplash, isStartupChimeEnabled, setStartupChimeEnabled } from "./src/features/splash/index.js";
+import { virtuoAura } from "./src/features/aura/index.js";
 import { playStartupChime } from "./src/audio/startup-chime.js";
 import { 
   missionsController, 
@@ -78,12 +79,53 @@ import {
   renderCommandCenterScreen,
   renderCheckInScreen
 } from "./src/features/missions/index.js";
-import { liveSyncController, liveSyncEngine } from "./src/features/live-sync/index.js";
+import { 
+  liveSyncController, 
+  liveSyncEngine, 
+  renderLiveStageScreen, 
+  initLiveAutoScroll 
+} from "./src/features/live-sync/index.js";
 import { notificationsService, renderNotificationsScreen } from "./src/features/notifications/index.js";
 import { momentsService, renderMomentCelebrationScreen } from "./src/features/moments/index.js";
 import { renderAcademyScreen } from "./src/academy/academy-view.js";
 import { VirtuoAcademyService } from "./src/academy/academy-service.js";
 import { GearView } from "./src/features/gear/index.js";
+import { t, setLocale, getLocale, AVAILABLE_LOCALES } from "./src/i18n/index.js";
+import { APP_VERSION, VERSION_LABEL } from "./src/version.js";
+import { VirtuoToast } from "./src/components/ui/toast.js";
+
+/**
+ * Converte erros técnicos (FirebaseError, TypeError, permission-denied, etc.)
+ * em mensagens elegantes, compreensíveis e humanas, mantendo o log técnico para diagnósticos.
+ */
+export function formatFriendlyErrorMessage(err, defaultMsg = "Não foi possível concluir a ação no momento. Tente novamente.") {
+  if (typeof console !== 'undefined' && console.error) {
+    console.error("[VIRTUO Technical Diagnostics]", err);
+  }
+  if (!err) return defaultMsg;
+  const msg = typeof err === 'string' ? err : (err.message || '');
+  const code = err.code || '';
+
+  if (code === 'permission-denied' || msg.includes('permission-denied') || msg.includes('Permission denied')) {
+    return "Acesso restrito. Você não possui permissão para realizar esta alteração.";
+  }
+  if (code === 'unavailable' || msg.includes('unavailable') || msg.includes('offline') || (typeof navigator !== 'undefined' && !navigator.onLine)) {
+    return "Você está offline. Algumas funções continuam disponíveis no modo local.";
+  }
+  if (code === 'unauthenticated' || msg.includes('unauthenticated')) {
+    return "Sua sessão expirou ou não está ativa. Por favor, conecte-se novamente.";
+  }
+  if (code === 'resource-exhausted' || msg.includes('quota')) {
+    return "Serviço temporariamente ocupado. Tente novamente em alguns instantes.";
+  }
+  if (code === 'not-found' || msg.includes('not-found')) {
+    return "O registro solicitado não foi encontrado.";
+  }
+  if (msg.includes('network') || msg.includes('Failed to fetch')) {
+    return "Falha ao conectar com o servidor. Verifique seu sinal de internet.";
+  }
+  return defaultMsg;
+}
 
 // Conecta o repositório musical profissional ao painel administrativo
 adminSongManager.setRepository(SongsRepository);
@@ -170,7 +212,7 @@ let isAiReplying = false;
 let aiChatHistory = [
   {
     role: "assistant",
-    text: "Olá! Sou o Virtuo AI, seu diretor musical e assistente para louvor congregacional. Como posso ajudar seu ministério, arranjo ou ensaio hoje?"
+    text: "Olá! Sou Davi, Diretor Musical do Virtuo. Como posso apoiar você e sua banda com repertório, arranjos, transposição harmônica ou preparação para o próximo ensaio e apresentação?"
   }
 ];
 
@@ -1311,13 +1353,13 @@ window.sendVirtuoAiChatMessage = async (customText) => {
       if (data && data.reply) {
         aiChatHistory.push({ role: "assistant", text: data.reply });
       } else {
-        aiChatHistory.push({ role: "assistant", text: "Como Diretor Musical Virtuo, sugiro manter a estabilidade no metrônomo, conduzir as vozes suavemente e adequar a dinâmica instrumental para sustentar o louvor congregacional." });
+        aiChatHistory.push({ role: "assistant", text: "Como Diretor Musical, sugiro manter a estabilidade no metrônomo, conduzir as vozes suavemente e adequar a dinâmica instrumental para valorizar o arranjo." });
       }
     } else {
-      aiChatHistory.push({ role: "assistant", text: "Como Diretor Musical Virtuo, recomendo priorizar a clareza harmônica e a dinâmica suave nos versos, crescendo com firmeza no refrão." });
+      aiChatHistory.push({ role: "assistant", text: "Como Diretor Musical, recomendo priorizar a clareza harmônica e a dinâmica suave nos versos, crescendo com firmeza no refrão." });
     }
   } catch (err) {
-    aiChatHistory.push({ role: "assistant", text: "Dica do Virtuo AI: Mantenha os acordes firmes na base, usando o Easy Play e o Smart Key para otimizar as digitações no instrumento." });
+    aiChatHistory.push({ role: "assistant", text: "Orientação de Davi: Mantenha os acordes firmes na base, usando o Easy Play e o Smart Key para otimizar as digitações no instrumento." });
   }
 
   isAiReplying = false;
@@ -1347,17 +1389,17 @@ function renderVirtuoAiModal() {
 
   modalRoot.className = "ai-modal-backdrop";
   modalRoot.innerHTML = `
-    <div class="ai-modal" role="dialog" aria-modal="true" aria-label="Virtuo AI">
+    <div class="ai-modal" role="dialog" aria-modal="true" aria-label="Davi • Diretor Musical">
       <div class="ai-modal-header">
         <div style="display:flex; align-items:center; gap:8px;">
-          <span style="font-size:18px;">✨</span>
+          <span style="font-size:18px;">🎼</span>
           <div>
-            <h3 style="font-size:15px; margin:0; color:#7EE7FF; font-weight:700;">Virtuo AI • Diretor Musical</h3>
+            <h3 style="font-size:15px; margin:0; color:#7EE7FF; font-weight:700;">Davi • Diretor Musical</h3>
             <span style="font-size:11px; color:#94a3b8;">Contexto: ${escapeHtml(contextSongTitle)} (${context?.key || 'G'})</span>
           </div>
         </div>
         <div style="display:flex; align-items:center; gap:6px;">
-          <button class="tag-btn" onclick="window.closeVirtuoAiModal(); show('ai');" style="font-size:11px; padding:3px 8px; color:#7EE7FF; border-color:rgba(126,231,255,0.4);" title="Abrir painel completo do Virtuo AI">
+          <button class="tag-btn" onclick="window.closeVirtuoAiModal(); show('ai');" style="font-size:11px; padding:3px 8px; color:#7EE7FF; border-color:rgba(126,231,255,0.4);" title="Abrir painel completo do Diretor Musical">
             Expandir ↗
           </button>
           <button class="minister-metro-close" onclick="window.closeVirtuoAiModal()" title="Fechar Assistente">✕</button>
@@ -1368,7 +1410,7 @@ function renderVirtuoAiModal() {
         ${aiChatHistory.map(msg => `
           <div class="ai-chat-message ${msg.role}">
             <div style="font-size:10px; color:#94a3b8; margin-bottom:2px;">
-              ${msg.role === 'user' ? 'Você' : '✦ Virtuo AI (Diretor Musical)'}
+              ${msg.role === 'user' ? 'Você' : '✦ Davi • Diretor Musical'}
             </div>
             <div class="ai-bubble">
               ${escapeHtml(msg.text).replace(/\\n/g, '<br/>')}
@@ -1379,7 +1421,7 @@ function renderVirtuoAiModal() {
           <div class="ai-chat-message assistant">
             <div class="ai-bubble" style="display:flex; align-items:center; gap:8px;">
               <div class="auth-spinner" style="width:14px; height:14px; border-width:2px; margin:0;"></div>
-              <span style="color:#7EE7FF; font-size:12px;">Virtuo AI formulando orientação contextual...</span>
+              <span style="color:#7EE7FF; font-size:12px;">Davi está formulando orientação musical...</span>
             </div>
           </div>
         ` : ''}
@@ -1400,7 +1442,7 @@ function renderVirtuoAiModal() {
             type="text" 
             id="ai-user-message-input" 
             class="form-input" 
-            placeholder="Pergunte ao Virtuo AI sobre ${escapeHtml(contextSongTitle)}..." 
+            placeholder="Consulte Davi sobre ${escapeHtml(contextSongTitle)}..." 
             style="margin:0; flex:1;"
             onkeydown="if(event.key==='Enter') window.sendVirtuoAiChatMessage()"
           />
@@ -1475,13 +1517,13 @@ window.saveUserProfileEdits = async () => {
         userProfile.bio = newBio;
       }
       isEditProfileOpen = false;
-      alert("Perfil atualizado com sucesso!");
+      VirtuoToast.success("Perfil atualizado com sucesso!");
     } catch (err) {
-      alert("Erro ao salvar perfil: " + err.message);
+      VirtuoToast.warning(formatFriendlyErrorMessage(err, "Não foi possível salvar o perfil. Tente novamente."));
     }
   } else {
     isEditProfileOpen = false;
-    alert("Perfil salvo localmente.");
+    VirtuoToast.info("Perfil salvo localmente.");
   }
   renderCurrentScreen();
 };
@@ -1514,10 +1556,10 @@ window.virtuoOpenCheckIn = async (id) => {
 
 window.virtuoSubmitCreateMission = async (event) => {
   event.preventDefault();
-  const eventType = document.getElementById("mission-event-type")?.value || "culto";
+  const eventType = document.getElementById("mission-event-type")?.value || "apresentacao";
   const eventDate = document.getElementById("mission-event-date")?.value;
   const title = document.getElementById("mission-title")?.value?.trim();
-  const churchName = document.getElementById("mission-church-name")?.value?.trim() || "Igreja Central";
+  const churchName = document.getElementById("mission-church-name")?.value?.trim() || "Palco Principal";
   const description = document.getElementById("mission-description")?.value?.trim() || "";
 
   if (!title) {
@@ -1525,7 +1567,7 @@ window.virtuoSubmitCreateMission = async (event) => {
     return;
   }
 
-  // Coleta louvores informados
+  // Coleta músicas informadas
   const rows = document.querySelectorAll("#mission-songs-input-list .song-input-row");
   const songs = [];
   rows.forEach((row, idx) => {
@@ -1536,7 +1578,7 @@ window.virtuoSubmitCreateMission = async (event) => {
       songs.push({
         id: `song-${Date.now()}-${idx}`,
         title: titleVal,
-        artist: "Louvor",
+        artist: "Repertório",
         key: keyVal,
         bpm: bpmVal,
         order: idx + 1,
@@ -1545,8 +1587,8 @@ window.virtuoSubmitCreateMission = async (event) => {
     }
   });
 
-  const pastorName = userProfile?.displayName || currentUser?.displayName || "Pastor";
-  const pastorId = currentUser?.uid || "pastor-local";
+  const pastorName = userProfile?.displayName || currentUser?.displayName || "Diretor Musical";
+  const pastorId = currentUser?.uid || "diretor-local";
 
   try {
     const created = await missionsController.createMission({
@@ -1563,10 +1605,10 @@ window.virtuoSubmitCreateMission = async (event) => {
     });
 
     allMissions = await missionsController.getAllMissions();
-    alert(`Missão "${created.title}" criada e enviada ao Líder Musical com sucesso!`);
+    VirtuoToast.success(`Missão "${created.title}" criada e enviada com sucesso!`);
     show("commandCenter");
   } catch (err) {
-    alert("Erro ao criar missão: " + err.message);
+    VirtuoToast.warning(formatFriendlyErrorMessage(err, "Não foi possível criar a missão. Tente novamente."));
   }
 };
 
@@ -1595,15 +1637,15 @@ window.virtuoApproveMission = async (missionId) => {
       leaderName,
       leaderNotes: "Repertório e tons conferidos e aprovados."
     });
-    alert("✓ Missão aprovada com sucesso! A banda já pode estudar.");
+    VirtuoToast.success("Missão aprovada com sucesso! A banda já pode estudar.");
     renderCurrentScreen();
   } catch (err) {
-    alert("Erro ao aprovar missão: " + err.message);
+    VirtuoToast.warning(formatFriendlyErrorMessage(err, "Não foi possível aprovar a missão. Tente novamente."));
   }
 };
 
 window.virtuoReturnMissionPrompt = async (missionId) => {
-  const notes = prompt("Informe o motivo ou ajustes solicitados para o Pastor:", "Ajustar tonalidades ou louvores da escala.");
+  const notes = prompt("Informe o motivo ou ajustes solicitados:", "Ajustar tonalidades ou músicas do repertório.");
   if (!notes) return;
   const leaderName = userProfile?.displayName || currentUser?.displayName || "Líder Musical";
   try {
@@ -1611,10 +1653,10 @@ window.virtuoReturnMissionPrompt = async (missionId) => {
       leaderName,
       leaderNotes: notes
     });
-    alert("Missão devolvida para revisão com as observações registradas.");
+    VirtuoToast.info("Missão devolvida para revisão com as observações registradas.");
     renderCurrentScreen();
   } catch (err) {
-    alert("Erro ao devolver missão: " + err.message);
+    VirtuoToast.warning(formatFriendlyErrorMessage(err, "Não foi possível devolver a missão. Tente novamente."));
   }
 };
 
@@ -1622,15 +1664,15 @@ window.virtuoStartMission = async (missionId) => {
   const initiatorName = userProfile?.displayName || currentUser?.displayName || "Líder Musical";
   try {
     await missionsController.startMission(missionId, initiatorName);
-    alert("⚡ Missão ao vivo no altar! Sincronização Live Sync conectada.");
+    VirtuoToast.success("Missão ao vivo no palco! Sincronização Live Sync conectada.");
     renderCurrentScreen();
   } catch (err) {
-    alert("Erro ao iniciar missão: " + err.message);
+    VirtuoToast.warning(formatFriendlyErrorMessage(err, "Não foi possível iniciar a missão. Tente novamente."));
   }
 };
 
 window.virtuoCompleteMission = async (missionId) => {
-  const confirmed = confirm("Deseja concluir esta ministração e consagrar o culto? Um Virtuo Moment será desbloqueado!");
+  const confirmed = confirm("Deseja concluir esta apresentação e arquivar o evento? Um Virtuo Moment será desbloqueado!");
   if (!confirmed) return;
   const finisherName = userProfile?.displayName || currentUser?.displayName || "Líder Musical";
   try {
@@ -1638,7 +1680,7 @@ window.virtuoCompleteMission = async (missionId) => {
     activeMomentForCelebration = moment;
     show("moment");
   } catch (err) {
-    alert("Erro ao concluir missão: " + err.message);
+    VirtuoToast.warning(formatFriendlyErrorMessage(err, "Não foi possível concluir a apresentação. Tente novamente."));
   }
 };
 
@@ -1671,10 +1713,10 @@ window.virtuoSubmitCheckIn = async (event, missionId) => {
       isTuned,
       returnWorking
     });
-    alert("✓ Confirmação registrada com sucesso no Virtuo Confirm!");
+    VirtuoToast.success("Confirmação de presença registrada com sucesso!");
     renderCurrentScreen();
   } catch (err) {
-    alert("Erro ao confirmar check-in: " + err.message);
+    VirtuoToast.warning(formatFriendlyErrorMessage(err, "Não foi possível registrar check-in. Tente novamente."));
   }
 };
 
@@ -1742,6 +1784,16 @@ const screens = {
   get adminSongManager() {
     const isAdmin = isUserAdmin(currentUser, userProfile);
     return adminSongManager.render(currentUser, userProfile, isAdmin);
+  },
+
+  get live() {
+    const active = missionsController.activeMission || allMissions[0] || null;
+    const song = activeSong || (active?.repertoire?.[0]) || (liveSongs && liveSongs[0]) || null;
+    const isLeader = !currentUser || isUserAdmin(currentUser, userProfile) || (active && active.leaderId === currentUser?.uid);
+    setTimeout(() => {
+      initLiveAutoScroll();
+    }, 50);
+    return renderLiveStageScreen(active, song, currentUser, isLeader);
   },
 
   get missions() {
@@ -1900,7 +1952,13 @@ const screens = {
     const allList = liveSongs.length > 0 ? liveSongs : (offlineRecent.length > 0 ? offlineRecent : DEMO_SONGS);
     const query = (songSearchQuery || "").toLowerCase().trim();
     const list = query 
-      ? allList.filter(s => (s.title || "").toLowerCase().includes(query) || (s.artist || "").toLowerCase().includes(query))
+      ? allList.filter(s => 
+          (s.title || "").toLowerCase().includes(query) || 
+          (s.artist || "").toLowerCase().includes(query) ||
+          (s.composer || "").toLowerCase().includes(query) ||
+          (Array.isArray(s.genres) && s.genres.some(g => (g || "").toLowerCase().includes(query))) ||
+          (Array.isArray(s.tags) && s.tags.some(t => (t || "").toLowerCase().includes(query)))
+        )
       : allList;
 
     const songCards = list.length === 0 ? `
@@ -1912,7 +1970,7 @@ const screens = {
       <div class="tile" onclick="window.openSongById('${song.id || song.title}')" style="cursor:pointer;">
         <div class="icon">🎵</div>
         <h3>${escapeHtml(song.title)}</h3>
-        <p>${escapeHtml(song.artist || "Virtuo Worship")} • Tom ${escapeHtml(song.originalKey || "G")}${song.capo && Number(song.capo) > 0 ? ` • Capo ${song.capo}` : ''}${song.audioUrl ? ' • 🎧' : ''}</p>
+        <p>${escapeHtml(song.artist || "Virtuo Worship")} • Tom ${escapeHtml(song.originalKey || "G")}${song.capo && Number(song.capo) > 0 ? ` • Capo ${song.capo}ª${song.shapeKey ? ` (${song.shapeKey})` : ''}` : ''}${song.audioUrl ? ' • 🎧' : ''}</p>
       </div>
     `).join("");
 
@@ -2050,7 +2108,7 @@ const screens = {
           <div style="display:flex; gap:6px; align-items:center;">
             ${activeSong.capo && Number(activeSong.capo) > 0 ? `
               <span class="pill" style="background:rgba(245,158,11,0.15); border:1px solid rgba(245,158,11,0.4); color:#fde047; font-size:11px;">
-                🎸 CAPO ${activeSong.capo}ª
+                🎸 CAPO ${activeSong.capo}ª casa${activeSong.shapeKey ? ` (Forma ${escapeHtml(calculateKey(activeSong.shapeKey, transposeOffset))})` : ''}
               </span>
             ` : ''}
             <span class="pill">${isEasyPlay ? '⚡ MODO EASY PLAY' : 'TOM: ' + escapeHtml(currentKey)}</span>
@@ -2059,7 +2117,7 @@ const screens = {
 
         <h2 style="margin-top:12px;">${escapeHtml(activeSong.title)}</h2>
         <p class="subtitle" style="margin-bottom:14px;">
-          ${escapeHtml(activeSong.artist || "Virtuo Worship")} • ${activeSong.bpm || 74} BPM • ${escapeHtml(activeSong.difficulty || "Fácil")}${activeSong.capo && Number(activeSong.capo) > 0 ? ` • Capo ${activeSong.capo}ª casa` : ''}
+          ${escapeHtml(activeSong.artist || "Virtuo Worship")}${activeSong.composer ? ` • Comp. ${escapeHtml(activeSong.composer)}` : ''} • ${activeSong.bpm || 74} BPM • ${escapeHtml(activeSong.difficulty || "Fácil")}${activeSong.capo && Number(activeSong.capo) > 0 ? ` • Capo ${activeSong.capo}ª casa${activeSong.shapeKey ? ` (Forma ${escapeHtml(calculateKey(activeSong.shapeKey, transposeOffset))})` : ''}` : ''}
         </p>
 
         <!-- Transposer & Mode Toolbar (Apple-Class / Celestial) -->
@@ -2083,7 +2141,7 @@ const screens = {
 
               <!-- Tom Original Preservado Separadamente -->
               <span class="tone-original-meta">
-                Original: <strong>${escapeHtml(originalKey)}</strong>
+                Original: <strong>${escapeHtml(originalKey)}</strong>${activeSong.shapeKey ? ` (Forma ${escapeHtml(activeSong.shapeKey)})` : ''}
               </span>
 
               <!-- Botão Voltar ao Tom Original -->
@@ -2310,7 +2368,7 @@ const screens = {
     const isLogged = !!currentUser;
     const isCelestial = !!(userProfile?.isCelestial || localStorage.getItem('virtuo_celestial_member') === 'true');
     const isAdmin = isUserAdmin(currentUser, userProfile);
-    const name = (userProfile && userProfile.displayName) || (currentUser && currentUser.displayName) || (isLogged ? "Músico Virtuoso" : "Nashix Hoo");
+    const name = (userProfile && userProfile.displayName) || (currentUser && currentUser.displayName) || "Músico Virtuoso";
     const email = (userProfile && userProfile.email) || (currentUser && currentUser.email) || "";
     const instruments = (userProfile && userProfile.instruments) || ["Guitarra", "Vocal"];
     const avatarContent = currentUser && currentUser.photoURL 
@@ -2326,7 +2384,7 @@ const screens = {
         </div>
 
         <h2>${escapeHtml(name)}</h2>
-        <p class="subtitle">${isLogged ? (email || "Músico Conectado") : "Criador do Virtuo"}</p>
+        <p class="subtitle">${isLogged ? (email || "Músico Conectado") : "Conta Local / Offline"}</p>
 
         <!-- Status do Membro (Celestial ou Gratuito) -->
         <div style="margin: 12px 0; text-align:center;">
@@ -2334,7 +2392,7 @@ const screens = {
             <span class="badge-celestial" style="font-size:12px; padding:6px 16px;">
               ✦ MEMBRO CELESTIAL ATIVO
             </span>
-            <p style="font-size:11px; color:#fde047; margin-top:4px;">Acesso irrestrito a todos os módulos e Virtuo AI ilimitado.</p>
+            <p style="font-size:11px; color:#fde047; margin-top:4px;">Acesso irrestrito a todos os módulos e consultoria ilimitada com Davi.</p>
           ` : `
             <div style="display:flex; flex-direction:column; align-items:center; gap:8px;">
               <span class="badge-free">MEMBRO GRATUITO</span>
@@ -2353,14 +2411,14 @@ const screens = {
                 <span class="badge-celestial">✦ PLANO CELESTIAL</span>
                 <button type="button" class="modal-close-btn" onclick="window.closeUpgradeModal()">✕</button>
               </div>
-              <h3 style="margin-top:10px; font-size:18px; color:#fff;">Eleve seu Ministério Musical</h3>
+              <h3 style="margin-top:10px; font-size:18px; color:#fff;">Eleve sua Performance Musical</h3>
               <p style="font-size:13px; color:#94a3b8; margin-top:4px; line-height:1.5;">
-                O Membro Celestial é a experiência definitiva para ministros e instrumentistas que buscam a mais alta excelência em seus ensaios e cultos.
+                O Membro Celestial é a experiência definitiva para instrumentistas, cantores e equipes que buscam a mais alta excelência em seus ensaios e apresentações.
               </p>
               <div style="margin:16px 0; display:flex; flex-direction:column; gap:10px; text-align:left;">
                 <div style="display:flex; gap:10px; font-size:13px; color:#e2e8f0;">
                   <span style="color:#fde047;">✓</span>
-                  <span><strong>Virtuo AI Ilimitado:</strong> Análise harmônica e diretrizes de palco em tempo real.</span>
+                  <span><strong>Davi • Diretor Musical Ilimitado:</strong> Análise harmônica e diretrizes de palco em tempo real.</span>
                 </div>
                 <div style="display:flex; gap:10px; font-size:13px; color:#e2e8f0;">
                   <span style="color:#fde047;">✓</span>
@@ -2606,10 +2664,10 @@ const screens = {
           • Autenticação: <strong>Firebase Auth (E-mail/Senha, Google)</strong><br>
           • Armazenamento: <strong>Firebase Storage (Restrito)</strong><br>
           • Segurança: <strong>ABAC Ativo (Regras Restritas e Protegidas)</strong><br>
-          • Inteligência Artificial: <strong>Virtuo AI • Gemini 3.8 Flash</strong> (✨ Operacional)
+          • Direção Musical: <strong>Davi • Consultoria Harmônica</strong> (🎼 Operacional)
         </p>
-        <button class="button secondary" style="width:100%; margin-top:10px; font-size:12px;" onclick="window.openVirtuoAiModal()">
-          ✨ Abrir Assistente Virtuo AI
+        <button class="button secondary" style="width:100%; margin-top:10px; font-size:12px; display:flex; align-items:center; justify-content:center; gap:8px;" onclick="window.openVirtuoAiModal()">
+          <span>🎼</span> Consultar Davi • Diretor Musical
         </button>
       </section>
 
@@ -2617,12 +2675,35 @@ const screens = {
       <section class="glass" style="margin-top:16px;">
         <span class="pill">EXPERIÊNCIA & SISTEMA</span>
         <h3 style="margin-top:10px;">Configurações</h3>
-        <p class="subtitle" style="font-size:12px; margin-bottom:12px;">Personalize a experiência sensorial do Virtuo.</p>
+        <p class="subtitle" style="font-size:12px; margin-bottom:12px;">Personalize a experiência sensorial e o idioma do Virtuo.</p>
 
+        <!-- Idioma do Sistema -->
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 14px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.08); border-radius:12px; margin-bottom:10px;">
+          <div>
+            <strong style="font-size:13px; color:#F8FAFC; display:block;">Idioma / Language</strong>
+            <span style="font-size:11px; color:#94A3B8;">Adaptação instantânea sem recarregar</span>
+          </div>
+          <div>
+            <select 
+              id="virtuo-language-select" 
+              class="form-input" 
+              style="padding:6px 10px; font-size:12px; margin:0; width:auto; background:rgba(14,27,53,0.85); color:#7EE7FF; border:1px solid rgba(126,231,255,0.3); border-radius:8px;"
+              onchange="window.changeVirtuoLanguage(this.value)"
+            >
+              ${AVAILABLE_LOCALES.map(loc => `
+                <option value="${loc.code}" ${loc.code === getLocale() ? 'selected' : ''}>
+                  ${loc.flag} ${loc.name}
+                </option>
+              `).join('')}
+            </select>
+          </div>
+        </div>
+
+        <!-- Som de Inicialização -->
         <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 14px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.08); border-radius:12px;">
           <div>
-            <strong style="font-size:13px; color:#F8FAFC; display:block;">Som de Inicialização</strong>
-            <span style="font-size:11px; color:#94A3B8;">Acorde límpido Web Audio ao abrir o Virtuo</span>
+            <strong style="font-size:13px; color:#F8FAFC; display:block;">Som de Abertura (2.4s)</strong>
+            <span style="font-size:11px; color:#94A3B8;">Acorde límpido Web Audio sincronizado com a marca</span>
           </div>
           <div style="display:flex; align-items:center; gap:8px;">
             <button 
@@ -2644,6 +2725,33 @@ const screens = {
               ${isStartupChimeEnabled() ? 'Ligado' : 'Desligado'}
             </button>
           </div>
+        </div>
+      </section>
+
+      <!-- Sobre o Virtuo (Oficial & Legal) -->
+      <section class="glass" style="margin-top:16px; text-align:center; padding:22px 18px;">
+        <div style="width:48px; height:48px; margin:0 auto 10px; filter:drop-shadow(0 0 16px rgba(126,231,255,0.5));">
+          <img src="assets/branding/logo/logo-principal.svg" alt="Virtuo" style="width:100%; height:100%; object-fit:contain;">
+        </div>
+        <h4 style="margin:0 0 4px; font-size:16px; letter-spacing:3px; color:#fff; font-weight:800;">VIRTUO</h4>
+        <p style="margin:0 0 6px; font-size:12px; color:#7EE7FF;">A plataforma do músico virtuoso</p>
+        <p style="margin:0 0 14px; font-size:11px; color:#94A3B8;">Versão ${APP_VERSION} • ${VERSION_LABEL}</p>
+
+        <p style="font-size:12px; color:#cbd5e1; line-height:1.6; max-width:480px; margin:0 auto 16px;">
+          Ambiente profissional para instrumentistas, cantores, bandas e diretores musicais. Reúne acervo de cifras, afinador cromático de alta precisão, transposição harmônica inteligente, modo palco e sincronização ao vivo.
+        </p>
+
+        <div style="display:flex; justify-content:center; gap:12px; flex-wrap:wrap; margin-bottom:14px;">
+          <button class="button secondary" style="padding:6px 14px; font-size:11px;" onclick="window.openVirtuoTermsModal()">
+            Termos de Uso
+          </button>
+          <button class="button secondary" style="padding:6px 14px; font-size:11px;" onclick="window.openVirtuoPrivacyModal()">
+            Privacidade
+          </button>
+        </div>
+
+        <div style="font-size:11px; color:#64748b; border-top:1px solid rgba(255,255,255,0.06); padding-top:10px;">
+          Criado por Nashix Hoo
         </div>
       </section>
     `;
@@ -3120,10 +3228,10 @@ window.saveNewSong = async () => {
   try {
     await SongsRepository.createSong(songData, currentUser.uid);
     window.toggleAddSongForm();
-    alert("Música cadastrada com sucesso no Firestore!");
+    VirtuoToast.success("Música cadastrada com sucesso no acervo!");
   } catch (err) {
     console.warn("Erro ao salvar no Firestore via repositório:", err);
-    alert(err.message || "Erro ao salvar cifra no Firestore.");
+    VirtuoToast.warning(formatFriendlyErrorMessage(err, "Não foi possível salvar a música no acervo."));
   }
 };
 
@@ -3132,7 +3240,7 @@ window.openEditSongForm = (songId) => {
   if (!song) return;
   const isAdmin = isUserAdmin(currentUser, userProfile);
   if (!currentUser || (song.createdBy !== currentUser.uid && !isAdmin)) {
-    alert("Você só pode editar músicas criadas por você (ou com permissão de administrador).");
+    VirtuoToast.warning("Você só pode editar músicas criadas por você (ou com permissão de administrador).");
     return;
   }
   editingSong = { ...song };
@@ -3161,7 +3269,7 @@ window.saveEditedSong = async () => {
   const submitBtn = document.getElementById("edit-song-submit-btn");
 
   if (!title) {
-    alert("Por favor, digite o título da música.");
+    VirtuoToast.warning("Por favor, digite o título da música.");
     return;
   }
 
@@ -3173,7 +3281,7 @@ window.saveEditedSong = async () => {
       audioUrl = await uploadAudioFile(file, `audios/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`);
     } catch (uploadErr) {
       console.warn("Aviso no upload do áudio da edição:", uploadErr);
-      alert("Aviso: Falha ao enviar novo arquivo de áudio. Mantendo áudio anterior.");
+      VirtuoToast.warning("Falha ao enviar arquivo de áudio. O áudio anterior foi mantido.");
     } finally {
       if (submitBtn) submitBtn.textContent = "Salvar Alterações";
     }
@@ -3199,11 +3307,10 @@ window.saveEditedSong = async () => {
     await SongsRepository.updateSong(editingSong.id, updatedData, currentUser.uid, isAdmin);
     activeSong = { ...activeSong, ...updatedData };
     editingSong = null;
-    alert("Música atualizada com sucesso!");
+    VirtuoToast.success("Música atualizada com sucesso!");
     renderCurrentScreen();
   } catch (err) {
-    console.error("Erro ao atualizar música:", err);
-    alert(err.message || "Erro ao atualizar a música.");
+    VirtuoToast.warning(formatFriendlyErrorMessage(err, "Não foi possível atualizar a música."));
   }
 };
 
@@ -3212,17 +3319,16 @@ window.confirmDeleteSong = async (songId) => {
     window.showAuthRequiredModal("Excluir Cifra", "Conecte-se para gerenciar suas músicas.");
     return;
   }
-  const confirmed = confirm("Tem certeza de que deseja excluir permanentemente esta música do Firestore?");
+  const confirmed = confirm("Tem certeza de que deseja excluir esta música do acervo?");
   if (!confirmed) return;
 
   const isAdmin = isUserAdmin(currentUser, userProfile);
   try {
     await SongsRepository.deleteSong(songId, currentUser.uid, isAdmin);
-    alert("Música excluída com sucesso!");
+    VirtuoToast.success("Música excluída com sucesso!");
     show("library");
   } catch (err) {
-    console.error("Erro ao excluir música:", err);
-    alert(err.message || "Erro ao excluir a música.");
+    VirtuoToast.warning(formatFriendlyErrorMessage(err, "Não foi possível excluir a música."));
   }
 };
 
@@ -3235,13 +3341,12 @@ window.seedSongsToFirestore = async () => {
   try {
     const seeded = await SongsRepository.seedDefaultSongs(currentUser.uid);
     if (seeded) {
-      alert("Músicas oficiais sincronizadas no Firestore com sucesso!");
+      VirtuoToast.success("Músicas oficiais sincronizadas com sucesso!");
     } else {
-      alert("O banco já possui músicas cadastradas no Firestore.");
+      VirtuoToast.info("O acervo já possui as músicas sincronizadas.");
     }
   } catch (e) {
-    console.error("Erro ao semear:", e);
-    alert("Não foi possível sincronizar o acervo: " + e.message);
+    VirtuoToast.warning(formatFriendlyErrorMessage(e, "Não foi possível sincronizar o acervo no momento."));
   }
 };
 
@@ -3311,6 +3416,9 @@ const initialScreen = window._pendingScreen || "home";
 window._pendingScreen = null;
 show(initialScreen);
 
+// Inicializa a Virtuo Aura Ambiente
+virtuoAura.init();
+
 // Executa a abertura oficial do Virtuo (1.4s)
 virtuoSplash.start(() => {
   renderCurrentScreen();
@@ -3378,3 +3486,75 @@ export const VirtuoAI = {
 };
 
 window.VirtuoAI = VirtuoAI;
+
+// -------------------------------------------------------------
+// I18N & LEGAL INFORMATION MODALS (V2 FINAL POLISH)
+// -------------------------------------------------------------
+window.changeVirtuoLanguage = (langCode) => {
+  setLocale(langCode);
+  renderCurrentScreen();
+};
+
+window.addEventListener('virtuo:locale_changed', () => {
+  renderCurrentScreen();
+});
+
+window.openVirtuoTermsModal = () => {
+  let modalRoot = document.getElementById("virtuo-legal-modal-root");
+  if (!modalRoot) {
+    modalRoot = document.createElement("div");
+    modalRoot.id = "virtuo-legal-modal-root";
+    document.body.appendChild(modalRoot);
+  }
+  modalRoot.className = "rehearsal-modal-backdrop";
+  modalRoot.innerHTML = `
+    <div class="rehearsal-modal-card" style="max-width:540px; max-height:80vh; overflow-y:auto;">
+      <div class="modal-header" style="display:flex; justify-content:space-between; align-items:center;">
+        <span class="badge-celestial">LEGAL • VIRTUO</span>
+        <button type="button" class="modal-close-btn" onclick="window.closeLegalModal()">✕</button>
+      </div>
+      <h3 style="margin-top:10px; font-size:18px; color:#fff;">Termos de Uso</h3>
+      <div style="font-size:13px; color:#cbd5e1; line-height:1.6; margin:14px 0; display:flex; flex-direction:column; gap:10px;">
+        <p><strong>1. Finalidade do Aplicativo:</strong> O Virtuo é uma plataforma musical profissional destinada a estudo, ensaios, performance ao vivo e organização de bandas e ministérios.</p>
+        <p><strong>2. Conteúdo e Cifras:</strong> Cifras, letras e anotações harmônicas cadastradas pelos usuários são de responsabilidade de quem as publica, respeitando a legislação de propriedade intelectual.</p>
+        <p><strong>3. Dados e Privacidade:</strong> O Virtuo adota arquitetura offline-first e persistência segura em nuvem através do Firebase Firestore, sem comercialização de dados pessoais.</p>
+        <p><strong>4. Uso Aceitável:</strong> É vedada qualquer tentativa de engenharia reversa maliciosa ou envio de conteúdo impróprio na Comunidade Virtuo.</p>
+      </div>
+      <div style="display:flex; justify-content:flex-end;">
+        <button type="button" class="button primary" onclick="window.closeLegalModal()">Entendido</button>
+      </div>
+    </div>
+  `;
+};
+
+window.openVirtuoPrivacyModal = () => {
+  let modalRoot = document.getElementById("virtuo-legal-modal-root");
+  if (!modalRoot) {
+    modalRoot = document.createElement("div");
+    modalRoot.id = "virtuo-legal-modal-root";
+    document.body.appendChild(modalRoot);
+  }
+  modalRoot.className = "rehearsal-modal-backdrop";
+  modalRoot.innerHTML = `
+    <div class="rehearsal-modal-card" style="max-width:540px; max-height:80vh; overflow-y:auto;">
+      <div class="modal-header" style="display:flex; justify-content:space-between; align-items:center;">
+        <span class="badge-celestial">PRIVACIDADE • VIRTUO</span>
+        <button type="button" class="modal-close-btn" onclick="window.closeLegalModal()">✕</button>
+      </div>
+      <h3 style="margin-top:10px; font-size:18px; color:#fff;">Política de Privacidade</h3>
+      <div style="font-size:13px; color:#cbd5e1; line-height:1.6; margin:14px 0; display:flex; flex-direction:column; gap:10px;">
+        <p><strong>1. Armazenamento Local:</strong> Preferências como tom ativo, velocidade de rolagem, metrônomo e idioma são salvas localmente no seu dispositivo via LocalStorage.</p>
+        <p><strong>2. Nuvem Segura:</strong> Contas autenticadas sincronizam repertório e missões criptografadas no Google Cloud / Firebase Firestore.</p>
+        <p><strong>3. Sem Rastreamento Publicitário:</strong> O Virtuo não utiliza pixels invasivos de publicidade de terceiros nem vende perfis de navegação.</p>
+      </div>
+      <div style="display:flex; justify-content:flex-end;">
+        <button type="button" class="button primary" onclick="window.closeLegalModal()">Fechar</button>
+      </div>
+    </div>
+  `;
+};
+
+window.closeLegalModal = () => {
+  const el = document.getElementById("virtuo-legal-modal-root");
+  if (el) el.remove();
+};

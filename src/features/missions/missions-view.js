@@ -459,7 +459,15 @@ export function renderCommandCenterScreen(mission, currentUser = null) {
       </section>
 
       <!-- SE A MISSÃO ESTIVER ATIVA: MOSTRA BARRA LIVE SYNC NO TOPO -->
-      ${isActive ? renderLiveSyncToolbar(mission, allowMusicalEdit) : ''}
+      ${isActive ? `
+        <div style="margin: 12px 0 16px;">
+          <button class="button primary virtuo-halo-live" style="width: 100%; padding: 14px; font-size: 14px; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 10px; border-radius: 16px; background: linear-gradient(135deg, #7ee7ff 0%, #2563eb 100%); color: #080e1a;" onclick="window.show('live')">
+            <img src="assets/branding/icons/live.svg" class="virtuo-nav-icon" style="width: 20px; height: 20px;" alt="">
+            <span>ENTRAR NO PALCO AO VIVO (LIVE EXPERIENCE)</span>
+          </button>
+        </div>
+        ${renderLiveSyncToolbar(mission, allowMusicalEdit)}
+      ` : ''}
 
       <!-- AÇÕES DO LÍDER: Card de Aprovação (se pending) -->
       ${isPendingApproval && allowApprove ? `

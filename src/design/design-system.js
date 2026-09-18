@@ -62,7 +62,7 @@ export const DESIGN_TOKENS = {
     card: '150ms',
     pulse: '140ms',
     screen: '180ms',
-    splash: '1400ms',
+    splash: '2400ms',
     wave: '600ms',
     auraCycle: '10s' // Ciclo entre 8s e 12s
   },
@@ -71,7 +71,7 @@ export const DESIGN_TOKENS = {
     card: '150ms',
     pulse: '140ms',
     screen: '180ms',
-    splash: '1400ms',
+    splash: '2400ms',
     wave: '600ms',
     auraCycle: '10s'
   },
@@ -95,16 +95,69 @@ export const DESIGN_TOKENS = {
 // Objeto VDS oficial requerido pelo Brand Kit
 export const VDS = {
   colors: {
-    background: DESIGN_TOKENS.colors.background,
-    backgroundSecondary: DESIGN_TOKENS.colors.backgroundSecondary,
-    celestialBlue: DESIGN_TOKENS.colors.celestialBlue,
-    white: DESIGN_TOKENS.colors.white,
-    premiumGold: DESIGN_TOKENS.colors.premiumGold
+    background: "#07101F",
+    backgroundSecondary: "#0E1B35",
+    celestialBlue: "#7EE7FF",
+    white: "#F8FAFC",
+    premiumGold: "#F5C542"
   },
   radius: {
-    sm: DESIGN_TOKENS.radii.sm,
-    md: DESIGN_TOKENS.radii.md,
-    lg: DESIGN_TOKENS.radii.lg
+    sm: "12px",
+    md: "18px",
+    lg: "28px"
+  },
+  spacing: {
+    4: "4px",
+    8: "8px",
+    12: "12px",
+    16: "16px",
+    24: "24px",
+    32: "32px",
+    48: "48px"
+  },
+  typography: {
+    display: {
+      fontSize: "36px",
+      lineHeight: "44px",
+      fontWeight: "900",
+      letterSpacing: "-0.02em"
+    },
+    hero: {
+      fontSize: "28px",
+      lineHeight: "34px",
+      fontWeight: "800",
+      letterSpacing: "-0.01em"
+    },
+    title: {
+      fontSize: "22px",
+      lineHeight: "28px",
+      fontWeight: "700",
+      letterSpacing: "0em"
+    },
+    subtitle: {
+      fontSize: "16px",
+      lineHeight: "22px",
+      fontWeight: "600",
+      letterSpacing: "0em"
+    },
+    body: {
+      fontSize: "14px",
+      lineHeight: "20px",
+      fontWeight: "400",
+      letterSpacing: "0em"
+    },
+    caption: {
+      fontSize: "12px",
+      lineHeight: "16px",
+      fontWeight: "400",
+      letterSpacing: "0.02em"
+    }
+  },
+  motion: {
+    button: 120,
+    card: 150,
+    pulse: 140,
+    splash: 2400
   },
   animation: {
     button: DESIGN_TOKENS.animation.button,
@@ -114,6 +167,9 @@ export const VDS = {
     splash: DESIGN_TOKENS.animation.splash
   }
 };
+
+export const SPACING_SCALE = [4, 8, 12, 16, 24, 32, 48];
+export const TYPOGRAPHY_SCALE = ["display", "hero", "title", "subtitle", "body", "caption"];
 
 export const BRAND_ASSETS = {
   logos: {
