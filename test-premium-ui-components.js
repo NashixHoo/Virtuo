@@ -259,12 +259,12 @@ console.log("\n[3/10] Testando Input Premium...");
 runTest("Input possui container, classes de foco e placeholder", () => {
   const inputContainer = VirtuoInput({
     label: "Título da Música",
-    placeholder: "Ex: Fidelidade",
+    placeholder: "Ex: Nome do Louvor",
     helperText: "Digite o nome oficial da canção"
   });
   assert(inputContainer.input instanceof MockElement, "Deve expor elemento de input");
   assert(inputContainer.input.classList.contains("virtuo-input"), "Input deve ter classe virtuo-input");
-  assert.strictEqual(inputContainer.input.placeholder, "Ex: Fidelidade");
+  assert.strictEqual(inputContainer.input.placeholder, "Ex: Nome do Louvor");
 });
 
 runTest("Input suporta controle de erro e valor dinamicamente", () => {

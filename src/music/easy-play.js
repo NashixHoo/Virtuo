@@ -153,7 +153,13 @@ export function compareOriginalAndEasyPlay(chordSheetOrChords, key = "G") {
 export function generateEasyPlaySheet(chordSheet) {
   if (!chordSheet) return "";
 
-  return chordSheet.split("\n").map(line => {
+  if (Array.isArray(chordSheet)) {
+    return chordSheet.map(c => typeof c === "string" ? simplifyChord(c) : c);
+  }
+
+  const sheetStr = typeof chordSheet === "string" ? chordSheet : String(chordSheet || "");
+
+  return sheetStr.split("\n").map(line => {
     const trimmed = line.trim();
     if (!trimmed) return line;
 
@@ -165,6 +171,13 @@ export function generateEasyPlaySheet(chordSheet) {
       if (!rest.trim()) return line;
       const simplifiedRest = rest.replace(CHORD_FINDER_REGEX, (match) => simplifyChord(match));
       return `${tag}${simplifiedRest}`;
+    }
+
+    // Se a linha contiver acordes inline entre colchetes [G] ou [Em7]
+    if (/\[[A-G][b#]?[^\]]*\]/.test(line)) {
+      return line.replace(/\[([A-G][b#]?[^\]]*)\]/g, (full, chordInside) => {
+        return `[${simplifyChord(chordInside)}]`;
+      });
     }
 
     // Se for linha de acordes

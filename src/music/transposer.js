@@ -138,7 +138,13 @@ export function transposeChordSheet(sheet, semitones = 0, targetKeyReference = "
 
   const preferFlats = targetKeyReference ? FLAT_KEYS.includes(targetKeyReference) : null;
 
-  return sheet.split("\n").map(line => {
+  if (Array.isArray(sheet)) {
+    return sheet.map(c => typeof c === "string" ? transposeChord(c, semitones, preferFlats) : c);
+  }
+
+  const sheetStr = typeof sheet === "string" ? sheet : String(sheet || "");
+
+  return sheetStr.split("\n").map(line => {
     const trimmed = line.trim();
     if (!trimmed) return line;
 

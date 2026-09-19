@@ -20,7 +20,7 @@ import {
   checkFirebaseConnection,
   DEMO_SONGS
 } from "./firebase-config.js";
-import { SongsRepository } from "./songs-service.js";
+import { SongsRepository, CANONICAL_MIGRATED_DEMO_SONGS } from "./songs-service.js";
 import {
   transposeNote,
   transposeChord,
@@ -140,7 +140,7 @@ let isAuthChecking = true;
 let currentScreen = "home";
 window.show = show;
 window._virtuoShow = show;
-let liveSongs = DEMO_SONGS;
+let liveSongs = [...CANONICAL_MIGRATED_DEMO_SONGS];
 let isMetronomePlaying = false;
 let firebaseStatus = { connected: true, label: "virtuo-7e01b Conectado" };
 
@@ -1979,6 +1979,9 @@ const screens = {
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
           <div style="display:flex; align-items:center; gap:8px;">
             <span class="pill">BANCO DE MÚSICAS & CIFRAS</span>
+            <span class="pill" style="font-size:10px; padding:2px 8px; background:rgba(126,231,255,0.12); color:#7EE7FF; border-color:rgba(126,231,255,0.3);">
+              🎵 ${allList.length} LOUVORES
+            </span>
             ${offlineRecent.length > 0 ? `
               <span class="pill" style="font-size:10px; padding:2px 8px; background:rgba(16,185,129,0.12); color:#6ee7b7; border-color:rgba(16,185,129,0.3);">
                 ⚡ ${offlineRecent.length} OFFLINE
@@ -2767,7 +2770,7 @@ function formatCifraDisplay(text) {
     if (!trimmed) return "";
 
     // Section headers with or without inline chords (e.g., [Intro] G  C  Em  D ou [Refrão])
-    const sectionMatch = line.match(/^(\s*\[[^\]]+\]\s*)(.*)$/);
+    const sectionMatch = line.match(/^(\s*\[(Intro|Verso|Verse|Refrão|Refrao|Chorus|Ponte|Bridge|Final|Outro|Solo|Instrumental|Estrutura)[^\]]*\]\s*)(.*)$/i);
     if (sectionMatch) {
       const tag = sectionMatch[1];
       const rest = sectionMatch[2];
@@ -2775,6 +2778,14 @@ function formatCifraDisplay(text) {
         return `<span class="section-tag">${escapeHtml(tag)}</span>`;
       }
       return `<span class="section-tag">${escapeHtml(tag)}</span><span class="chord-highlight">${escapeHtml(rest)}</span>`;
+    }
+
+    // Se a linha contiver acordes inline entre colchetes [G]Luz que nasce em [D]mim
+    if (/\[[A-G][b#]?[^\]]*\]/.test(line)) {
+      const formatted = line.replace(/\[([A-G][b#]?[^\]]*)\]/g, (m, ch) => {
+        return `<span class="chord-highlight">[${escapeHtml(ch)}]</span>`;
+      });
+      return formatted;
     }
 
     // Check if line is primarily chords
@@ -3334,17 +3345,18 @@ window.confirmDeleteSong = async (songId) => {
 
 window.seedSongsToFirestore = async () => {
   if (!currentUser) {
-    window.showAuthRequiredModal("Sincronizar Acervo", "Conecte-se com sua conta para sincronizar as cifras oficiais no Cloud Firestore.");
+    window.showAuthRequiredModal("Sincronizar Acervo", "Conecte-se com sua conta para sincronizar o acervo musical no Cloud Firestore.");
     return;
   }
 
   try {
     const seeded = await SongsRepository.seedDefaultSongs(currentUser.uid);
     if (seeded) {
-      VirtuoToast.success("Músicas oficiais sincronizadas com sucesso!");
+      VirtuoToast.success("Músicas sincronizadas com sucesso no Firestore!");
     } else {
-      VirtuoToast.info("O acervo já possui as músicas sincronizadas.");
+      VirtuoToast.info("O acervo está em dia e pronto para inclusão de novos louvores.");
     }
+    renderCurrentScreen();
   } catch (e) {
     VirtuoToast.warning(formatFriendlyErrorMessage(e, "Não foi possível sincronizar o acervo no momento."));
   }
@@ -3405,7 +3417,7 @@ SongsRepository.subscribeToSongs((updatedSongs) => {
   }
 }, (err) => {
   console.warn("Firestore songs stream fallback:", err.message);
-  liveSongs = DEMO_SONGS;
+  liveSongs = [...CANONICAL_MIGRATED_DEMO_SONGS];
 });
 
 // Experiência de Inicialização Premium: Saudação Dinâmica e Abertura Oficial Splash (1.4s)

@@ -250,7 +250,14 @@ export const SongNormalizer = {
       lyrics: rawSong.lyrics || null,
       lyricsStatus: rawSong.lyricsStatus || (rawSong.lyrics ? LYRICS_STATUS.USER_PROVIDED : LYRICS_STATUS.UNAVAILABLE),
       lyricsSource: rawSong.lyricsSource || null,
-      lyricsLicense: rawSong.lyricsLicense || null,
+      lyricsLicense: rawSong.lyricsLicense || rawSong.license || null,
+      license: rawSong.license || rawSong.lyricsLicense || "Uso Autorizado",
+      isTestData: Boolean(rawSong.isTestData),
+      temporary: Boolean(rawSong.temporary),
+      simplifiedKey: rawSong.simplifiedKey || null,
+      sections: Array.isArray(rawSong.sections) ? rawSong.sections : (structure.length > 0 ? structure : ["intro", "verse", "chorus", "final"]),
+      lyricsWithChords: Array.isArray(rawSong.lyricsWithChords) ? rawSong.lyricsWithChords : null,
+      easyPlay: rawSong.easyPlay || (rawSong.easyChordSheet ? true : false),
       lyricsUpdatedAt: rawSong.lyricsUpdatedAt || null,
       youtubeUrl: rawSong.youtubeUrl || "",
       spotifyUrl: rawSong.spotifyUrl || "",
@@ -281,12 +288,19 @@ export const SongNormalizer = {
 
     // Getters retrocompatíveis para código legado
     normalized.artist = artistName;
-    normalized.chords = chordSheet; // Para compatibilidade com string de acordes
-    normalized.easyChords = easyChordSheet;
+    normalized.chords = Array.isArray(rawSong.chords) ? rawSong.chords : chordSheet;
+    normalized.easyChords = Array.isArray(rawSong.easyChords) ? rawSong.easyChords : easyChordSheet;
     normalized.structure = structureToString(structure); // Para compatibilidade com string de estrutura
     normalized.structuredChords = structuredChords;
     normalized.structuredEasyChords = structuredEasyChords;
     normalized.structuredSections = structure;
+    normalized.isTestData = Boolean(rawSong.isTestData);
+    normalized.temporary = Boolean(rawSong.temporary);
+    normalized.license = rawSong.license || "Uso Autorizado";
+    normalized.simplifiedKey = rawSong.simplifiedKey || null;
+    normalized.sections = Array.isArray(rawSong.sections) ? rawSong.sections : (structure.length > 0 ? structure : ["intro", "verse", "chorus", "final"]);
+    normalized.lyricsWithChords = Array.isArray(rawSong.lyricsWithChords) ? rawSong.lyricsWithChords : null;
+    normalized.easyPlay = rawSong.easyPlay || null;
 
     return normalized;
   }

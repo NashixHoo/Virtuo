@@ -90,6 +90,9 @@ export function createEmptySong(overrides = {}) {
     capo: typeof overrides.capo === "number" ? overrides.capo : 0,
     shapeKey: overrides.shapeKey || overrides.shape || null,
     testOnly: Boolean(overrides.testOnly),
+    isTestData: Boolean(overrides.isTestData),
+    temporary: Boolean(overrides.temporary),
+    simplifiedKey: overrides.simplifiedKey || null,
     category: overrides.category || "worship",
     difficulty: overrides.difficulty || "Fácil",
     tuning: overrides.tuning || "E A D G B E (Padrão)",
@@ -107,6 +110,8 @@ export function createEmptySong(overrides = {}) {
     easyPlay: overrides.easyPlay || (overrides.easyChordSheet ? true : false),
 
     structure: Array.isArray(overrides.structure) ? overrides.structure : [],
+    sections: Array.isArray(overrides.sections) ? overrides.sections : (Array.isArray(overrides.structure) ? overrides.structure : []),
+    lyricsWithChords: Array.isArray(overrides.lyricsWithChords) ? overrides.lyricsWithChords : null,
 
     lyrics: overrides.lyrics || null,
     lyricsStatus: overrides.lyricsStatus || LYRICS_STATUS.UNAVAILABLE,

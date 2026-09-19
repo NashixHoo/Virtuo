@@ -47,7 +47,7 @@ A equipe deve executar em até 5 minutos após o deploy:
 2. Confirmar que a Splash Screen dura exatamente 2.4s e transiciona suavemente.
 3. Abrir o **Afinador Cromático**: autorizar microfone e conferir resposta de frequência.
 4. Abrir o **Metrônomo**: dar Play e verificar áudio Web Audio sem latência.
-5. Acessar a biblioteca e abrir a música canônica **"Fidelidade"**: testar transposição de tom e Easy Play.
+5. Acessar a biblioteca de cifras e testar transposição de tom e Easy Play.
 6. Iniciar o **Band Engine**: verificar se baixo, bateria, teclado e violão tocam sincronizados.
 
 ---

@@ -62,15 +62,15 @@ export const DEFAULT_MISSIONS = [
       { uid: "musician-04", name: "Samuel Alves", role: "Músico", instrument: "Bateria", checkedIn: true, isTuned: true, returnWorking: true }
     ],
     songs: [
-      { id: "demo-misterio-olaria", title: "Mistério na Olaria", artist: "Raquel Pereira", key: "Cm", bpm: 74, easyPlay: false, order: 1, status: "ready" },
-      { id: "demo-raridade", title: "Raridade", artist: "Anderson Freire", key: "A", bpm: 72, easyPlay: false, order: 2, status: "ready" },
-      { id: "demo-lugar-secreto", title: "Lugar Secreto", artist: "Gabriela Rocha", key: "F#m", bpm: 68, easyPlay: false, order: 3, status: "studying" },
-      { id: "demo-bondade-deus", title: "Bondade de Deus", artist: "Isaías Saad", key: "G", bpm: 70, easyPlay: false, order: 4, status: "unstarted" }
+      { id: "mission-song-01", title: "Louvor e Graça", artist: "Equipe Virtuo", key: "Cm", bpm: 74, easyPlay: false, order: 1, status: "ready" },
+      { id: "mission-song-02", title: "Caminho da Paz", artist: "Equipe Virtuo", key: "A", bpm: 72, easyPlay: false, order: 2, status: "ready" },
+      { id: "mission-song-03", title: "Refúgio e Fortaleza", artist: "Equipe Virtuo", key: "F#m", bpm: 68, easyPlay: false, order: 3, status: "studying" },
+      { id: "mission-song-04", title: "Manhã de Glória", artist: "Equipe Virtuo", key: "G", bpm: 70, easyPlay: false, order: 4, status: "unstarted" }
     ],
     approvals: {
       pastorApproved: true,
       leaderApproved: true,
-      leaderNotes: "Repertório aprovado. Ajustado o tom de Mistério na Olaria para Cm e mantido Raridade em A.",
+      leaderNotes: "Repertório aprovado. Ajustado o tom para Cm e mantido segundo louvor em A.",
       approvedAt: "2026-09-15T14:30:00.000Z",
       returnedAt: null
     },
@@ -111,8 +111,8 @@ export const DEFAULT_MISSIONS = [
       { uid: "leader-demo-01", name: "Diogo Ramos", role: "Líder Musical", instrument: "Violão", checkedIn: false, isTuned: false, returnWorking: false }
     ],
     songs: [
-      { id: "demo-porque-ele-vive", title: "Porque Ele Vive", artist: "Harpa Cristã", key: "G", bpm: 68, easyPlay: true, order: 1, status: "studying" },
-      { id: "demo-maranata", title: "Maranata", artist: "Avivah", key: "C", bpm: 72, easyPlay: false, order: 2, status: "unstarted" }
+      { id: "mission-song-05", title: "Gratidão e Paz", artist: "Equipe Virtuo", key: "G", bpm: 68, easyPlay: true, order: 1, status: "studying" },
+      { id: "mission-song-06", title: "Coração Puro", artist: "Equipe Virtuo", key: "C", bpm: 72, easyPlay: false, order: 2, status: "unstarted" }
     ],
     approvals: {
       pastorApproved: true,

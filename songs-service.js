@@ -53,6 +53,14 @@ export const SongsRepository = {
   OFFLINE_CACHE_KEY: "virtuo_recent_songs_offline_v2",
 
   /**
+   * Permite remoção e filtragem de todas as músicas marcadas como teste ou legado.
+   */
+  removeTestSongs(songsList) {
+    if (!Array.isArray(songsList)) return [];
+    return songsList.filter(s => s.isTestData !== true && !String(s.id).startsWith("test-cc0-") && (s.title || "").toLowerCase() !== "fidelidade");
+  },
+
+  /**
    * Obtém todas as músicas do Firestore ordenadas por data de criação.
    * Aplica a migração do schema para garantir retrocompatibilidade.
    */
@@ -62,18 +70,18 @@ export const SongsRepository = {
       const q = query(songsCol, orderBy("createdAt", "desc"));
       const snap = await getDocs(q);
       if (snap.empty) {
-        return CANONICAL_MIGRATED_DEMO_SONGS;
+        return [...CANONICAL_MIGRATED_DEMO_SONGS];
       }
-      const firestoreSongs = snap.docs.map(docSnap => {
-        const raw = { id: docSnap.id, ...docSnap.data() };
-        return SongMigration.migrateLegacySong(raw);
-      });
+      const firestoreSongs = snap.docs
+        .map(docSnap => SongMigration.migrateLegacySong({ id: docSnap.id, ...docSnap.data() }))
+        .filter(s => s.isTestData !== true && !String(s.id).startsWith("test-cc0-") && (s.title || "").toLowerCase() !== "fidelidade");
+      const ids = new Set(firestoreSongs.map(s => s.id));
       const titles = new Set(firestoreSongs.map(s => (s.title || "").toLowerCase()));
-      const missingDemo = CANONICAL_MIGRATED_DEMO_SONGS.filter(d => !titles.has((d.title || "").toLowerCase()));
+      const missingDemo = CANONICAL_MIGRATED_DEMO_SONGS.filter(d => !titles.has((d.title || "").toLowerCase()) && !ids.has(d.id));
       return [...firestoreSongs, ...missingDemo];
     } catch (err) {
-      console.warn("[SongsRepository.getAllSongs] Firestore indisponível:", err.message);
-      return CANONICAL_MIGRATED_DEMO_SONGS;
+      console.warn("[SongsRepository.getAllSongs] Firestore indisponível, servindo acervo local:", err.message);
+      return [...CANONICAL_MIGRATED_DEMO_SONGS];
     }
   },
 
@@ -297,24 +305,27 @@ export const SongsRepository = {
       const q = query(songsCol, orderBy("createdAt", "desc"));
       return onSnapshot(q, (snapshot) => {
         if (!snapshot.empty) {
-          const songs = snapshot.docs.map(d => SongMigration.migrateLegacySong({ id: d.id, ...d.data() }));
+          const songs = snapshot.docs
+            .map(d => SongMigration.migrateLegacySong({ id: d.id, ...d.data() }))
+            .filter(s => s.isTestData !== true && !String(s.id).startsWith("test-cc0-") && (s.title || "").toLowerCase() !== "fidelidade");
+          const ids = new Set(songs.map(s => s.id));
           const titles = new Set(songs.map(s => (s.title || "").toLowerCase()));
-          const missingDemo = CANONICAL_MIGRATED_DEMO_SONGS.filter(d => !titles.has((d.title || "").toLowerCase()));
+          const missingDemo = CANONICAL_MIGRATED_DEMO_SONGS.filter(d => !titles.has((d.title || "").toLowerCase()) && !ids.has(d.id));
           onUpdate([...songs, ...missingDemo]);
         } else {
-          onUpdate(CANONICAL_MIGRATED_DEMO_SONGS);
+          onUpdate([...CANONICAL_MIGRATED_DEMO_SONGS]);
         }
       }, (err) => {
         console.warn("[SongsRepository.subscribeToSongs] Aviso stream Firestore:", err.message);
         const offline = this.getOfflineRecentSongs();
-        const fallbackList = offline.length > 0 ? offline : CANONICAL_MIGRATED_DEMO_SONGS;
+        const fallbackList = offline.length > 0 ? offline : [...CANONICAL_MIGRATED_DEMO_SONGS];
         if (onError) onError(err);
         else onUpdate(fallbackList);
       });
     } catch (err) {
       console.warn("[SongsRepository.subscribeToSongs] Exceção:", err.message);
       const offline = this.getOfflineRecentSongs();
-      const fallbackList = offline.length > 0 ? offline : CANONICAL_MIGRATED_DEMO_SONGS;
+      const fallbackList = offline.length > 0 ? offline : [...CANONICAL_MIGRATED_DEMO_SONGS];
       onUpdate(fallbackList);
       return () => {};
     }
@@ -704,27 +715,25 @@ export const SongsRepository = {
   },
 
   /**
-   * Semeia a canção de teste canônica oficial 'Fidelidade' no Firestore com segurança.
+   * Semeia repertório oficial autorizado no Firestore quando configurado.
    */
   async seedDefaultSongs(currentUserId) {
     try {
-      const songsCol = collection(db, "songs");
-      const q = query(songsCol, where("title", "==", "Fidelidade"));
-      const snap = await getDocs(q);
-      if (snap.empty && DEMO_SONGS.length > 0) {
-        for (const song of DEMO_SONGS) {
-          const payload = { ...song };
-          delete payload.id;
-          await addDoc(songsCol, {
-            ...payload,
-            createdBy: currentUserId || "virtuo-master",
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp()
-          });
-        }
-        return true;
+      if (!DEMO_SONGS || DEMO_SONGS.length === 0) {
+        return false;
       }
-      return false;
+      const songsCol = collection(db, "songs");
+      for (const song of DEMO_SONGS) {
+        const payload = { ...song };
+        delete payload.id;
+        await addDoc(songsCol, {
+          ...payload,
+          createdBy: currentUserId || "virtuo-master",
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        });
+      }
+      return true;
     } catch (err) {
       console.warn("[SongsRepository.seedDefaultSongs] Erro ao semear:", err.message);
       return false;
@@ -732,7 +741,7 @@ export const SongsRepository = {
   },
 
   /**
-   * Remove com segurança registros de louvores antigos/incorretos do Firestore,
+   * Remove com segurança registros de louvores antigos ou de teste do Firestore,
    * preservando estritamente: usuários, autenticação, perfis, bandas, playlists,
    * posts, lives, grooves, bass_lines, configurações e segurança.
    */
@@ -742,16 +751,22 @@ export const SongsRepository = {
       const snap = await getDocs(songsCol);
       if (snap.empty) return { deletedCount: 0 };
 
-      const legacyTitles = ["Mistério na Olaria", "O Escudo", "Deus do Impossível", "Fogo Santo"];
+      const legacyTitles = ["Mistério na Olaria", "O Escudo", "Deus do Impossível", "Fogo Santo", "Fidelidade"];
       let deletedCount = 0;
 
       for (const d of snap.docs) {
         const data = d.data();
         const docId = d.id;
-        const isLegacyDemo = docId.startsWith("demo-") || 
-                             legacyTitles.some(t => (data.title || "").includes(t)) ||
-                             data.createdBy === "virtuo-master";
-        if (isLegacyDemo) {
+        const isLegacyOrTest = docId.startsWith("demo-") || 
+                             docId.startsWith("test-cc0-") ||
+                             docId === "test-fidelidade-danielle-cristina" ||
+                             data.isTestData === true ||
+                             data.temporary === true ||
+                             data.license === "CC0-1.0" ||
+                             legacyTitles.some(t => (data.title || "").toLowerCase() === t.toLowerCase()) ||
+                             data.createdBy === "virtuo-master" ||
+                             data.createdBy === "virtuo-cc0-seed";
+        if (isLegacyOrTest) {
           await deleteDoc(doc(db, "songs", docId));
           deletedCount++;
         }
