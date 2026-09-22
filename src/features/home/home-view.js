@@ -129,21 +129,14 @@ export function renderHojeScreen({
               <span>•</span>
               <span>🎵 ${songCount} música${songCount !== 1 ? 's' : ''}</span>
             </div>
-            <div style="display:flex; gap:10px;">
+            <div style="margin-top:12px;">
               <button 
                 class="button primary" 
-                style="flex:1; padding:10px 16px; font-size:13px; display:inline-flex; align-items:center; justify-content:center; gap:6px;"
+                id="hoje-mission-continue-btn"
+                style="width:100%; min-height:44px; padding:12px 18px; font-size:14px; font-weight:700; display:inline-flex; align-items:center; justify-content:center; gap:8px;"
                 onclick="window.virtuoOpenMissionDetail('${activeMission.id}')"
               >
-                <span>🎵</span> Acessar Missão
-              </button>
-              <button 
-                class="button secondary" 
-                style="padding:10px 14px; font-size:13px;"
-                onclick="window.openMinisterModeQuick()"
-                title="Abrir no Modo Palco"
-              >
-                <span>📖 Palco</span>
+                <span>🎸</span> Continuar Missão
               </button>
             </div>
           </div>
@@ -154,7 +147,7 @@ export function renderHojeScreen({
             </p>
             <button 
               class="button secondary" 
-              style="padding:8px 14px; font-size:12px; display:inline-flex; align-items:center; gap:6px;"
+              style="padding:10px 16px; font-size:13px; min-height:44px; display:inline-flex; align-items:center; gap:6px;"
               onclick="show('missions')"
             >
               <span>+</span> Organizar Nova Missão
@@ -208,25 +201,25 @@ export function renderHojeScreen({
         <div style="display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;">
           <div>
             <h3 style="margin:0 0 4px 0; font-size:15px; color:${DESIGN_TOKENS.colors.white}; font-weight:600;">
-              🎓 Virtuo Academy: Metodologia de Ensino
+              Seu Repertório Musical
             </h3>
             <p style="margin:0; font-size:13px; color:${DESIGN_TOKENS.colors.textSecondary};">
-              Formação técnica completa: violão, guitarra, contrabaixo e teoria do nível 0 ao profissional.
+              Acesse a biblioteca completa para buscar cifras, tons e repertório da banda.
             </p>
           </div>
 
           <button 
             class="button primary" 
             style="padding:10px 18px; font-size:13px; display:inline-flex; align-items:center; gap:6px; min-height:44px;"
-            onclick="show('academy')"
+            onclick="show('library')"
           >
-            <span>🎓</span> Iniciar Estudos
+            <span>📜</span> Explorar Cifras
           </button>
         </div>
         `}
       </section>
 
-      <!-- ================= BLOCO 4: AÇÕES RÁPIDAS ================= -->
+      <!-- ================= BLOCO 4: AÇÕES RÁPIDAS (EXATAS 4 PRINCIPAIS) ================= -->
       <section 
         id="hoje-bloco-acoes"
         style="
@@ -234,13 +227,14 @@ export function renderHojeScreen({
         "
       >
         <div style="margin-bottom:10px; font-size:11px; font-weight:700; letter-spacing:0.8px; color:${DESIGN_TOKENS.colors.celestialBlue}; text-transform:uppercase;">
-          ⚡ Ações Rápidas
+          ⚡ Ações Principais
         </div>
 
         <div 
+          class="hoje-actions-grid"
           style="
             display:grid; 
-            grid-template-columns:repeat(auto-fit, minmax(68px, 1fr)); 
+            grid-template-columns:repeat(auto-fit, minmax(76px, 1fr)); 
             gap:10px;
           "
         >
@@ -253,12 +247,17 @@ export function renderHojeScreen({
             tabindex="0"
             style="
               cursor:pointer; 
-              padding:14px 6px; 
+              padding:14px 8px; 
               text-align:center; 
-              min-height:44px;
+              min-height:48px;
               background:${DESIGN_TOKENS.colors.cardBg};
               border:1px solid ${DESIGN_TOKENS.colors.borderSubtle};
               border-radius:${DESIGN_TOKENS.radii.md};
+              display:flex;
+              flex-direction:column;
+              align-items:center;
+              justify-content:center;
+              touch-action:manipulation;
             "
           >
             <div class="icon" style="font-size:22px; margin-bottom:4px;">🎯</div>
@@ -274,12 +273,17 @@ export function renderHojeScreen({
             tabindex="0"
             style="
               cursor:pointer; 
-              padding:14px 6px; 
+              padding:14px 8px; 
               text-align:center; 
-              min-height:44px;
+              min-height:48px;
               background:${DESIGN_TOKENS.colors.cardBg};
               border:1px solid ${DESIGN_TOKENS.colors.borderSubtle};
               border-radius:${DESIGN_TOKENS.radii.md};
+              display:flex;
+              flex-direction:column;
+              align-items:center;
+              justify-content:center;
+              touch-action:manipulation;
             "
           >
             <div class="icon" style="font-size:22px; margin-bottom:4px;">📜</div>
@@ -295,12 +299,17 @@ export function renderHojeScreen({
             tabindex="0"
             style="
               cursor:pointer; 
-              padding:14px 6px; 
+              padding:14px 8px; 
               text-align:center; 
-              min-height:44px;
+              min-height:48px;
               background:${DESIGN_TOKENS.colors.cardBg};
               border:1px solid ${DESIGN_TOKENS.colors.borderSubtle};
               border-radius:${DESIGN_TOKENS.radii.md};
+              display:flex;
+              flex-direction:column;
+              align-items:center;
+              justify-content:center;
+              touch-action:manipulation;
             "
           >
             <div class="icon" style="font-size:22px; margin-bottom:4px;">🎸</div>
@@ -316,37 +325,21 @@ export function renderHojeScreen({
             tabindex="0"
             style="
               cursor:pointer; 
-              padding:14px 6px; 
+              padding:14px 8px; 
               text-align:center; 
-              min-height:44px;
+              min-height:48px;
               background:linear-gradient(135deg, rgba(126, 231, 255, 0.12), rgba(14, 27, 53, 0.85));
               border:1px solid ${DESIGN_TOKENS.colors.borderActive};
               border-radius:${DESIGN_TOKENS.radii.md};
+              display:flex;
+              flex-direction:column;
+              align-items:center;
+              justify-content:center;
+              touch-action:manipulation;
             "
           >
             <div class="icon" style="font-size:22px; margin-bottom:4px;">📖</div>
             <h4 style="margin:0; font-size:12px; font-weight:600; color:${DESIGN_TOKENS.colors.celestialBlue};">Palco</h4>
-          </div>
-
-          <!-- 5. Ensino (Virtuo Academy) -->
-          <div 
-            class="tile" 
-            id="hoje-action-academy"
-            onclick="show('academy')" 
-            role="button"
-            tabindex="0"
-            style="
-              cursor:pointer; 
-              padding:14px 6px; 
-              text-align:center; 
-              min-height:44px;
-              background:${DESIGN_TOKENS.colors.cardBg};
-              border:1px solid rgba(126, 231, 255, 0.3);
-              border-radius:${DESIGN_TOKENS.radii.md};
-            "
-          >
-            <div class="icon" style="font-size:22px; margin-bottom:4px;">🎓</div>
-            <h4 style="margin:0; font-size:12px; font-weight:600; color:#7EE7FF;">Ensino</h4>
           </div>
         </div>
       </section>

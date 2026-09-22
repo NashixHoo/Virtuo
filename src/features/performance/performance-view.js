@@ -171,6 +171,28 @@ export function renderPerformanceScreen(availableSongs = []) {
         </span>
       </div>
 
+      <!-- Hub de Ferramentas Organizadas de Performance (UX 2.0: Afinador, Vocal Pro, Modo Ministro, Guitar Coach) -->
+      <div class="performance-tools-hub" style="display:flex; gap:8px; overflow-x:auto; margin-bottom:18px; padding-bottom:4px; scrollbar-width:none;">
+        <button class="tag-btn active" style="min-height:44px; padding:8px 14px; font-size:12px; font-weight:700; background:rgba(126,231,255,0.18); border-color:#7EE7FF; color:#7EE7FF; border-radius:12px; display:inline-flex; align-items:center; gap:6px;" onclick="show('performance')">
+          🎯 Monitor
+        </button>
+        <button class="tag-btn" style="min-height:44px; padding:8px 14px; font-size:12px; font-weight:600; border-radius:12px; display:inline-flex; align-items:center; gap:6px;" onclick="show('tuner')">
+          🎯 Afinador
+        </button>
+        <button class="tag-btn" style="min-height:44px; padding:8px 14px; font-size:12px; font-weight:600; border-radius:12px; display:inline-flex; align-items:center; gap:6px;" onclick="show('vocal')">
+          🎙️ Vocal Pro
+        </button>
+        <button class="tag-btn" style="min-height:44px; padding:8px 14px; font-size:12px; font-weight:600; border-radius:12px; display:inline-flex; align-items:center; gap:6px;" onclick="window.openMinisterModeQuick()">
+          📖 Modo Ministro
+        </button>
+        <button class="tag-btn" style="min-height:44px; padding:8px 14px; font-size:12px; font-weight:600; border-radius:12px; display:inline-flex; align-items:center; gap:6px;" onclick="show('coach')">
+          ⚡ Guitar Coach
+        </button>
+        <button class="tag-btn" style="min-height:44px; padding:8px 14px; font-size:12px; font-weight:600; border-radius:12px; display:inline-flex; align-items:center; gap:6px;" onclick="show('band')">
+          🥁 Banda & Metrônomo
+        </button>
+      </div>
+
       <!-- ESTADO 1: CONFIGURAÇÃO / SELEÇÃO DE CANÇÃO -->
       ${state === 'setup' ? `
         <div style="padding:22px 18px; background:rgba(0,0,0,0.35); border:1px solid rgba(126,231,255,0.25); border-radius:24px;">

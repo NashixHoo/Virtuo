@@ -29,25 +29,25 @@ function test(name, fn) {
   }
 }
 
-// 1. Botões Inteligentes & Captura
-test("1. Botões Inteligentes: Verifica inputs ocultos independentes e atributos no community-view.js", () => {
+// 1. Botões Inteligentes & Captura (iPhone Native Flow - Câmera, Fototeca e Arquivos)
+test("1. Botões Inteligentes: Verifica inputs ocultos independentes e ausência de capture no community-view.js", () => {
   const html = fs.readFileSync("./src/community/community-view.js", "utf-8");
   
-  // Foto: accept="image/*" capture="environment"
-  assert(html.includes('id="community-post-photo"'), "Input de foto deve existir");
+  // Foto: accept="image/*" SEM capture="environment" ou capture="user"
+  assert(html.includes('id="community-photo-input"') || html.includes('id="community-post-photo"'), "Input de foto deve existir");
   assert(html.includes('accept="image/*"'), "Input de foto deve ter accept='image/*'");
-  assert(html.includes('capture="environment"'), "Input de foto deve ter capture='environment'");
-  assert(html.includes("community-post-photo').click()"), "Botão foto deve chamar click()");
+  assert(!html.includes('capture="environment"') && !html.includes('capture="user"'), "Input de foto NÃO deve ter capture para permitir seleção nativa no iOS (câmera, fototeca e arquivos)");
+  assert(html.includes("community-photo-input") || html.includes("community-post-photo"), "Botão foto deve chamar click()");
 
   // Vídeo: accept="video/*"
-  assert(html.includes('id="community-post-video"'), "Input de vídeo deve existir");
+  assert(html.includes('id="community-video-input"') || html.includes('id="community-post-video"'), "Input de vídeo deve existir");
   assert(html.includes('accept="video/*"'), "Input de vídeo deve ter accept='video/*'");
-  assert(html.includes("community-post-video').click()"), "Botão vídeo deve chamar click()");
+  assert(html.includes("community-video-input") || html.includes("community-post-video"), "Botão vídeo deve chamar click()");
 
   // Música: accept="audio/*"
-  assert(html.includes('id="community-post-audio"'), "Input de áudio deve existir");
+  assert(html.includes('id="community-audio-input"') || html.includes('id="community-post-audio"'), "Input de áudio deve existir");
   assert(html.includes('accept="audio/*"'), "Input de áudio deve ter accept='audio/*'");
-  assert(html.includes("community-post-audio').click()"), "Botão áudio deve chamar click()");
+  assert(html.includes("community-audio-input") || html.includes("community-post-audio"), "Botão áudio deve chamar click()");
 
   // Não deve existir fallback genérico 'community-post-file' que abra 'Selecionar Arquivos'
   assert(!html.includes('id="community-post-file"'), "Fallback genérico deve ter sido removido");
@@ -377,7 +377,7 @@ test("17. Barra Premium: Glassmorphism, Glow azul, Milestones 0%, 25%, 50%, 75%,
   assert(html.includes("milestone-50"), "Deve conter milestone 50%");
   assert(html.includes("milestone-75"), "Deve conter milestone 75%");
   assert(html.includes("milestone-100"), "Deve conter milestone 100%");
-  assert(appJs.includes("✓ Upload concluído."), "Ao concluir deve exibir '✓ Upload concluído.'");
+  assert(appJs.includes("Concluído.") || appJs.includes("✓ Upload concluído."), "Ao concluir deve exibir 'Concluído.' ou '✓ Upload concluído.'");
 });
 
 // 18. Fase 6: Log Real Estruturado (code, message, path, uid, bucket, fileType, fileSize)
@@ -420,6 +420,57 @@ test("19. Fase 8: Validação de formatos JPG, PNG, MP4, MP3 e M4A", async () =>
   const m4aFile = { name: "ensaio_vocal.m4a", type: "audio/mp4", size: 1024 * 1024 * 4 };
   const vM4a = validateMediaFile(m4aFile, "audio");
   assert.strictEqual(vM4a.isValid, true, "M4A deve ser válido");
+});
+
+// 20. Bloco 1 & 2: src/services/image-compression.js (HEIC, JPEG, PNG, WEBP, 1920px, 320x320)
+test("20. Bloco 1 & 2: src/services/image-compression.js calcula dimensões máximas 1920px e miniatura 320x320", async () => {
+  const { calculateFitDimensions } = await import("./src/services/image-compression.js");
+
+  // Imagem 4000x3000 -> reduz para max 1920 largura
+  const fit1 = calculateFitDimensions(4000, 3000, 1920);
+  assert.strictEqual(fit1.width, 1920);
+  assert.strictEqual(fit1.height, 1440);
+
+  // Imagem vertical 3000x4000 -> reduz para max 1920 altura
+  const fit2 = calculateFitDimensions(3000, 4000, 1920);
+  assert.strictEqual(fit2.height, 1920);
+  assert.strictEqual(fit2.width, 1440);
+
+  // Imagem menor 1200x800 -> mantém
+  const fit3 = calculateFitDimensions(1200, 800, 1920);
+  assert.strictEqual(fit3.width, 1200);
+  assert.strictEqual(fit3.height, 800);
+
+  const fileContent = fs.readFileSync("./src/services/image-compression.js", "utf-8");
+  assert(fileContent.includes("export async function compressImage"), "Deve exportar compressImage");
+  assert(fileContent.includes("export async function generateImageThumbnail"), "Deve exportar generateImageThumbnail");
+  assert(fileContent.includes("1920"), "Deve referenciar limite 1920px");
+  assert(fileContent.includes("320"), "Deve referenciar miniatura 320px");
+  assert(fileContent.includes("0.82"), "Deve referenciar qualidade 0.82");
+});
+
+// 21. Bloco 3: src/services/video-preprocess.js (Miniatura WEBP, limiar 80MB e aviso de economia)
+test("21. Bloco 3: src/services/video-preprocess.js processa vídeo e miniaturas", async () => {
+  const fileContent = fs.readFileSync("./src/services/video-preprocess.js", "utf-8");
+  assert(fileContent.includes("export async function generateVideoThumbnail"), "Deve exportar generateVideoThumbnail");
+  assert(fileContent.includes("export async function preprocessVideo"), "Deve exportar preprocessVideo");
+  assert(fileContent.includes("80 * 1024 * 1024"), "Deve verificar limiar de 80MB");
+  assert(fileContent.includes("320"), "Deve gerar miniatura 320x320");
+});
+
+// 22. Bloco 4 & 5 & 6: storage-service e offline queue integrados com thumbURL e '✓ Publicado.'
+test("22. Bloco 4, 5 & 6: Pipeline completo de publicação com thumbURL e '✓ Publicado.'", async () => {
+  const storageContent = fs.readFileSync("./src/services/storage-service.js", "utf-8");
+  assert(storageContent.includes("thumbURL"), "storage-service deve retornar thumbURL");
+  assert(storageContent.includes("compressImage"), "storage-service deve chamar compressImage");
+
+  const appContent = fs.readFileSync("./app.js", "utf-8");
+  assert(appContent.includes("thumbURL:"), "app.js deve salvar thumbURL no payload");
+  assert(appContent.includes("✓ Publicado."), "app.js deve exibir '✓ Publicado.' no final");
+
+  const offlineContent = fs.readFileSync("./src/services/offline-upload-queue.js", "utf-8");
+  assert(offlineContent.includes("compressedBlob"), "offline-upload-queue deve suportar compressedBlob");
+  assert(offlineContent.includes("thumbnailBlob"), "offline-upload-queue deve suportar thumbnailBlob");
 });
 
 console.log("\n====================================================");

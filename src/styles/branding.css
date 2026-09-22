@@ -129,8 +129,8 @@ body {
     transparent 100%
   );
   filter: blur(20px);
-  pointer-events: none;
-  z-index: 1;
+  pointer-events: none !important;
+  z-index: -1;
   opacity: 0.95;
   animation: horizonGlowBreath var(--virtuo-aura-cycle) ease-in-out infinite alternate;
 }
@@ -154,8 +154,8 @@ body {
     transparent 80%
   );
   filter: blur(18px);
-  pointer-events: none;
-  z-index: 1;
+  pointer-events: none !important;
+  z-index: -1;
   animation: horizonGlowBreath var(--virtuo-aura-cycle) ease-in-out infinite alternate;
 }
 
@@ -525,8 +525,8 @@ button:active,
     transparent 70%
   );
   filter: blur(14px);
-  pointer-events: none;
-  z-index: 9998;
+  pointer-events: none !important;
+  z-index: 100;
   animation: virtuoHorizonWaveFlash var(--virtuo-motion-wave) var(--virtuo-ease-out) forwards;
 }
 
@@ -1005,12 +1005,14 @@ button:active,
   justify-content: center;
   height: 22px;
   margin-bottom: 2px;
+  pointer-events: none;
 }
 
 .virtuo-nav-icon {
   display: inline-block;
   vertical-align: middle;
   object-fit: contain;
+  pointer-events: none;
   filter: drop-shadow(0 0 3px rgba(126, 231, 255, 0.35));
   transition: transform var(--virtuo-motion-btn) var(--virtuo-ease-out), filter var(--virtuo-motion-btn) ease;
 }

@@ -22,6 +22,14 @@ import {
   sanitizeFileName, 
   validateMediaFile 
 } from "./media-upload.js";
+import { 
+  compressImage, 
+  generateImageThumbnail 
+} from "./image-compression.js";
+import { 
+  preprocessVideo, 
+  generateVideoThumbnail 
+} from "./video-preprocess.js";
 
 export { STORAGE_ERROR_MESSAGES, getStorageErrorMessage };
 
@@ -221,38 +229,140 @@ function executeSingleResumableUpload(fileRef, file, metadata, onProgress, onMil
 
 /**
  * uploadImage(file, uid, options)
- * Valida como imagem e realiza upload via uploadBytesResumable
+ * Valida, comprime para WebP (máx 1920px), gera miniatura (320x320) e realiza upload via uploadBytesResumable
+ * Retorna downloadURL da imagem e thumbURL da miniatura
  * 
  * @param {File|Blob} file 
  * @param {string} uid 
  * @param {Object} [options]
- * @returns {Promise<{ downloadURL: string, fullPath: string, metadata: Object }>}
+ * @param {Function} [options.onStep] - Notificação de estágio ("Comprimindo...", "Gerando miniatura...", etc.)
+ * @param {Function} [options.onProgress]
+ * @param {Function} [options.onMilestone]
+ * @param {boolean} [options.skipCompression=false]
+ * @returns {Promise<{ downloadURL: string, thumbURL: string, fullPath: string, metadata: Object, compressionInfo: Object }>}
  */
 export async function uploadImage(file, uid, options = {}) {
   validateMediaFile(file, "photo");
-  return uploadMediaWithResumable({
-    file,
+  const onStep = options.onStep || (() => {});
+
+  let fileToUpload = file;
+  let compressionInfo = null;
+  let thumbnailFile = null;
+
+  if (!options.skipCompression && typeof document !== "undefined") {
+    try {
+      onStep("Comprimindo imagem...");
+      const compressedRes = await compressImage(file, {
+        maxDimension: 1920,
+        quality: 0.82,
+        onStep
+      });
+      fileToUpload = compressedRes.compressedFile;
+      compressionInfo = {
+        originalSize: compressedRes.originalSize,
+        compressedSize: compressedRes.compressedSize,
+        savingsPercent: compressedRes.savingsPercent,
+        width: compressedRes.width,
+        height: compressedRes.height
+      };
+
+      onStep("Gerando miniatura 320x320...");
+      const thumbRes = await generateImageThumbnail(fileToUpload, { size: 320, quality: 0.80 });
+      thumbnailFile = thumbRes.thumbnailFile;
+    } catch (compressErr) {
+      console.warn("[uploadImage] Falha na compressão client-side, prosseguindo com original:", compressErr);
+      fileToUpload = file;
+    }
+  }
+
+  // 1. Upload da foto principal
+  onStep("Enviando foto...");
+  const mainResult = await uploadMediaWithResumable({
+    file: fileToUpload,
     uid,
     category: "photos",
-    contentType: file.type || "image/jpeg",
+    contentType: fileToUpload.type || "image/webp",
     onProgress: options.onProgress,
     onMilestone: options.onMilestone,
     maxRetries: options.maxRetries || 3
   });
+
+  // 2. Upload da miniatura se gerada
+  let thumbURL = null;
+  if (thumbnailFile) {
+    try {
+      onStep("Enviando miniatura...");
+      const thumbResult = await uploadMediaWithResumable({
+        file: thumbnailFile,
+        uid,
+        category: "photos",
+        contentType: thumbnailFile.type || "image/webp",
+        maxRetries: 2
+      });
+      thumbURL = thumbResult.downloadURL;
+    } catch (thumbErr) {
+      console.warn("[uploadImage] Falha ao enviar miniatura separada, usando downloadURL:", thumbErr);
+      thumbURL = mainResult.downloadURL;
+    }
+  } else {
+    thumbURL = mainResult.downloadURL;
+  }
+
+  return {
+    ...mainResult,
+    thumbURL,
+    compressionInfo
+  };
 }
 
 /**
  * uploadVideo(file, uid, options)
- * Valida como vídeo e realiza upload via uploadBytesResumable
+ * Pré-processa vídeo, gera thumbnail do primeiro frame e realiza upload via uploadBytesResumable
  * 
  * @param {File|Blob} file 
  * @param {string} uid 
  * @param {Object} [options]
- * @returns {Promise<{ downloadURL: string, fullPath: string, metadata: Object }>}
+ * @returns {Promise<{ downloadURL: string, thumbURL: string, fullPath: string, metadata: Object, videoInfo: Object }>}
  */
 export async function uploadVideo(file, uid, options = {}) {
   validateMediaFile(file, "video");
-  return uploadMediaWithResumable({
+  const onStep = options.onStep || (() => {});
+
+  let thumbnailFile = null;
+  let videoInfo = null;
+
+  if (typeof document !== "undefined") {
+    try {
+      onStep("Processando prévia do vídeo...");
+      const preRes = await preprocessVideo(file, { onStep });
+      thumbnailFile = preRes.thumbnailFile;
+      videoInfo = preRes.info;
+    } catch (preErr) {
+      console.warn("[uploadVideo] Falha no pré-processamento de vídeo:", preErr);
+    }
+  }
+
+  // 1. Upload da miniatura de vídeo
+  let thumbURL = null;
+  if (thumbnailFile) {
+    try {
+      onStep("Enviando miniatura do vídeo...");
+      const thumbRes = await uploadMediaWithResumable({
+        file: thumbnailFile,
+        uid,
+        category: "photos",
+        contentType: thumbnailFile.type || "image/webp",
+        maxRetries: 2
+      });
+      thumbURL = thumbRes.downloadURL;
+    } catch (thumbErr) {
+      console.warn("[uploadVideo] Falha no upload da miniatura de vídeo:", thumbErr);
+    }
+  }
+
+  // 2. Upload do vídeo principal
+  onStep("Enviando vídeo...");
+  const mainResult = await uploadMediaWithResumable({
     file,
     uid,
     category: "videos",
@@ -261,6 +371,12 @@ export async function uploadVideo(file, uid, options = {}) {
     onMilestone: options.onMilestone,
     maxRetries: options.maxRetries || 3
   });
+
+  return {
+    ...mainResult,
+    thumbURL: thumbURL || null,
+    videoInfo
+  };
 }
 
 /**
@@ -274,6 +390,8 @@ export async function uploadVideo(file, uid, options = {}) {
  */
 export async function uploadAudio(file, uid, options = {}) {
   validateMediaFile(file, "audio");
+  const onStep = options.onStep || (() => {});
+  onStep("Enviando áudio...");
   return uploadMediaWithResumable({
     file,
     uid,

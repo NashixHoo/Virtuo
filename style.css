@@ -70,6 +70,16 @@ backdrop-filter:blur(18px);
 border:1px solid rgba(255,255,255,.12);
 font-size:22px;
 color:#7EE7FF;
+cursor:pointer;
+touch-action:manipulation;
+pointer-events:auto;
+-webkit-tap-highlight-color:transparent;
+transition:transform 0.12s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.12s ease;
+}
+
+.avatar:active{
+transform:scale(0.92);
+border-color:#7EE7FF;
 }
 
 main{
@@ -121,6 +131,10 @@ rgba(10,20,36,.78));
 border:1px solid rgba(255,255,255,.08);
 min-height:150px;
 transition:.25s;
+cursor:pointer;
+touch-action:manipulation;
+pointer-events:auto;
+-webkit-tap-highlight-color:transparent;
 }
 
 .tile:hover{
@@ -165,6 +179,10 @@ text-decoration:none;
 padding:15px;
 border-radius:16px;
 font-weight:700;
+cursor:pointer;
+touch-action:manipulation;
+pointer-events:auto;
+-webkit-tap-highlight-color:transparent;
 }
 
 .primary{
@@ -209,23 +227,70 @@ right:calc(12px + env(safe-area-inset-right, 0px));
 display:flex;
 background:rgba(7,19,31,.78);
 backdrop-filter:blur(22px);
+-webkit-backdrop-filter:blur(22px);
 border:1px solid rgba(255,255,255,.08);
 border-radius:24px;
 padding:10px;
+z-index:9000;
+touch-action:manipulation;
+pointer-events:auto;
 }
 
 .tabbar button{
 flex:1;
+min-height:44px;
+display:flex;
+flex-direction:column;
+align-items:center;
+justify-content:center;
 background:none;
 border:none;
 color:#A9BDD8;
 font-size:18px;
+cursor:pointer;
+touch-action:manipulation;
+pointer-events:auto;
+-webkit-tap-highlight-color:transparent;
+transition:transform 120ms cubic-bezier(0.16, 1, 0.3, 1), color 120ms ease, box-shadow 120ms ease;
+border-radius:16px;
+position:relative;
+}
+
+.tabbar button:active{
+transform:scale(0.92);
+}
+
+.tabbar button.active{
+color:#7EE7FF;
+}
+
+.tabbar button.active::after{
+content:"";
+position:absolute;
+bottom:-4px;
+width:16px;
+height:3px;
+border-radius:2px;
+background:#7EE7FF;
+box-shadow:0 0 10px #7EE7FF, 0 0 18px rgba(126, 231, 255, 0.6);
+animation:virtuoPulseHalo 1.8s ease-in-out infinite alternate;
+}
+
+@keyframes virtuoPulseHalo {
+  0% { transform: scaleX(0.8); opacity: 0.7; }
+  100% { transform: scaleX(1.3); opacity: 1; }
 }
 
 .tabbar span{
 display:block;
 font-size:10px;
 margin-top:3px;
+pointer-events:none;
+}
+
+.quick-toolbar span,
+.quick-toolbar img{
+pointer-events:none;
 }
 
 @media(max-width:420px){
@@ -2751,7 +2816,15 @@ display:none;
   font-weight: 700;
   cursor: pointer;
   letter-spacing: 0.04em;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  touch-action: manipulation;
+  pointer-events: auto;
+  -webkit-tap-highlight-color: transparent;
+  min-height: 38px;
+  transition: all 0.12s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ai-header-btn:active {
+  transform: scale(0.94);
 }
 
 .ai-header-btn:hover {
@@ -2932,7 +3005,8 @@ display:none;
   -webkit-overflow-scrolling: touch;
   position: sticky;
   top: 0;
-  z-index: 40;
+  z-index: 900;
+  pointer-events: auto;
   background: rgba(2, 6, 17, 0.75);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
@@ -2973,6 +3047,126 @@ display:none;
 .tuner-arc-wrapper {
   user-select: none;
 }
+
+/* =============================================================
+   VIRTUO V2.4 — RESILIENCE CORE PREMIUM FEEDBACK (GLASS & HORIZON GLOW)
+   ============================================================= */
+
+.horizon-glow-card {
+  position: relative;
+  border-radius: 28px;
+  background: rgba(7, 16, 31, 0.75);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(126, 231, 255, 0.25);
+  box-shadow: 0 16px 48px rgba(3, 16, 29, 0.8), inset 0 1px 1px rgba(255, 255, 255, 0.15);
+  overflow: hidden;
+}
+
+.horizon-glow-card::before {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle at 50% 0%, rgba(126, 231, 255, 0.15) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.resilience-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  background: rgba(14, 27, 53, 0.8);
+  border: 1px solid rgba(126, 231, 255, 0.3);
+  color: #7EE7FF;
+  box-shadow: 0 0 14px rgba(126, 231, 255, 0.2);
+}
+
+.resilience-status-badge.reconnecting {
+  border-color: rgba(245, 158, 11, 0.5);
+  color: #fde047;
+  box-shadow: 0 0 14px rgba(245, 158, 11, 0.3);
+  animation: pulseWatchdog 1.5s infinite alternate;
+}
+
+.resilience-status-badge.synchronized {
+  border-color: rgba(16, 185, 129, 0.5);
+  color: #6ee7b7;
+  box-shadow: 0 0 14px rgba(16, 185, 129, 0.25);
+}
+
+@keyframes pulseWatchdog {
+  from { opacity: 0.7; transform: scale(0.98); }
+  to { opacity: 1; transform: scale(1.02); }
+}
+
+/* =============================================================
+   VIRTUO V2.5 — COMUNIDADE PREMIUM (IPHONE & ATOMIC UPLOAD FLOW)
+   ============================================================= */
+
+.community-composer-card {
+  margin-top: 16px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(126, 231, 255, 0.2);
+  border-radius: 16px;
+  position: relative;
+}
+
+.community-media-btn {
+  font-size: 12px;
+  padding: 8px 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  touch-action: manipulation;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: transform 0.12s ease, background 0.15s ease, border-color 0.15s ease;
+}
+
+.community-media-btn:active {
+  transform: scale(0.97);
+}
+
+.community-upload-glass {
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-radius: 14px;
+  border: 1px solid rgba(126, 231, 255, 0.4);
+  box-shadow: 0 0 25px rgba(56, 189, 248, 0.25);
+  position: relative;
+  overflow: hidden;
+}
+
+.community-upload-glass.halo-active {
+  animation: uploadHaloPulse 2s infinite ease-in-out;
+}
+
+@keyframes uploadHaloPulse {
+  0% {
+    box-shadow: 0 0 15px rgba(56, 189, 248, 0.2), inset 0 0 10px rgba(126, 231, 255, 0.05);
+    border-color: rgba(126, 231, 255, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 28px rgba(56, 189, 248, 0.45), inset 0 0 15px rgba(126, 231, 255, 0.12);
+    border-color: rgba(126, 231, 255, 0.65);
+  }
+  100% {
+    box-shadow: 0 0 15px rgba(56, 189, 248, 0.2), inset 0 0 10px rgba(126, 231, 255, 0.05);
+    border-color: rgba(126, 231, 255, 0.35);
+  }
+}
+
 
 
 

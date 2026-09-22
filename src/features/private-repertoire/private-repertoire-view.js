@@ -4,7 +4,16 @@
 // Interface Premium e Isolada para o Repertório Privado da Banda
 // =============================================================
 
-import { escapeHtml } from "../../music/utils.js";
+function escapeHtml(str) {
+  if (typeof str !== 'string') return '';
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 import { calculateKey } from "../../music/transposer.js";
 
 /**

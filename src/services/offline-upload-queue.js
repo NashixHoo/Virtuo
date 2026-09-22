@@ -36,16 +36,18 @@ function getDB() {
 }
 
 /**
- * Salva um upload pendente no IndexedDB
+ * Salva um upload pendente no IndexedDB com suporte a arquivo comprimido e miniatura
  * 
  * @param {Object} item
  * @param {File|Blob} item.file
  * @param {string} item.type - 'photo' | 'video' | 'audio'
  * @param {string} item.uid
- * @param {Object} item.postPayload
+ * @param {Object} [item.postPayload]
+ * @param {Blob} [item.compressedBlob]
+ * @param {Blob} [item.thumbnailBlob]
  * @returns {Promise<string>} ID do item gravado
  */
-export async function savePendingUpload({ file, type, uid, postPayload }) {
+export async function savePendingUpload({ file, type, uid, postPayload, compressedBlob, thumbnailBlob }) {
   const db = await getDB();
   const id = `offline_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
   const record = {
@@ -55,7 +57,8 @@ export async function savePendingUpload({ file, type, uid, postPayload }) {
     fileSize: file.size,
     type,
     uid,
-    blob: file, // Blobs e Files podem ser salvos diretamente no IndexedDB
+    blob: compressedBlob || file, // Salva o blob comprimido quando disponível
+    thumbnailBlob: thumbnailBlob || null,
     postPayload: postPayload || {},
     status: "Pendente de envio.",
     createdAt: new Date().toISOString()

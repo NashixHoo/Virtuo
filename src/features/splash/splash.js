@@ -213,10 +213,13 @@ export class VirtuoSplashScreen {
       `;
     }
 
-    // Toque para pular opcional
-    overlay.addEventListener('click', () => {
+    // Toque para pular opcional (click e touchstart para resposta instantânea no iOS)
+    const handleSkip = (e) => {
+      if (e && e.cancelable) e.preventDefault();
       this.finish(overlay, onComplete);
-    });
+    };
+    overlay.addEventListener('click', handleSkip);
+    overlay.addEventListener('touchstart', handleSkip, { passive: false });
 
     if (!overlay.parentNode) {
       document.body.appendChild(overlay);
@@ -316,18 +319,37 @@ export class VirtuoSplashScreen {
     this.timers.forEach(t => clearTimeout(t));
     this.timers = [];
 
-    if (overlay && overlay.parentNode) {
+    const safeRemove = (el) => {
+      try {
+        if (el) {
+          el.style.pointerEvents = 'none';
+          el.setAttribute('aria-hidden', 'true');
+          if (el.parentNode) {
+            el.parentNode.removeChild(el);
+          }
+        }
+      } catch (e) {}
+    };
+
+    if (overlay) {
       overlay.style.opacity = '0';
       overlay.style.transform = 'scale(1.02)';
       overlay.style.pointerEvents = 'none';
 
+      // Remove imediatamente qualquer outro splash residual se houver no DOM
+      const residual = document.querySelectorAll('#virtuo-splash-screen');
+      residual.forEach(res => {
+        res.style.pointerEvents = 'none';
+      });
+
       setTimeout(() => {
-        if (overlay.parentNode) {
-          overlay.parentNode.removeChild(overlay);
-        }
+        safeRemove(overlay);
+        residual.forEach(res => safeRemove(res));
         if (onComplete) onComplete();
-      }, 300);
+      }, 250);
     } else {
+      const residual = document.querySelectorAll('#virtuo-splash-screen');
+      residual.forEach(res => safeRemove(res));
       if (onComplete) onComplete();
     }
   }

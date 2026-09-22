@@ -184,13 +184,22 @@ function renderFeedTab({ posts, filterPostType, currentUser, commentsMap, expand
         `).join("")}
       </div>
 
-      <textarea 
-        id="community-post-text" 
-        class="form-input" 
-        rows="3" 
-        placeholder="O que sua equipe ensaiou hoje? Dica de harmonia, performance ou momento de louvor..."
-        style="resize:vertical;"
-      ></textarea>
+      <!-- Textarea com Contador de Caracteres (Bloco 5) -->
+      <div>
+        <textarea 
+          id="community-post-text" 
+          class="form-input" 
+          rows="3" 
+          maxlength="500"
+          placeholder="O que sua equipe ensaiou hoje? Dica de harmonia, performance ou momento de louvor..."
+          style="resize:vertical;"
+          oninput="window.updateCommunityCharCount(this)"
+        ></textarea>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
+          <span style="font-size:10px; color:#64748b;">Compartilhe momentos, cifras ou experiências musicais</span>
+          <span id="community-char-counter" style="font-size:11px; color:#94a3b8; font-variant-numeric:tabular-nums;">0 / 500</span>
+        </div>
+      </div>
 
       <!-- Campos condicionais de mídia e instrumento -->
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px;">
@@ -218,21 +227,21 @@ function renderFeedTab({ posts, filterPostType, currentUser, commentsMap, expand
         </div>
 
         <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-          <!-- Botão Foto -->
+          <!-- Botão Foto (iPhone Nativo: Câmera, Fototeca e Arquivos - SEM capture) -->
           <button 
             type="button" 
-            class="button secondary" 
-            style="font-size:12px; padding:6px 12px; display:inline-flex; align-items:center; gap:6px;" 
-            onclick="document.getElementById('community-post-photo').click()"
+            id="community-btn-photo"
+            class="button secondary community-media-btn" 
+            style="font-size:12px; padding:6px 12px; display:inline-flex; align-items:center; gap:6px; min-height:44px;" 
+            onclick="(document.getElementById('community-photo-input') || document.getElementById('community-post-photo')).click()"
           >
             <span>📷</span>
             <span>Foto</span>
           </button>
           <input 
             type="file" 
-            id="community-post-photo" 
+            id="community-photo-input" 
             accept="image/*" 
-            capture="environment"
             style="display:none;" 
             onchange="window.handleCommunityMediaSelected(this, 'photo')"
           />
@@ -240,16 +249,17 @@ function renderFeedTab({ posts, filterPostType, currentUser, commentsMap, expand
           <!-- Botão Vídeo -->
           <button 
             type="button" 
-            class="button secondary" 
-            style="font-size:12px; padding:6px 12px; display:inline-flex; align-items:center; gap:6px;" 
-            onclick="document.getElementById('community-post-video').click()"
+            id="community-btn-video"
+            class="button secondary community-media-btn" 
+            style="font-size:12px; padding:6px 12px; display:inline-flex; align-items:center; gap:6px; min-height:44px;" 
+            onclick="(document.getElementById('community-video-input') || document.getElementById('community-post-video')).click()"
           >
             <span>🎬</span>
             <span>Vídeo</span>
           </button>
           <input 
             type="file" 
-            id="community-post-video" 
+            id="community-video-input" 
             accept="video/*" 
             style="display:none;" 
             onchange="window.handleCommunityMediaSelected(this, 'video')"
@@ -258,16 +268,17 @@ function renderFeedTab({ posts, filterPostType, currentUser, commentsMap, expand
           <!-- Botão Música -->
           <button 
             type="button" 
-            class="button secondary" 
-            style="font-size:12px; padding:6px 12px; display:inline-flex; align-items:center; gap:6px;" 
-            onclick="document.getElementById('community-post-audio').click()"
+            id="community-btn-audio"
+            class="button secondary community-media-btn" 
+            style="font-size:12px; padding:6px 12px; display:inline-flex; align-items:center; gap:6px; min-height:44px;" 
+            onclick="(document.getElementById('community-audio-input') || document.getElementById('community-post-audio')).click()"
           >
             <span>🎧</span>
             <span>Música</span>
           </button>
           <input 
             type="file" 
-            id="community-post-audio" 
+            id="community-audio-input" 
             accept="audio/*" 
             style="display:none;" 
             onchange="window.handleCommunityMediaSelected(this, 'audio')"
@@ -298,8 +309,8 @@ function renderFeedTab({ posts, filterPostType, currentUser, commentsMap, expand
           <div id="community-preview-meta" style="font-size:11px; color:#94a3b8; margin-top:6px;"></div>
         </div>
 
-        <!-- Barra de Progresso de Upload Premium (Glass + Glow Azul + 0% 25% 50% 75% 100%) -->
-        <div id="community-upload-progress-wrap" style="display:none; margin-top:10px; padding:12px 14px; background:rgba(15,23,42,0.75); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); border-radius:12px; border:1px solid rgba(126,231,255,0.4); box-shadow:0 0 20px rgba(56,189,248,0.25);">
+        <!-- Barra de Progresso de Upload Premium (Glass + Glow Azul + Halo + 0% 25% 50% 75% 100%) -->
+        <div id="community-upload-progress-wrap" class="community-upload-glass halo-active" style="display:none; margin-top:10px; padding:12px 14px; background:rgba(15,23,42,0.85); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); border-radius:12px; border:1px solid rgba(126,231,255,0.4); box-shadow:0 0 20px rgba(56,189,248,0.25);">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
             <span style="font-size:12px; font-weight:700; color:#7EE7FF; text-shadow:0 0 8px rgba(126,231,255,0.5);" id="community-upload-status-text">Enviando mídia...</span>
             <span style="font-size:12px; font-weight:800; color:#7EE7FF; text-shadow:0 0 8px rgba(126,231,255,0.6);" id="community-upload-percent-text">0%</span>
@@ -444,13 +455,13 @@ function renderPostCard({ post, currentUser, commentsMap, isExpandedComments, is
       <!-- Mídia / Foto / Vídeo / Música -->
       ${post.imageUrl ? `
         <div style="margin:10px 0; border-radius:12px; overflow:hidden; border:1px solid rgba(255,255,255,0.08); max-height:360px;">
-          <img src="${escapeHtml(post.imageUrl)}" style="width:100%; height:auto; object-fit:cover; display:block;" alt="Foto da publicação" loading="lazy" />
+          <img src="${escapeHtml(post.imageUrl)}" data-thumb="${escapeHtml(post.thumbURL || post.thumbUrl || '')}" style="width:100%; height:auto; object-fit:cover; display:block;" alt="Foto da publicação" loading="lazy" />
         </div>
       ` : ''}
 
       ${post.videoUrl ? `
         <div style="margin:10px 0; border-radius:12px; overflow:hidden; border:1px solid rgba(255,255,255,0.08); max-height:360px; background:#000;">
-          <video controls playsinline preload="metadata" style="width:100%; max-height:360px; display:block; outline:none;" src="${escapeHtml(post.videoUrl)}"></video>
+          <video controls playsinline preload="metadata" ${post.thumbURL || post.thumbUrl ? `poster="${escapeHtml(post.thumbURL || post.thumbUrl)}"` : ''} style="width:100%; max-height:360px; display:block; outline:none;" src="${escapeHtml(post.videoUrl)}"></video>
         </div>
       ` : ''}
 

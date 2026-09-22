@@ -134,6 +134,16 @@ import { GearView } from "./src/features/gear/index.js";
 import { t, setLocale, getLocale, AVAILABLE_LOCALES } from "./src/i18n/index.js";
 import { APP_VERSION, VERSION_LABEL } from "./src/version.js";
 import { VirtuoToast } from "./src/components/ui/toast.js";
+import { navigationDebugger } from "./src/debug/navigation-debug.js";
+import { appBootManager } from "./src/core/app-boot.js";
+import { virtuoRouter, navigate } from "./src/core/router.js";
+import { safeClick, attachSafeClick } from "./src/core/safe-click.js";
+import { uiHealthAuditor } from "./src/debug/ui-health.js";
+import { virtuoErrorBoundary } from "./src/core/error-boundary.js";
+import { virtuoHealthMonitor } from "./src/core/health-monitor.js";
+import { virtuoFirebaseWatchdog } from "./src/core/firebase-watchdog.js";
+import { virtuoSmartCache } from "./src/services/smart-cache.js";
+import { debounce, memoize, nextFrame } from "./src/core/performance-utils.js";
 
 /**
  * Converte erros técnicos (FirebaseError, TypeError, permission-denied, etc.)
@@ -854,9 +864,9 @@ window.clearCommunityMediaAttachment = () => {
   }
   pendingCommunityMedia = null;
 
-  const photoInput = document.getElementById("community-post-photo");
-  const videoInput = document.getElementById("community-post-video");
-  const audioInput = document.getElementById("community-post-audio");
+  const photoInput = document.getElementById("community-photo-input") || document.getElementById("community-post-photo");
+  const videoInput = document.getElementById("community-video-input") || document.getElementById("community-post-video");
+  const audioInput = document.getElementById("community-audio-input") || document.getElementById("community-post-audio");
   const fileInput = document.getElementById("community-post-file");
   if (photoInput) photoInput.value = "";
   if (videoInput) videoInput.value = "";
@@ -872,6 +882,27 @@ window.clearCommunityMediaAttachment = () => {
   const errorBox = document.getElementById("community-upload-error-box");
   if (errorBox) {
     clearUploadErrorUI(errorBox);
+  }
+
+  const charCounter = document.getElementById("community-char-counter");
+  if (charCounter) {
+    charCounter.textContent = "0 / 500";
+    charCounter.style.color = "#94a3b8";
+  }
+};
+
+window.updateCommunityCharCount = (textarea) => {
+  const counterEl = document.getElementById("community-char-counter");
+  if (!counterEl || !textarea) return;
+  const count = textarea.value.length;
+  const max = textarea.getAttribute("maxlength") || 500;
+  counterEl.textContent = `${count} / ${max}`;
+  if (count >= max) {
+    counterEl.style.color = "#f87171";
+  } else if (count >= max * 0.85) {
+    counterEl.style.color = "#fbbf24";
+  } else {
+    counterEl.style.color = "#94a3b8";
   }
 };
 
@@ -974,6 +1005,8 @@ window.handleCreatePostV2 = async () => {
 
     try {
       let uploadRes;
+      let thumbUrl = null;
+
       const progressCb = (percent, label) => {
         if (label === "Reconectando...") {
           if (statusText) {
@@ -984,8 +1017,15 @@ window.handleCreatePostV2 = async () => {
         }
         if (progressBar) progressBar.style.width = `${percent}%`;
         if (percentText) percentText.textContent = `${percent}%`;
+        if (statusText && percent < 100) {
+          statusText.textContent = `Enviando... ${percent}%`;
+          statusText.style.color = "#7EE7FF";
+        }
+      };
+
+      const stepCb = (stepLabel) => {
         if (statusText) {
-          statusText.textContent = percent < 100 ? `Enviando... ${percent}%` : "Processando mídia...";
+          statusText.textContent = stepLabel;
           statusText.style.color = "#7EE7FF";
         }
       };
@@ -999,21 +1039,29 @@ window.handleCreatePostV2 = async () => {
       };
 
       if (pendingCommunityMedia.type === "photo") {
+        stepCb("Preparando imagem...");
         uploadRes = await uploadImage(pendingCommunityMedia.file, currentUser.uid, {
+          onStep: stepCb,
           onProgress: progressCb,
           onMilestone: milestoneCb,
           maxRetries: 3
         });
         imageUrl = uploadRes.downloadURL;
+        thumbUrl = uploadRes.thumbURL || uploadRes.downloadURL;
       } else if (pendingCommunityMedia.type === "video") {
+        stepCb("Preparando vídeo...");
         uploadRes = await uploadVideo(pendingCommunityMedia.file, currentUser.uid, {
+          onStep: stepCb,
           onProgress: progressCb,
           onMilestone: milestoneCb,
           maxRetries: 3
         });
         videoUrl = uploadRes.downloadURL;
+        thumbUrl = uploadRes.thumbURL || null;
       } else {
+        stepCb("Preparando áudio...");
         uploadRes = await uploadAudio(pendingCommunityMedia.file, currentUser.uid, {
+          onStep: stepCb,
           onProgress: progressCb,
           onMilestone: milestoneCb,
           maxRetries: 3
@@ -1024,16 +1072,19 @@ window.handleCreatePostV2 = async () => {
 
       mediaUploadInfo = {
         downloadUrl: uploadRes.downloadURL,
+        thumbUrl,
         storagePath: uploadRes.fullPath,
         mediaType: pendingCommunityMedia.type,
         categoria: pendingCommunityMedia.type === "photo" ? "photos" : pendingCommunityMedia.type === "video" ? "videos" : "audio",
-        metadata: uploadRes.metadata
+        metadata: uploadRes.metadata,
+        compressionInfo: uploadRes.compressionInfo || null,
+        videoInfo: uploadRes.videoInfo || null
       };
 
-      // Conclusão com sucesso (Bloco 6)
+      // Conclusão com sucesso (Bloco 5)
       if (statusText) {
-        statusText.textContent = "✓ Upload concluído.";
-        statusText.style.color = "#4ade80";
+        statusText.textContent = "Concluído.";
+        statusText.style.color = "#7EE7FF";
       }
       if (progressBar) progressBar.style.width = "100%";
       if (percentText) percentText.textContent = "100%";
@@ -1059,11 +1110,6 @@ window.handleCreatePostV2 = async () => {
       }
       // NUNCA falhar silenciosamente: aborta criação para usuário corrigir
       return;
-    } finally {
-      if (submitBtn) {
-        submitBtn.disabled = false;
-        submitBtn.textContent = "Publicar no Feed";
-      }
     }
   }
 
@@ -1081,6 +1127,9 @@ window.handleCreatePostV2 = async () => {
     videoUrl,
     audioUrl,
     audioTitle,
+    thumbUrl: mediaUploadInfo ? mediaUploadInfo.thumbUrl : null,
+    thumbURL: mediaUploadInfo ? mediaUploadInfo.thumbUrl : null,
+    compressionInfo: mediaUploadInfo ? mediaUploadInfo.compressionInfo : null,
     mediaUrl: externalMediaUrl || null,
     storagePath: mediaUploadInfo ? mediaUploadInfo.storagePath : null,
     mediaType: mediaUploadInfo ? mediaUploadInfo.mediaType : null,
@@ -1091,6 +1140,11 @@ window.handleCreatePostV2 = async () => {
     authorRole: role,
     authorPhoto
   };
+
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Publicando no Feed...";
+  }
 
   try {
     await CommunityService.createPost(postPayload, currentUser ? currentUser.uid : null);
@@ -1122,10 +1176,21 @@ window.handleCreatePostV2 = async () => {
   if (chordsPreviewEl) chordsPreviewEl.value = "";
 
   if (typeof VirtuoToast !== "undefined") {
-    VirtuoToast.success("Publicado com sucesso no Virtuo Feed!");
+    let successMsg = "✓ Publicado.";
+    if (mediaUploadInfo && mediaUploadInfo.compressionInfo && mediaUploadInfo.compressionInfo.savingsPercent > 0) {
+      successMsg += ` Tamanho reduzido em ${mediaUploadInfo.compressionInfo.savingsPercent}%.`;
+    } else if (mediaUploadInfo && mediaUploadInfo.videoInfo && mediaUploadInfo.videoInfo.savingsPercent > 0) {
+      successMsg += ` Tamanho reduzido em ${mediaUploadInfo.videoInfo.savingsPercent}%.`;
+    }
+    VirtuoToast.success(successMsg);
   }
 
   await loadCommunityPosts();
+
+  if (submitBtn) {
+    submitBtn.disabled = false;
+    submitBtn.textContent = "Publicar no Feed";
+  }
 };
 
 window.togglePostLike = async (postId) => {
@@ -2306,6 +2371,13 @@ const screens = {
 
     const activeMission = missionsController.activeMission || virtuoRehearsal?.getActiveRehearsal?.() || null;
 
+    // BLOCO 4: Pré-carregamento automático da última missão no Smart Cache
+    if (activeMission && typeof virtuoSmartCache !== 'undefined' && virtuoSmartCache.preloadMissionRepertoire) {
+      try {
+        virtuoSmartCache.preloadMissionRepertoire(activeMission);
+      } catch (e) {}
+    }
+
     return renderHojeScreen({
       currentUser,
       activeMission,
@@ -2619,6 +2691,13 @@ const screens = {
   get songDetail() {
     if (!activeSong) {
       return screens.library;
+    }
+
+    // BLOCO 4: Priorização de cifras recentes no Smart Cache LRU
+    if (typeof virtuoSmartCache !== 'undefined' && virtuoSmartCache.putSong) {
+      try {
+        virtuoSmartCache.putSong(activeSong);
+      } catch (e) {}
     }
 
     const isPrivateSong = activeSong.visibility === "private" || activeSong.contentScope === "band";
@@ -3167,6 +3246,12 @@ const screens = {
               <span style="color:#7EE7FF; font-weight:600;">Sessão:</span> Persistência local ativa (browserLocalPersistence)
             </div>
 
+            ${isAdmin ? `
+              <button class="button secondary" style="width:100%; margin-bottom:10px; border-color:rgba(126,231,255,0.4); color:#7EE7FF;" onclick="window.virtuoHealthMonitor.toggleOwnerPanel()">
+                ⚡ Abrir Health Monitor (Owner)
+              </button>
+            ` : ''}
+
             <button class="button secondary" style="width:100%;" onclick="window.handleLogout()">
               Sair da Conta (Logout)
             </button>
@@ -3445,6 +3530,7 @@ function show(name) {
   }
 
   currentScreen = targetName;
+  virtuoRouter.currentRoute = targetName;
 
   // Atualiza fundo contextual do Brand Kit V3
   const bg = document.querySelector(".background");
@@ -3476,6 +3562,7 @@ function show(name) {
 }
 window.show = show;
 window._virtuoShow = show;
+window.navigate = (route) => show(route);
 
 function updateTabbarActiveState(name) {
   const tabName = (name === "hoje") ? "home" : name;
@@ -3501,15 +3588,39 @@ function renderCurrentScreen() {
   const container = document.getElementById("app");
   if (!container) return;
   if (typeof screens === "undefined") return;
-  const screenContent = screens[currentScreen];
-  container.innerHTML = typeof screenContent === "function" ? screenContent() : (screenContent || "");
-  
-  // Transição rápida de tela (<= 160ms)
-  container.classList.remove("screen-transition-enter");
-  void container.offsetWidth;
-  container.classList.add("screen-transition-enter");
 
-  updateTabbarActiveState(currentScreen);
+  try {
+    const screenContent = screens[currentScreen];
+    container.innerHTML = typeof screenContent === "function" ? screenContent() : (screenContent || "");
+    
+    // Transição rápida de tela (<= 160ms) acelerada por hardware
+    container.classList.remove("screen-transition-enter");
+    void container.offsetWidth;
+    container.classList.add("screen-transition-enter");
+
+    updateTabbarActiveState(currentScreen);
+  } catch (err) {
+    console.error(`[Virtuo Render Error on '${currentScreen}']`, err);
+    // BLOCO 7: Fallback de Telas "Estamos recuperando esta tela."
+    container.innerHTML = `
+      <div class="glass" style="padding:32px 20px; text-align:center; max-width:480px; margin:40px auto; border-radius:28px; border:1px solid rgba(126,231,255,0.2);">
+        <div style="font-size:36px; margin-bottom:12px;">🛡️</div>
+        <h3 style="margin:0 0 8px 0; color:#F8FAFC; font-size:18px; font-weight:700;">Estamos recuperando esta tela.</h3>
+        <p style="margin:0 0 20px 0; color:#A9BDD8; font-size:14px; line-height:1.5;">
+          O Virtuo identificou uma oscilação na renderização de <strong>${escapeHtml(currentScreen)}</strong> e está restaurando a estabilidade da sua sessão.
+        </p>
+        <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
+          <button class="button primary" onclick="window.navigate('${escapeHtml(currentScreen)}')" style="min-height:44px; padding:10px 20px;">
+            🔄 Tentar Novamente
+          </button>
+          <button class="button secondary" onclick="window.navigate('home')" style="min-height:44px; padding:10px 20px;">
+            🏠 Ir para o Início
+          </button>
+        </div>
+      </div>
+    `;
+    updateTabbarActiveState(currentScreen);
+  }
 }
 window.renderCurrentScreen = renderCurrentScreen;
 
@@ -4264,39 +4375,21 @@ SongsRepository.subscribeToSongs((updatedSongs) => {
   liveSongs = [...CANONICAL_MIGRATED_DEMO_SONGS];
 });
 
-// Experiência de Inicialização Premium: Saudação Dinâmica e Abertura Oficial Splash (1.4s)
+// Experiência de Inicialização Premium: Saudação Dinâmica
 startGreetingAutoUpdater('hoje-dynamic-greeting');
 
-// Initial Screen Render
-const initialScreen = window._pendingScreen || "home";
-window._pendingScreen = null;
-show(initialScreen);
+// Registra as telas no roteador centralizado
+virtuoRouter.registerScreens(screens);
 
 // Inicializa a Virtuo Aura Ambiente
 virtuoAura.init();
 
-// Executa a abertura oficial do Virtuo (1.4s)
-virtuoSplash.start(() => {
-  renderCurrentScreen();
-});
+// Inicializa Error Boundary Global
+virtuoErrorBoundary.install();
 
-// Verify Firebase Connection on boot
-checkFirebaseConnection().then((res) => {
-  if (res.ok) {
-    firebaseStatus = { connected: true, label: "virtuo-7e01b Conectado" };
-  } else {
-    firebaseStatus = { connected: false, label: res.message };
-  }
-  renderCurrentScreen();
-}).catch(() => {
-  firebaseStatus = { connected: true, label: "virtuo-7e01b Conectado" };
-  renderCurrentScreen();
-});
-
-// Register Service Worker for PWA compliance
-if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("sw.js").catch(() => {});
-}
+// Inicializa Health Monitor e Watchdog
+virtuoHealthMonitor.start();
+virtuoFirebaseWatchdog.start(checkFirebaseConnection);
 
 // -------------------------------------------------------------
 // VIRTUO ARCHITECTURE MODULES (Ready for Sessions & AI)
@@ -4342,6 +4435,50 @@ export const VirtuoAI = {
 };
 
 window.VirtuoAI = VirtuoAI;
+
+// Centraliza a inicialização com o AppBootManager (Ordem Canônica: Splash -> Firebase -> Router -> TabBar -> Listeners -> Virtuo AI -> Home)
+appBootManager.boot({
+  virtuoSplash,
+  checkFirebaseConnection: async () => {
+    try {
+      const res = await checkFirebaseConnection();
+      if (res && res.ok) {
+        firebaseStatus = { connected: true, label: "virtuo-7e01b Conectado" };
+      } else {
+        firebaseStatus = { connected: false, label: res ? res.message : "Offline" };
+      }
+    } catch (e) {
+      firebaseStatus = { connected: true, label: "virtuo-7e01b Conectado" };
+    }
+  },
+  router: {
+    init: () => {
+      virtuoRouter.init();
+      const initialScreen = window._pendingScreen || "home";
+      window._pendingScreen = null;
+      show(initialScreen);
+    },
+    navigate: (r) => show(r)
+  },
+  tabbar: {
+    init: () => {
+      updateTabbarActiveState(currentScreen);
+    }
+  },
+  initGlobalListeners: () => {
+    navigationDebugger.init();
+    uiHealthAuditor.audit();
+  },
+  virtuoAI: VirtuoAI,
+  onHomeReady: () => {
+    renderCurrentScreen();
+  }
+});
+
+// Register Service Worker for PWA compliance
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js").catch(() => {});
+}
 
 // -------------------------------------------------------------
 // I18N & LEGAL INFORMATION MODALS (V2 FINAL POLISH)
