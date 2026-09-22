@@ -16,10 +16,37 @@ import {
   getAuthErrorMessage,
   uploadAudioFile,
   uploadImageFile,
+  uploadVideoFile,
   isUserAdmin,
   checkFirebaseConnection,
   DEMO_SONGS
 } from "./firebase-config.js";
+import { 
+  uploadMediaFile, 
+  validateMediaFile, 
+  detectMediaType, 
+  globalPreviewManager, 
+  MEDIA_TYPES,
+  getFriendlyErrorMessage,
+  renderUploadErrorUI,
+  clearUploadErrorUI,
+  getUploadErrorHint
+} from "./src/services/media-upload.js";
+import {
+  uploadImage,
+  uploadVideo,
+  uploadAudio,
+  uploadMediaWithResumable
+} from "./src/services/storage-service.js";
+import {
+  savePendingUpload,
+  getPendingUploads,
+  processPendingUploads
+} from "./src/services/offline-upload-queue.js";
+import {
+  STORAGE_ERROR_MESSAGES,
+  getStorageErrorMessage
+} from "./src/utils/storageErrorHelper.js";
 import { SongsRepository, CANONICAL_MIGRATED_DEMO_SONGS } from "./songs-service.js";
 import {
   transposeNote,
@@ -48,6 +75,20 @@ import { perfMonitor } from "./src/performance/performance-monitor.js";
 import { adminSongManager } from "./src/features/admin/index.js";
 import { CANONICAL_INSTRUMENTS } from "./src/services/rehearsals.js";
 import { CommunityService } from "./src/services/community.js";
+import { 
+  PrivateBandSongsService, 
+  normalizePrivateBandSong, 
+  isUserAuthorizedForPrivateBand, 
+  PRIVATE_REPERTOIRE_CONSTANTS 
+} from "./src/services/private-band-songs.js";
+import {
+  renderLibraryDivisionNav,
+  renderPrivateRepertoireSection,
+  renderAddPrivateSongModal,
+  renderImportPrivateModal,
+  renderPublishWarningModal,
+  renderRehearsalHud
+} from "./src/features/private-repertoire/private-repertoire-view.js";
 import { 
   ProfileService, 
   SocialService, 
@@ -199,6 +240,16 @@ let activePublicUserProfile = null;
 
 // Library Search State
 let songSearchQuery = "";
+let libraryDivision = "public"; // "public" | "private"
+let privateBandSongsList = [];
+let privateSearchQuery = "";
+let privateFilterCategory = "todos"; // "todos" | "harpa-crista" | "outros"
+let isAddPrivateSongModalOpen = false;
+let isImportPrivateModalOpen = false;
+let isPublishWarningModalOpen = false;
+let pendingPublishSong = null;
+let activeRehearsalHudOpen = false;
+let activeRehearsalSection = null;
 
 // Celestial & Profile State
 let isUpgradeModalOpen = false;
@@ -672,6 +723,158 @@ window.selectPostType = (type) => {
   renderCurrentScreen();
 };
 
+// Gerenciamento de Mídia Anexada ao Feed da Comunidade (Fotos, Vídeos e Músicas)
+let pendingCommunityMedia = null; // { file, type: 'photo'|'video'|'audio', previewUrl: string }
+
+window.handleCommunityMediaSelected = (input, explicitType) => {
+  if (!input || !input.files || !input.files[0]) return;
+  const file = input.files[0];
+  const type = explicitType || detectMediaType(file);
+
+  const errorBox = document.getElementById("community-upload-error-box");
+  if (errorBox) {
+    clearUploadErrorUI(errorBox);
+  }
+
+  // Validação prévia de formato e tamanho
+  try {
+    validateMediaFile(file, type);
+  } catch (valErr) {
+    valErr.stage = "validation";
+    if (errorBox) {
+      renderUploadErrorUI(errorBox, valErr, {
+        title: "Arquivo incompatível"
+      });
+    }
+    input.value = "";
+    if (typeof VirtuoToast !== "undefined") {
+      VirtuoToast.warning(valErr.message);
+    }
+    return;
+  }
+
+  // Limpa pré-visualização anterior se houver
+  if (pendingCommunityMedia && pendingCommunityMedia.previewUrl) {
+    globalPreviewManager.revokePreview(pendingCommunityMedia.previewUrl);
+  }
+
+  // Cria preview compatível com iPhone / Safari / Desktop
+  const previewUrl = globalPreviewManager.createPreview(file);
+  pendingCommunityMedia = { file, type, previewUrl };
+
+  // Atualiza UI de Pré-visualização
+  const previewContainer = document.getElementById("community-media-preview-container");
+  const photoWrap = document.getElementById("community-preview-photo-wrap");
+  const photoImg = document.getElementById("community-preview-photo-img");
+  const videoWrap = document.getElementById("community-preview-video-wrap");
+  const videoPlayer = document.getElementById("community-preview-video-player");
+  const audioWrap = document.getElementById("community-preview-audio-wrap");
+  const audioPlayer = document.getElementById("community-preview-audio-player");
+  const audioName = document.getElementById("community-preview-audio-name");
+  const metaEl = document.getElementById("community-preview-meta");
+  const titleEl = document.getElementById("community-preview-title");
+
+  if (photoWrap) photoWrap.style.display = "none";
+  if (videoWrap) videoWrap.style.display = "none";
+  if (audioWrap) audioWrap.style.display = "none";
+
+  const sizeMb = (file.size / (1024 * 1024)).toFixed(2);
+
+  if (type === "photo" && photoImg && photoWrap) {
+    photoImg.src = previewUrl;
+    photoWrap.style.display = "block";
+    if (titleEl) titleEl.textContent = "📷 Miniatura da Foto";
+    if (metaEl) metaEl.textContent = `${file.name} • ${sizeMb} MB`;
+  } else if (type === "video" && videoPlayer && videoWrap) {
+    videoPlayer.src = previewUrl;
+    videoPlayer.preload = "metadata";
+    videoPlayer.muted = true;
+    videoPlayer.playsInline = true;
+    videoPlayer.onloadedmetadata = () => {
+      try {
+        videoPlayer.currentTime = 0.05;
+      } catch (e) {
+        // Fallback para primeiro frame em navegadores móveis
+      }
+    };
+    videoWrap.style.display = "block";
+    if (titleEl) titleEl.textContent = "🎬 Primeiro Frame / Prévia do Vídeo";
+    if (metaEl) metaEl.textContent = `${file.name} • ${sizeMb} MB`;
+  } else if (type === "audio" && audioPlayer && audioWrap) {
+    audioPlayer.src = previewUrl;
+    audioPlayer.preload = "metadata";
+    audioWrap.style.display = "block";
+    if (titleEl) titleEl.textContent = "🎧 Faixa Musical Selecionada";
+
+    // Extrai artista do padrão "Artista - Título" se presente
+    let detectedArtist = "";
+    const rawBaseName = file.name.replace(/\.[^/.]+$/, "");
+    if (rawBaseName.includes(" - ")) {
+      const parts = rawBaseName.split(" - ");
+      if (parts.length >= 2) {
+        detectedArtist = parts[0].trim();
+      }
+    }
+
+    const renderAudioDetails = (durSeconds) => {
+      let durLabel = "calculando...";
+      if (durSeconds && !isNaN(durSeconds) && isFinite(durSeconds)) {
+        const m = Math.floor(durSeconds / 60);
+        const s = Math.floor(durSeconds % 60).toString().padStart(2, "0");
+        durLabel = `${m}:${s}`;
+      }
+      if (audioName) {
+        audioName.innerHTML = `
+          <div style="font-size:12px; color:#e2e8f0; font-weight:700;">🎵 ${escapeHtml(file.name)}</div>
+          <div style="font-size:11px; color:#7EE7FF; margin-top:3px; display:flex; gap:8px; flex-wrap:wrap;">
+            <span>⏱ Duração: <strong>${durLabel}</strong></span>
+            ${detectedArtist ? `<span>🎤 Artista: <strong>${escapeHtml(detectedArtist)}</strong></span>` : ""}
+          </div>
+        `;
+      }
+      if (metaEl) {
+        metaEl.textContent = `${file.name} • ${sizeMb} MB${durLabel !== "calculando..." ? ` • ${durLabel}` : ""}`;
+      }
+    };
+
+    renderAudioDetails(0);
+    audioPlayer.onloadedmetadata = () => {
+      renderAudioDetails(audioPlayer.duration);
+    };
+  }
+
+  if (previewContainer) {
+    previewContainer.style.display = "block";
+  }
+};
+
+window.clearCommunityMediaAttachment = () => {
+  if (pendingCommunityMedia && pendingCommunityMedia.previewUrl) {
+    globalPreviewManager.revokePreview(pendingCommunityMedia.previewUrl);
+  }
+  pendingCommunityMedia = null;
+
+  const photoInput = document.getElementById("community-post-photo");
+  const videoInput = document.getElementById("community-post-video");
+  const audioInput = document.getElementById("community-post-audio");
+  const fileInput = document.getElementById("community-post-file");
+  if (photoInput) photoInput.value = "";
+  if (videoInput) videoInput.value = "";
+  if (audioInput) audioInput.value = "";
+  if (fileInput) fileInput.value = "";
+
+  const previewContainer = document.getElementById("community-media-preview-container");
+  if (previewContainer) previewContainer.style.display = "none";
+
+  const progressWrap = document.getElementById("community-upload-progress-wrap");
+  if (progressWrap) progressWrap.style.display = "none";
+
+  const errorBox = document.getElementById("community-upload-error-box");
+  if (errorBox) {
+    clearUploadErrorUI(errorBox);
+  }
+};
+
 window.handleCreatePost = async () => {
   await window.handleCreatePostV2();
 };
@@ -679,34 +882,188 @@ window.handleCreatePost = async () => {
 window.handleCreatePostV2 = async () => {
   const contentEl = document.getElementById("community-post-text");
   const titleEl = document.getElementById("community-post-title");
-  const fileInput = document.getElementById("community-post-file");
-  const submitBtn = document.getElementById("community-submit-btn");
+  const mediaUrlEl = document.getElementById("community-post-media-url");
+  const submitBtn = document.getElementById("community-publish-btn") || document.getElementById("community-submit-btn");
   const chordsPreviewEl = document.getElementById("community-post-chords-preview");
-  const audioDemoEl = document.getElementById("community-post-audio-url");
+  const progressWrap = document.getElementById("community-upload-progress-wrap");
+  const progressBar = document.getElementById("community-upload-progress-bar");
+  const percentText = document.getElementById("community-upload-percent-text");
+  const statusText = document.getElementById("community-upload-status-text");
+  const errorBox = document.getElementById("community-upload-error-box");
 
   const content = contentEl ? contentEl.value.trim() : "";
   const title = titleEl ? titleEl.value.trim() : "";
   const chordsPreview = chordsPreviewEl ? chordsPreviewEl.value.trim() : "";
-  const audioDemoUrl = audioDemoEl ? audioDemoEl.value.trim() : "";
-  let imageUrl = "";
+  const externalMediaUrl = mediaUrlEl ? mediaUrlEl.value.trim() : "";
 
-  const hasFile = fileInput && fileInput.files && fileInput.files.length > 0;
-  if (!content && !hasFile && !chordsPreview) {
-    alert("Por favor, escreva uma mensagem, anexe uma foto ou insira uma cifra.");
+  if (errorBox) {
+    clearUploadErrorUI(errorBox);
+  }
+
+  // Verifica se há algo a publicar
+  if (!content && !pendingCommunityMedia && !externalMediaUrl && !chordsPreview) {
+    alert("Por favor, digite uma mensagem, anexe uma mídia (foto, vídeo ou música) ou insira uma cifra.");
     return;
   }
 
-  // Upload de mídia se houver
-  if (hasFile) {
-    const file = fileInput.files[0];
+  let imageUrl = "";
+  let videoUrl = "";
+  let audioUrl = "";
+  let audioTitle = "";
+  let mediaUploadInfo = null;
+
+  // Upload no Firebase Storage com uploadBytesResumable, progresso e mensagens reais
+  if (pendingCommunityMedia && pendingCommunityMedia.file) {
+    if (!currentUser) {
+      if (typeof window.showAuthRequiredModal === "function") {
+        window.showAuthRequiredModal("Upload de Mídia", "Conecte-se com sua conta Virtuo para enviar fotos, vídeos e músicas.");
+      } else {
+        alert("Autenticação necessária: Conecte-se com sua conta para enviar fotos, vídeos e músicas.");
+      }
+      return;
+    }
+
+    if (progressWrap) progressWrap.style.display = "block";
+    if (progressBar) progressBar.style.width = "0%";
+    if (percentText) percentText.textContent = "0%";
+    if (statusText) statusText.textContent = "Iniciando upload seguro...";
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Enviando mídia...";
+    }
+
+    // Reseta milestones visuais
+    [0, 25, 50, 75, 100].forEach(m => {
+      const el = document.getElementById(`milestone-${m}`);
+      if (el) {
+        el.style.color = "#94a3b8";
+        el.style.fontWeight = "normal";
+      }
+    });
+
+    // Verificação offline inteligente (Bloco 8)
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      if (statusText) {
+        statusText.textContent = "Dispositivo offline. Salvando localmente...";
+        statusText.style.color = "#F5C542";
+      }
+      try {
+        await savePendingUpload({
+          file: pendingCommunityMedia.file,
+          type: pendingCommunityMedia.type,
+          uid: currentUser.uid,
+          postPayload: {
+            content: content || (title ? title : "Postagem offline"),
+            title: title || null,
+            type: selectedPostTypeForCreate || (pendingCommunityMedia.type === "photo" ? "foto" : pendingCommunityMedia.type === "video" ? "video" : "musica")
+          }
+        });
+        if (typeof VirtuoToast !== "undefined") {
+          VirtuoToast.info("Você está offline. Mídia salva com segurança no dispositivo. Pendente de envio.");
+        }
+        window.clearCommunityMediaAttachment();
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = "Publicar no Feed";
+        }
+        return;
+      } catch (idbErr) {
+        console.warn("[handleCreatePostV2] Erro ao gravar no IndexedDB:", idbErr);
+      }
+    }
+
     try {
-      if (submitBtn) submitBtn.textContent = "Enviando arquivo...";
-      imageUrl = await uploadImageFile(file, `community/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`);
+      let uploadRes;
+      const progressCb = (percent, label) => {
+        if (label === "Reconectando...") {
+          if (statusText) {
+            statusText.textContent = "Reconectando...";
+            statusText.style.color = "#F5C542";
+          }
+          return;
+        }
+        if (progressBar) progressBar.style.width = `${percent}%`;
+        if (percentText) percentText.textContent = `${percent}%`;
+        if (statusText) {
+          statusText.textContent = percent < 100 ? `Enviando... ${percent}%` : "Processando mídia...";
+          statusText.style.color = "#7EE7FF";
+        }
+      };
+
+      const milestoneCb = (m) => {
+        const mEl = document.getElementById(`milestone-${m}`);
+        if (mEl) {
+          mEl.style.color = "#7EE7FF";
+          mEl.style.fontWeight = "800";
+        }
+      };
+
+      if (pendingCommunityMedia.type === "photo") {
+        uploadRes = await uploadImage(pendingCommunityMedia.file, currentUser.uid, {
+          onProgress: progressCb,
+          onMilestone: milestoneCb,
+          maxRetries: 3
+        });
+        imageUrl = uploadRes.downloadURL;
+      } else if (pendingCommunityMedia.type === "video") {
+        uploadRes = await uploadVideo(pendingCommunityMedia.file, currentUser.uid, {
+          onProgress: progressCb,
+          onMilestone: milestoneCb,
+          maxRetries: 3
+        });
+        videoUrl = uploadRes.downloadURL;
+      } else {
+        uploadRes = await uploadAudio(pendingCommunityMedia.file, currentUser.uid, {
+          onProgress: progressCb,
+          onMilestone: milestoneCb,
+          maxRetries: 3
+        });
+        audioUrl = uploadRes.downloadURL;
+        audioTitle = pendingCommunityMedia.file.name;
+      }
+
+      mediaUploadInfo = {
+        downloadUrl: uploadRes.downloadURL,
+        storagePath: uploadRes.fullPath,
+        mediaType: pendingCommunityMedia.type,
+        categoria: pendingCommunityMedia.type === "photo" ? "photos" : pendingCommunityMedia.type === "video" ? "videos" : "audio",
+        metadata: uploadRes.metadata
+      };
+
+      // Conclusão com sucesso (Bloco 6)
+      if (statusText) {
+        statusText.textContent = "✓ Upload concluído.";
+        statusText.style.color = "#4ade80";
+      }
+      if (progressBar) progressBar.style.width = "100%";
+      if (percentText) percentText.textContent = "100%";
+      const m100 = document.getElementById("milestone-100");
+      if (m100) {
+        m100.style.color = "#4ade80";
+        m100.style.fontWeight = "800";
+      }
     } catch (uploadErr) {
-      console.warn("Aviso upload de imagem no Storage:", uploadErr);
-      alert("Aviso: Falha ao enviar mídia para o Storage. A publicação continuará.");
+      console.error("[Virtuo Media Upload Error]:", uploadErr);
+      const friendlyMsg = getFriendlyErrorMessage(uploadErr);
+      if (errorBox) {
+        renderUploadErrorUI(errorBox, uploadErr, {
+          title: uploadErr.stage === "get_download_url" ? "Falha ao obter URL de download" : "Falha no envio de mídia"
+        });
+      }
+      if (typeof VirtuoToast !== "undefined") {
+        VirtuoToast.warning(friendlyMsg);
+      }
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Publicar no Feed";
+      }
+      // NUNCA falhar silenciosamente: aborta criação para usuário corrigir
+      return;
     } finally {
-      if (submitBtn) submitBtn.textContent = "Publicar no Feed";
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Publicar no Feed";
+      }
     }
   }
 
@@ -717,24 +1074,56 @@ window.handleCreatePostV2 = async () => {
   const authorPhoto = currentUser && currentUser.photoURL ? currentUser.photoURL : (userProfile?.photoURL || "");
 
   const postPayload = {
-    content: content || (title ? title : "Compartilhou uma atualização no Virtuo Feed."),
+    content: content || (title ? title : (audioTitle ? `Compartilhou a faixa ${audioTitle}` : "Compartilhou uma mídia no Virtuo Feed.")),
     title: title || null,
-    type: selectedPostTypeForCreate || "texto",
+    type: selectedPostTypeForCreate || (videoUrl ? "video" : (audioUrl ? "musica" : (imageUrl ? "foto" : "texto"))),
     imageUrl,
+    videoUrl,
+    audioUrl,
+    audioTitle,
+    mediaUrl: externalMediaUrl || null,
+    storagePath: mediaUploadInfo ? mediaUploadInfo.storagePath : null,
+    mediaType: mediaUploadInfo ? mediaUploadInfo.mediaType : null,
+    mediaCategory: mediaUploadInfo ? mediaUploadInfo.categoria : null,
+    mediaReference: mediaUploadInfo || null,
     chordsPreview: chordsPreview || null,
-    audioDemoUrl: audioDemoUrl || null,
     authorName,
     authorRole: role,
     authorPhoto
   };
 
-  await CommunityService.createPost(postPayload, currentUser ? currentUser.uid : null);
+  try {
+    await CommunityService.createPost(postPayload, currentUser ? currentUser.uid : null);
+  } catch (postErr) {
+    console.error("[handleCreatePostV2] Erro ao salvar post no Firestore:", postErr);
+    postErr.stage = "firestore_save";
+    const friendlyMsg = getFriendlyErrorMessage(postErr);
+    if (errorBox) {
+      renderUploadErrorUI(errorBox, postErr, {
+        title: "Falha ao salvar publicação no Firestore"
+      });
+    }
+    if (typeof VirtuoToast !== "undefined") {
+      VirtuoToast.warning(friendlyMsg);
+    }
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Publicar no Feed";
+    }
+    return;
+  }
+
+  // Libera memória de preview do Safari / iPhone e reseta formulário
+  window.clearCommunityMediaAttachment();
 
   if (contentEl) contentEl.value = "";
   if (titleEl) titleEl.value = "";
-  if (fileInput) fileInput.value = "";
+  if (mediaUrlEl) mediaUrlEl.value = "";
   if (chordsPreviewEl) chordsPreviewEl.value = "";
-  if (audioDemoEl) audioDemoEl.value = "";
+
+  if (typeof VirtuoToast !== "undefined") {
+    VirtuoToast.success("Publicado com sucesso no Virtuo Feed!");
+  }
 
   await loadCommunityPosts();
 };
@@ -1490,6 +1879,78 @@ window.activateCelestialPlan = async () => {
   renderCurrentScreen();
 };
 
+window.handleProfilePhotoUpload = async (input) => {
+  if (!input || !input.files || !input.files[0] || !currentUser) return;
+  const file = input.files[0];
+  const progWrap = document.getElementById('edit-profile-photo-progress');
+  const progBar = document.getElementById('edit-profile-photo-bar');
+  const progPct = document.getElementById('edit-profile-photo-pct');
+
+  try {
+    validateMediaFile(file, 'foto');
+    if (progWrap) progWrap.style.display = 'block';
+
+    const result = await uploadMediaFile({
+      file,
+      uid: currentUser.uid,
+      categoria: 'foto',
+      mediaType: 'foto',
+      onProgress: (pct) => {
+        if (progBar) progBar.style.width = `${pct}%`;
+        if (progPct) progPct.textContent = `${pct}%`;
+      }
+    });
+
+    const urlInput = document.getElementById('edit-profile-photo');
+    if (urlInput) {
+      urlInput.value = result.downloadUrl;
+      urlInput.dataset.storagePath = result.storagePath;
+    }
+    if (progWrap) progWrap.style.display = 'none';
+    VirtuoToast.success("Foto enviada com sucesso!");
+  } catch (err) {
+    if (progWrap) progWrap.style.display = 'none';
+    const friendly = getFriendlyErrorMessage(err);
+    VirtuoToast.warning(friendly);
+  }
+};
+
+window.handleCommunityProfilePhotoUpload = async (input) => {
+  if (!input || !input.files || !input.files[0] || !currentUser) return;
+  const file = input.files[0];
+  const progWrap = document.getElementById('prof-photo-upload-prog');
+  const progBar = document.getElementById('prof-photo-bar');
+  const progPct = document.getElementById('prof-photo-pct');
+
+  try {
+    validateMediaFile(file, 'foto');
+    if (progWrap) progWrap.style.display = 'block';
+
+    const result = await uploadMediaFile({
+      file,
+      uid: currentUser.uid,
+      categoria: 'foto',
+      mediaType: 'foto',
+      onProgress: (pct) => {
+        if (progBar) progBar.style.width = `${pct}%`;
+        if (progPct) progPct.textContent = `${pct}%`;
+      }
+    });
+
+    const urlInput = document.getElementById('prof-photo-url');
+    if (urlInput) {
+      urlInput.value = result.downloadUrl;
+      urlInput.dataset.storagePath = result.storagePath;
+    }
+    if (progWrap) progWrap.style.display = 'none';
+    VirtuoToast.success("Foto enviada com sucesso!");
+  } catch (err) {
+    if (progWrap) progWrap.style.display = 'none';
+    const friendly = getFriendlyErrorMessage(err);
+    VirtuoToast.warning(friendly);
+  }
+};
+
 window.toggleEditProfileForm = () => {
   isEditProfileOpen = !isEditProfileOpen;
   renderCurrentScreen();
@@ -1947,6 +2408,37 @@ const screens = {
   },
 
   get library() {
+    const navDivisionHtml = renderLibraryDivisionNav(libraryDivision, privateBandSongsList.length);
+
+    if (libraryDivision === "private") {
+      const curBand = activeBand || (bandsList && bandsList[0]) || { id: "band-alianca-v2", name: "Ministério Aliança", adminId: currentUser?.uid || "offline-user" };
+      const isAuth = isUserAuthorizedForPrivateBand(currentUser, userProfile, curBand);
+      const filtered = getFilteredPrivateBandSongs();
+      const isOwnerOrLeader = !currentUser || curBand.adminId === currentUser?.uid || curBand.ownerId === currentUser?.uid || isUserAdmin(currentUser, userProfile);
+
+      let modalsHtml = "";
+      if (isAddPrivateSongModalOpen) {
+        modalsHtml += renderAddPrivateSongModal({ songToEdit: null, activeBand: curBand });
+      }
+      if (isImportPrivateModalOpen) {
+        modalsHtml += renderImportPrivateModal();
+      }
+      if (isPublishWarningModalOpen && pendingPublishSong) {
+        modalsHtml += renderPublishWarningModal(pendingPublishSong);
+      }
+
+      return navDivisionHtml + renderPrivateRepertoireSection({
+        songs: privateBandSongsList,
+        filteredSongs: filtered,
+        searchQuery: privateSearchQuery,
+        categoryFilter: privateFilterCategory,
+        activeBand: curBand,
+        isAuthorized: isAuth,
+        currentUser,
+        isOwnerOrLeader
+      }) + modalsHtml;
+    }
+
     const isAdmin = isUserAdmin(currentUser, userProfile);
     const offlineRecent = SongsRepository.getOfflineRecentSongs();
     const allList = liveSongs.length > 0 ? liveSongs : (offlineRecent.length > 0 ? offlineRecent : DEMO_SONGS);
@@ -1974,7 +2466,7 @@ const screens = {
       </div>
     `).join("");
 
-    return `
+    return navDivisionHtml + `
       <section class="glass">
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
           <div style="display:flex; align-items:center; gap:8px;">
@@ -2054,7 +2546,40 @@ const screens = {
             </div>
             <div>
               <label style="font-size:11px; color:#94a3b8; display:block; margin-bottom:4px;">Faixa de Áudio / Ensaio (Upload)</label>
-              <input type="file" id="new-song-audio-file" accept="audio/*" class="form-input" style="padding:6px; font-size:12px; cursor:pointer;" />
+              <input 
+                type="file" 
+                id="new-song-audio-file" 
+                accept="audio/*" 
+                class="form-input" 
+                style="padding:6px; font-size:12px; cursor:pointer;" 
+                onchange="window.handleSongAudioPreview(this, 'new')"
+              />
+              <!-- Prévia Dinâmica da Música -->
+              <div id="new-song-audio-preview-wrap" style="display:none; margin-top:8px; padding:8px 10px; background:rgba(126,231,255,0.06); border-radius:8px; border:1px solid rgba(126,231,255,0.2);">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                  <span id="new-song-audio-name" style="font-size:11px; color:#7EE7FF; font-weight:600; word-break:break-all;"></span>
+                  <button type="button" class="tag-btn" style="color:#ef4444; font-size:10px; padding:1px 6px;" onclick="window.clearSongAudioPreview('new')">✕ Remover</button>
+                </div>
+                <audio id="new-song-audio-player" controls style="width:100%; height:32px; outline:none;"></audio>
+              </div>
+              <!-- Barra de Progresso 0% 25% 50% 75% 100% -->
+              <div id="new-song-upload-progress" style="display:none; margin-top:8px; padding:6px 8px; background:rgba(0,0,0,0.3); border-radius:6px; border:1px solid rgba(126,231,255,0.2);">
+                <div style="display:flex; justify-content:space-between; font-size:10px; color:#7EE7FF; margin-bottom:3px;">
+                  <span>Enviando áudio:</span>
+                  <span id="new-song-progress-text">0%</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-size:9px; color:#94a3b8; margin-bottom:3px;">
+                  <span id="new-song-ms-0">0%</span>
+                  <span id="new-song-ms-25">25%</span>
+                  <span id="new-song-ms-50">50%</span>
+                  <span id="new-song-ms-75">75%</span>
+                  <span id="new-song-ms-100">100%</span>
+                </div>
+                <div style="width:100%; height:6px; background:rgba(255,255,255,0.1); border-radius:3px; overflow:hidden;">
+                  <div id="new-song-progress-bar" style="width:0%; height:100%; background:linear-gradient(90deg, #7EE7FF, #38bdf8); transition:width 0.2s;"></div>
+                </div>
+              </div>
+              <div id="new-song-audio-error" style="display:none; margin-top:4px; font-size:11px; color:#fca5a5;"></div>
             </div>
           </div>
 
@@ -2096,19 +2621,32 @@ const screens = {
       return screens.library;
     }
 
+    const isPrivateSong = activeSong.visibility === "private" || activeSong.contentScope === "band";
     const isAdmin = isUserAdmin(currentUser, userProfile);
-    const canManageSong = !!(currentUser && (activeSong.createdBy === currentUser.uid || isAdmin));
-    const originalKey = activeSong.originalKey || "G";
+    const canManageSong = isPrivateSong || !!(currentUser && (activeSong.createdBy === currentUser.uid || isAdmin));
+    const originalKey = activeSong.originalKey || activeSong.key || "G";
     const currentKey = calculateKey(originalKey, transposeOffset);
     const displayedChords = isEasyPlay 
-      ? getEasyPlayCifra(activeSong, transposeOffset)
+      ? (activeSong.easyChords || getEasyPlayCifra(activeSong, transposeOffset))
       : transposeChordSheet(activeSong.chords || "", transposeOffset);
 
     return `
       <section class="glass cifra-viewer">
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-          <button class="tag-btn" onclick="show('library')">← Voltar à Biblioteca</button>
-          <div style="display:flex; gap:6px; align-items:center;">
+          <button class="tag-btn" onclick="${isPrivateSong ? "window.openPrivateRepertoireFromSong()" : "show('library')"}">
+            ${isPrivateSong ? "← Voltar ao Repertório Privado" : "← Voltar à Biblioteca"}
+          </button>
+          <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+            ${isPrivateSong ? `
+              <span class="pill" style="background:rgba(245,197,66,0.15); border:1px solid rgba(245,197,66,0.4); color:#F5C542; font-size:11px; font-weight:700;">
+                🔒 REPERTÓRIO DA BANDA • PRIVADO
+              </span>
+            ` : ''}
+            ${isPrivateSong && activeSong.hymnNumber ? `
+              <span class="pill" style="background:rgba(126,231,255,0.15); border:1px solid rgba(126,231,255,0.4); color:#7EE7FF; font-size:11px; font-weight:700;">
+                Hino ${escapeHtml(activeSong.hymnNumber)}
+              </span>
+            ` : ''}
             ${activeSong.capo && Number(activeSong.capo) > 0 ? `
               <span class="pill" style="background:rgba(245,158,11,0.15); border:1px solid rgba(245,158,11,0.4); color:#fde047; font-size:11px;">
                 🎸 CAPO ${activeSong.capo}ª casa${activeSong.shapeKey ? ` (Forma ${escapeHtml(calculateKey(activeSong.shapeKey, transposeOffset))})` : ''}
@@ -2120,7 +2658,7 @@ const screens = {
 
         <h2 style="margin-top:12px;">${escapeHtml(activeSong.title)}</h2>
         <p class="subtitle" style="margin-bottom:14px;">
-          ${escapeHtml(activeSong.artist || "Virtuo Worship")}${activeSong.composer ? ` • Comp. ${escapeHtml(activeSong.composer)}` : ''} • ${activeSong.bpm || 74} BPM • ${escapeHtml(activeSong.difficulty || "Fácil")}${activeSong.capo && Number(activeSong.capo) > 0 ? ` • Capo ${activeSong.capo}ª casa${activeSong.shapeKey ? ` (Forma ${escapeHtml(calculateKey(activeSong.shapeKey, transposeOffset))})` : ''}` : ''}
+          ${escapeHtml(activeSong.artist || (isPrivateSong ? "Repertório da Banda" : "Virtuo Worship"))}${activeSong.composer ? ` • Comp. ${escapeHtml(activeSong.composer)}` : ''} • ${activeSong.bpm || 74} BPM • ${escapeHtml(activeSong.difficulty || "Fácil")}${activeSong.capo && Number(activeSong.capo) > 0 ? ` • Capo ${activeSong.capo}ª casa${activeSong.shapeKey ? ` (Forma ${escapeHtml(calculateKey(activeSong.shapeKey, transposeOffset))})` : ''}` : ''}
         </p>
 
         <!-- Transposer & Mode Toolbar (Apple-Class / Celestial) -->
@@ -2156,7 +2694,10 @@ const screens = {
             </div>
 
             <!-- Ações de Palco e Metrônomo -->
-            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+              <button class="button primary" onclick="window.toggleRehearsalHud()" style="padding:6px 14px; font-size:11px; font-weight:700; background:linear-gradient(135deg, #7EE7FF 0%, #38bdf8 100%); color:#07101F; display:inline-flex; align-items:center; gap:6px; border-radius:10px;">
+                🥁 ENSAIAR
+              </button>
               <button class="tag-btn" onclick="window.useSongBpmAndOpenMetronome(${activeSong.bpm || 74})" title="Usar BPM desta música no Metrônomo" style="display:inline-flex; align-items:center; gap:6px;">
                 🥁 Usar BPM (${activeSong.bpm || 74})
               </button>
@@ -2188,8 +2729,19 @@ const screens = {
           </div>
         </div>
 
+        ${activeRehearsalHudOpen ? renderRehearsalHud({
+          song: activeSong,
+          currentKey,
+          transposeOffset,
+          isEasyPlay,
+          activeSection: activeRehearsalSection,
+          isMetronomePlaying: virtuoMetronome?.isPlaying || false,
+          bpm: activeSong.bpm || 74
+        }) : ''}
+
         <div style="margin-bottom:12px; font-size:12px; color:#94a3b8;">
           <strong>Estrutura:</strong> ${escapeHtml(activeSong.structure || "Intro • Verso • Refrão • Final")}
+          ${activeRehearsalSection ? ` • <span style="color:#7EE7FF; font-weight:700;">Seção ativa de ensaio: [${escapeHtml(activeRehearsalSection)}]</span>` : ''}
         </div>
 
         <!-- Cifra Visualizer Preformatted -->
@@ -2222,7 +2774,28 @@ const screens = {
           ` : ''}
         </div>
 
-        ${canManageSong ? `
+        ${isPrivateSong ? `
+          <!-- Ações de Gerenciamento do Louvor Privado da Banda -->
+          <div style="margin-top:16px; padding:14px; background:rgba(245,197,66,0.06); border:1px solid rgba(245,197,66,0.3); border-radius:14px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+              <span style="font-size:12px; color:#F5C542; font-weight:700;">GERENCIAR LOUVOR PRIVADO DA BANDA</span>
+              <span class="pill" style="font-size:10px; padding:2px 6px; background:rgba(245,197,66,0.15); color:#F5C542; border:1px solid rgba(245,197,66,0.3);">
+                🔒 PRIVADO
+              </span>
+            </div>
+            <div class="row" style="gap:8px; flex-wrap:wrap;">
+              <button class="button secondary" style="flex:1; min-width:140px; font-size:12px;" onclick="window.openEditPrivateSongModal('${activeSong.id}')">
+                ✏️ Editar Louvor
+              </button>
+              <button class="button secondary" style="flex:1; min-width:140px; font-size:12px; border-color:#F5C542; color:#F5C542;" onclick="window.attemptPublishPrivateSong('${activeSong.id}')">
+                ⚠️ Solicitar Publicação Oficial
+              </button>
+              <button class="button outline-danger" style="flex:1; min-width:140px; font-size:12px;" onclick="window.confirmDeletePrivateSong('${activeSong.id}')">
+                🗑️ Excluir do Repertório Privado
+              </button>
+            </div>
+          </div>
+        ` : (canManageSong ? `
           <!-- Ações do Criador / Administrador da Música -->
           <div style="margin-top:16px; padding:14px; background:rgba(126,231,255,0.04); border:1px solid rgba(126,231,255,0.18); border-radius:14px;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
@@ -2243,7 +2816,7 @@ const screens = {
               </button>
             </div>
           </div>
-        ` : ''}
+        ` : '')}
 
         ${editingSong && editingSong.id === activeSong.id ? `
           <!-- Formulário de Edição Inline -->
@@ -2282,8 +2855,41 @@ const screens = {
               </div>
               <div>
                 <label style="font-size:11px; color:#94a3b8; display:block; margin-bottom:4px;">Substituir/Anexar Áudio (Upload)</label>
-                <input type="file" id="edit-song-audio-file" accept="audio/*" class="form-input" style="padding:6px; font-size:12px; cursor:pointer;" />
-                ${editingSong.audioUrl ? `<span style="font-size:10px; color:#7EE7FF; display:block; margin-top:3px;">Áudio atual anexado</span>` : ''}
+                <input 
+                  type="file" 
+                  id="edit-song-audio-file" 
+                  accept="audio/*" 
+                  class="form-input" 
+                  style="padding:6px; font-size:12px; cursor:pointer;" 
+                  onchange="window.handleSongAudioPreview(this, 'edit')"
+                />
+                ${editingSong.audioUrl ? `<span style="font-size:10px; color:#7EE7FF; display:block; margin-top:3px;">✓ Áudio atual anexado</span>` : ''}
+                <!-- Prévia Dinâmica da Música -->
+                <div id="edit-song-audio-preview-wrap" style="display:none; margin-top:8px; padding:8px 10px; background:rgba(126,231,255,0.06); border-radius:8px; border:1px solid rgba(126,231,255,0.2);">
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                    <span id="edit-song-audio-name" style="font-size:11px; color:#7EE7FF; font-weight:600; word-break:break-all;"></span>
+                    <button type="button" class="tag-btn" style="color:#ef4444; font-size:10px; padding:1px 6px;" onclick="window.clearSongAudioPreview('edit')">✕ Remover</button>
+                  </div>
+                  <audio id="edit-song-audio-player" controls style="width:100%; height:32px; outline:none;"></audio>
+                </div>
+                <!-- Barra de Progresso 0% 25% 50% 75% 100% -->
+                <div id="edit-song-upload-progress" style="display:none; margin-top:8px; padding:6px 8px; background:rgba(0,0,0,0.3); border-radius:6px; border:1px solid rgba(126,231,255,0.2);">
+                  <div style="display:flex; justify-content:space-between; font-size:10px; color:#7EE7FF; margin-bottom:3px;">
+                    <span>Enviando novo áudio:</span>
+                    <span id="edit-song-progress-text">0%</span>
+                  </div>
+                  <div style="display:flex; justify-content:space-between; font-size:9px; color:#94a3b8; margin-bottom:3px;">
+                    <span id="edit-song-ms-0">0%</span>
+                    <span id="edit-song-ms-25">25%</span>
+                    <span id="edit-song-ms-50">50%</span>
+                    <span id="edit-song-ms-75">75%</span>
+                    <span id="edit-song-ms-100">100%</span>
+                  </div>
+                  <div style="width:100%; height:6px; background:rgba(255,255,255,0.1); border-radius:3px; overflow:hidden;">
+                    <div id="edit-song-progress-bar" style="width:0%; height:100%; background:linear-gradient(90deg, #7EE7FF, #38bdf8); transition:width 0.2s;"></div>
+                  </div>
+                </div>
+                <div id="edit-song-audio-error" style="display:none; margin-top:4px; font-size:11px; color:#fca5a5;"></div>
               </div>
             </div>
 
@@ -2363,6 +2969,8 @@ const screens = {
             Módulo conectado para sincronização em rede de ensaio, metrônomo integrado e análise harmônica estrutural.
           </p>
         </div>
+
+        ${isPublishWarningModalOpen && pendingPublishSong ? renderPublishWarningModal(pendingPublishSong) : ''}
       </section>
     `;
   },
@@ -2527,8 +3135,23 @@ const screens = {
                 <div style="margin-top:10px; padding:12px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.08); border-radius:12px;">
                   <label style="font-size:11px; color:#94a3b8; display:block; margin-bottom:4px;">Nome de Exibição</label>
                   <input type="text" id="edit-profile-name" class="form-input" value="${escapeHtml(name)}" placeholder="Seu nome" />
-                  <label style="font-size:11px; color:#94a3b8; display:block; margin-top:8px; margin-bottom:4px;">URL da Foto de Perfil</label>
-                  <input type="url" id="edit-profile-photo" class="form-input" value="${escapeHtml(currentUser?.photoURL || userProfile?.photoURL || '')}" placeholder="https://..." />
+                  <label style="font-size:11px; color:#94a3b8; display:block; margin-top:8px; margin-bottom:4px;">Foto de Perfil</label>
+                  <div style="display:flex; gap:8px; align-items:center;">
+                    <input type="url" id="edit-profile-photo" class="form-input" value="${escapeHtml(currentUser?.photoURL || userProfile?.photoURL || '')}" placeholder="https://..." style="flex:1;" />
+                    <button type="button" class="button secondary" style="font-size:11px; padding:7px 10px; white-space:nowrap;" onclick="document.getElementById('edit-profile-file-input').click()">
+                      📷 Enviar Foto
+                    </button>
+                    <input type="file" id="edit-profile-file-input" accept="image/*" style="display:none;" onchange="window.handleProfilePhotoUpload(this)" />
+                  </div>
+                  <div id="edit-profile-photo-progress" style="display:none; margin-top:6px; padding:6px; background:rgba(0,0,0,0.3); border-radius:6px;">
+                    <div style="display:flex; justify-content:space-between; font-size:10px; color:#7EE7FF; margin-bottom:2px;">
+                      <span>Enviando foto:</span>
+                      <span id="edit-profile-photo-pct">0%</span>
+                    </div>
+                    <div style="width:100%; height:4px; background:rgba(255,255,255,0.1); border-radius:2px; overflow:hidden;">
+                      <div id="edit-profile-photo-bar" style="width:0%; height:100%; background:#7EE7FF; transition:width 0.2s;"></div>
+                    </div>
+                  </div>
                   <label style="font-size:11px; color:#94a3b8; display:block; margin-top:8px; margin-bottom:4px;">Bio / Ministério de Louvor</label>
                   <textarea id="edit-profile-bio" class="form-input" rows="2" placeholder="Ex: Ministro de Louvor na Igreja">${escapeHtml(userProfile?.bio || '')}</textarea>
                   <button class="button primary" style="width:100%; margin-top:10px; padding:8px;" onclick="window.saveUserProfileEdits()">
@@ -2998,6 +3621,8 @@ window.handleGoogleLogin = async () => {
 
 window.handleLogout = async () => {
   try {
+    PrivateBandSongsService.clearAllPrivateCaches();
+    privateBandSongsList = [];
     await logoutUser();
     authFeedback = { text: "Sessão encerrada com sucesso.", type: "success" };
   } catch (err) {
@@ -3074,7 +3699,7 @@ window.toggleUserInstrument = async (inst) => {
 // GLOBAL UI HANDLERS: SONGS & HARMONICS
 // -------------------------------------------------------------
 window.openSongById = (songId) => {
-  const song = liveSongs.find(s => s.id === songId || s.title === songId) || DEMO_SONGS.find(s => s.id === songId) || SongsRepository.getOfflineRecentSongs().find(s => s.id === songId);
+  const song = privateBandSongsList.find(s => s.id === songId) || liveSongs.find(s => s.id === songId || s.title === songId) || DEMO_SONGS.find(s => s.id === songId) || SongsRepository.getOfflineRecentSongs().find(s => s.id === songId);
   if (song) {
     activeSong = song;
     SongsRepository.cacheSongOffline(song);
@@ -3171,6 +3796,68 @@ window.openMinisterModeQuick = () => {
   virtuoMinister.open(activeSong, 0, false);
 };
 
+// Gerenciamento de Áudio de Repertório (Músicas)
+let pendingSongAudio = { new: null, edit: null };
+
+window.handleSongAudioPreview = (input, mode) => {
+  if (!input || !input.files || !input.files[0]) return;
+  const file = input.files[0];
+  const prefix = mode === 'edit' ? 'edit-song' : 'new-song';
+  const errorEl = document.getElementById(`${prefix}-audio-error`);
+  if (errorEl) {
+    clearUploadErrorUI(errorEl);
+  }
+
+  try {
+    validateMediaFile(file, 'audio');
+  } catch (err) {
+    err.stage = "validation";
+    if (errorEl) {
+      renderUploadErrorUI(errorEl, err, {
+        title: "Arquivo de áudio incompatível"
+      });
+    }
+    input.value = '';
+    if (typeof VirtuoToast !== 'undefined') VirtuoToast.warning(err.message);
+    return;
+  }
+
+  if (pendingSongAudio[mode] && pendingSongAudio[mode].previewUrl) {
+    globalPreviewManager.revokePreview(pendingSongAudio[mode].previewUrl);
+  }
+
+  const previewUrl = globalPreviewManager.createPreview(file);
+  pendingSongAudio[mode] = { file, previewUrl };
+
+  const wrapEl = document.getElementById(`${prefix}-audio-preview-wrap`);
+  const nameEl = document.getElementById(`${prefix}-audio-name`);
+  const playerEl = document.getElementById(`${prefix}-audio-player`);
+
+  if (nameEl) nameEl.textContent = `🎵 ${file.name} (${(file.size / (1024 * 1024)).toFixed(2)} MB)`;
+  if (playerEl) playerEl.src = previewUrl;
+  if (wrapEl) wrapEl.style.display = 'block';
+};
+
+window.clearSongAudioPreview = (mode) => {
+  if (pendingSongAudio[mode] && pendingSongAudio[mode].previewUrl) {
+    globalPreviewManager.revokePreview(pendingSongAudio[mode].previewUrl);
+  }
+  pendingSongAudio[mode] = null;
+  const prefix = mode === 'edit' ? 'edit-song' : 'new-song';
+  const inputEl = document.getElementById(`${prefix}-audio-file`);
+  if (inputEl) inputEl.value = '';
+  const wrapEl = document.getElementById(`${prefix}-audio-preview-wrap`);
+  if (wrapEl) wrapEl.style.display = 'none';
+  const playerEl = document.getElementById(`${prefix}-audio-player`);
+  if (playerEl) playerEl.src = '';
+  const progEl = document.getElementById(`${prefix}-upload-progress`);
+  if (progEl) progEl.style.display = 'none';
+  const errorEl = document.getElementById(`${prefix}-audio-error`);
+  if (errorEl) {
+    clearUploadErrorUI(errorEl);
+  }
+};
+
 window.toggleAddSongForm = () => {
   if (!currentUser) {
     window.showAuthRequiredModal("Cadastrar Nova Cifra", "Para adicionar e salvar cifras personalizadas no acervo do VIRTUO, conecte-se à sua conta.");
@@ -3201,23 +3888,90 @@ window.saveNewSong = async () => {
   const spotifyUrl = document.getElementById("new-song-spotify")?.value.trim() || "";
   const audioFileInput = document.getElementById("new-song-audio-file");
   const submitBtn = document.getElementById("new-song-submit-btn");
+  const progEl = document.getElementById("new-song-upload-progress");
+  const progBar = document.getElementById("new-song-progress-bar");
+  const progText = document.getElementById("new-song-progress-text");
+  const errorEl = document.getElementById("new-song-audio-error");
 
   if (!title) {
     alert("Por favor, digite o título da música.");
     return;
   }
 
+  if (errorEl) {
+    clearUploadErrorUI(errorEl);
+  }
+
   let audioUrl = "";
-  if (audioFileInput && audioFileInput.files && audioFileInput.files[0]) {
-    const file = audioFileInput.files[0];
+  let audioUploadInfo = null;
+  const fileToUpload = (pendingSongAudio.new && pendingSongAudio.new.file) || (audioFileInput && audioFileInput.files && audioFileInput.files[0]);
+
+  if (fileToUpload) {
+    if (progEl) progEl.style.display = "block";
+    if (progBar) progBar.style.width = "0%";
+    if (progText) progText.textContent = "0%";
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Enviando áudio...";
+    }
+
+    // Reseta milestones
+    [0, 25, 50, 75, 100].forEach(m => {
+      const el = document.getElementById(`new-song-ms-${m}`);
+      if (el) {
+        el.style.color = "#94a3b8";
+        el.style.fontWeight = "normal";
+      }
+    });
+
     try {
-      if (submitBtn) submitBtn.textContent = "Enviando áudio...";
-      audioUrl = await uploadAudioFile(file, `audios/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`);
+      audioUploadInfo = await uploadMediaFile({
+        file: fileToUpload,
+        uid: currentUser.uid,
+        categoria: "audio",
+        mediaType: "audio",
+        onProgress: (percent) => {
+          if (progBar) progBar.style.width = `${percent}%`;
+          if (progText) progText.textContent = `${percent}%`;
+        },
+        onMilestone: (m) => {
+          const el = document.getElementById(`new-song-ms-${m}`);
+          if (el) {
+            el.style.color = "#7EE7FF";
+            el.style.fontWeight = "800";
+          }
+        }
+      });
+      audioUrl = audioUploadInfo.downloadUrl;
+      if (progText) progText.textContent = "✓ Enviado com sucesso.";
+      if (progBar) progBar.style.width = "100%";
+      const newMs100 = document.getElementById("new-song-ms-100");
+      if (newMs100) {
+        newMs100.style.color = "#4ade80";
+        newMs100.style.fontWeight = "800";
+      }
     } catch (uploadErr) {
-      console.warn("Aviso no upload de áudio:", uploadErr);
-      alert("Aviso: Falha ao enviar arquivo de áudio para o Storage. A música continuará sem áudio.");
+      console.error("[saveNewSong] Erro no upload de áudio:", uploadErr);
+      const friendlyMsg = getFriendlyErrorMessage(uploadErr);
+      if (errorEl) {
+        renderUploadErrorUI(errorEl, uploadErr, {
+          title: uploadErr.stage === "get_download_url" ? "Falha ao obter link do áudio" : "Falha no envio do áudio"
+        });
+      }
+      if (typeof VirtuoToast !== "undefined") {
+        VirtuoToast.warning(friendlyMsg);
+      }
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Salvar no Firestore";
+      }
+      // NUNCA falhar silenciosamente: aborta salvamento para usuário corrigir o arquivo
+      return;
     } finally {
-      if (submitBtn) submitBtn.textContent = "Salvar no Firestore";
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Salvar no Firestore";
+      }
     }
   }
 
@@ -3232,17 +3986,27 @@ window.saveNewSong = async () => {
     chords: chords || "[Intro] G  C  Em  D",
     easyChords: easyChords || chords || "[Intro] G  C  Em  D",
     audioUrl,
+    audioStoragePath: audioUploadInfo ? audioUploadInfo.storagePath : null,
+    audioMetadata: audioUploadInfo || null,
     youtubeUrl,
     spotifyUrl
   };
 
   try {
     await SongsRepository.createSong(songData, currentUser.uid);
+    window.clearSongAudioPreview('new');
     window.toggleAddSongForm();
     VirtuoToast.success("Música cadastrada com sucesso no acervo!");
   } catch (err) {
     console.warn("Erro ao salvar no Firestore via repositório:", err);
-    VirtuoToast.warning(formatFriendlyErrorMessage(err, "Não foi possível salvar a música no acervo."));
+    err.stage = "firestore_save";
+    const friendlyMsg = getFriendlyErrorMessage(err);
+    if (errorEl) {
+      renderUploadErrorUI(errorEl, err, {
+        title: "Falha ao salvar no Firestore"
+      });
+    }
+    VirtuoToast.warning(friendlyMsg);
   }
 };
 
@@ -3259,6 +4023,7 @@ window.openEditSongForm = (songId) => {
 };
 
 window.cancelEditSong = () => {
+  window.clearSongAudioPreview('edit');
   editingSong = null;
   renderCurrentScreen();
 };
@@ -3278,23 +4043,87 @@ window.saveEditedSong = async () => {
   const spotifyUrl = document.getElementById("edit-song-spotify")?.value.trim() || "";
   const audioFileInput = document.getElementById("edit-song-audio-file");
   const submitBtn = document.getElementById("edit-song-submit-btn");
+  const progEl = document.getElementById("edit-song-upload-progress");
+  const progBar = document.getElementById("edit-song-progress-bar");
+  const progText = document.getElementById("edit-song-progress-text");
+  const errorEl = document.getElementById("edit-song-audio-error");
 
   if (!title) {
     VirtuoToast.warning("Por favor, digite o título da música.");
     return;
   }
 
+  if (errorEl) {
+    clearUploadErrorUI(errorEl);
+  }
+
   let audioUrl = editingSong.audioUrl || "";
-  if (audioFileInput && audioFileInput.files && audioFileInput.files[0]) {
-    const file = audioFileInput.files[0];
+  let audioUploadInfo = null;
+  const fileToUpload = (pendingSongAudio.edit && pendingSongAudio.edit.file) || (audioFileInput && audioFileInput.files && audioFileInput.files[0]);
+
+  if (fileToUpload) {
+    if (progEl) progEl.style.display = "block";
+    if (progBar) progBar.style.width = "0%";
+    if (progText) progText.textContent = "0%";
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Enviando novo áudio...";
+    }
+
+    [0, 25, 50, 75, 100].forEach(m => {
+      const el = document.getElementById(`edit-song-ms-${m}`);
+      if (el) {
+        el.style.color = "#94a3b8";
+        el.style.fontWeight = "normal";
+      }
+    });
+
     try {
-      if (submitBtn) submitBtn.textContent = "Enviando novo áudio...";
-      audioUrl = await uploadAudioFile(file, `audios/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`);
+      audioUploadInfo = await uploadMediaFile({
+        file: fileToUpload,
+        uid: currentUser.uid,
+        categoria: "audio",
+        mediaType: "audio",
+        onProgress: (percent) => {
+          if (progBar) progBar.style.width = `${percent}%`;
+          if (progText) progText.textContent = `${percent}%`;
+        },
+        onMilestone: (m) => {
+          const el = document.getElementById(`edit-song-ms-${m}`);
+          if (el) {
+            el.style.color = "#7EE7FF";
+            el.style.fontWeight = "800";
+          }
+        }
+      });
+      audioUrl = audioUploadInfo.downloadUrl;
+      if (progText) progText.textContent = "✓ Enviado com sucesso.";
+      if (progBar) progBar.style.width = "100%";
+      const editMs100 = document.getElementById("edit-song-ms-100");
+      if (editMs100) {
+        editMs100.style.color = "#4ade80";
+        editMs100.style.fontWeight = "800";
+      }
     } catch (uploadErr) {
-      console.warn("Aviso no upload do áudio da edição:", uploadErr);
-      VirtuoToast.warning("Falha ao enviar arquivo de áudio. O áudio anterior foi mantido.");
+      console.error("[saveEditedSong] Erro no upload de áudio:", uploadErr);
+      const friendlyMsg = getFriendlyErrorMessage(uploadErr);
+      if (errorEl) {
+        renderUploadErrorUI(errorEl, uploadErr, {
+          title: uploadErr.stage === "get_download_url" ? "Falha ao obter link do áudio" : "Falha no envio do áudio"
+        });
+      }
+      VirtuoToast.warning(friendlyMsg);
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Salvar Alterações";
+      }
+      // NUNCA falhar silenciosamente
+      return;
     } finally {
-      if (submitBtn) submitBtn.textContent = "Salvar Alterações";
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Salvar Alterações";
+      }
     }
   }
 
@@ -3309,6 +4138,8 @@ window.saveEditedSong = async () => {
     chords: chords || "[Intro] G  C  Em  D",
     easyChords: easyChords || chords || "[Intro] G  C  Em  D",
     audioUrl,
+    audioStoragePath: audioUploadInfo ? audioUploadInfo.storagePath : (editingSong.audioStoragePath || null),
+    audioMetadata: audioUploadInfo || editingSong.audioMetadata || null,
     youtubeUrl,
     spotifyUrl
   };
@@ -3317,11 +4148,24 @@ window.saveEditedSong = async () => {
   try {
     await SongsRepository.updateSong(editingSong.id, updatedData, currentUser.uid, isAdmin);
     activeSong = { ...activeSong, ...updatedData };
+    window.clearSongAudioPreview('edit');
     editingSong = null;
     VirtuoToast.success("Música atualizada com sucesso!");
     renderCurrentScreen();
   } catch (err) {
-    VirtuoToast.warning(formatFriendlyErrorMessage(err, "Não foi possível atualizar a música."));
+    console.error("[saveEditedSong] Erro ao atualizar no Firestore via repositório:", err);
+    err.stage = "firestore_save";
+    const friendlyMsg = getFriendlyErrorMessage(err);
+    if (errorEl) {
+      renderUploadErrorUI(errorEl, err, {
+        title: "Falha ao salvar no Firestore"
+      });
+    }
+    VirtuoToast.warning(friendlyMsg);
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Salvar Alterações";
+    }
   }
 };
 
@@ -3570,3 +4414,541 @@ window.closeLegalModal = () => {
   const el = document.getElementById("virtuo-legal-modal-root");
   if (el) el.remove();
 };
+
+// =============================================================
+// REPERTÓRIO PRIVADO DA BANDA (CONTROLLERS & EVENT HANDLERS)
+// =============================================================
+
+function getFilteredPrivateBandSongs() {
+  const query = (privateSearchQuery || "").toLowerCase().trim();
+  let list = [...privateBandSongsList];
+
+  if (privateFilterCategory === "harpa-crista") {
+    list = list.filter(s => s.category === "harpa-crista" || !!s.hymnNumber);
+  } else if (privateFilterCategory === "outros") {
+    list = list.filter(s => s.category !== "harpa-crista" && !s.hymnNumber);
+  } else if (privateFilterCategory === "privado") {
+    list = list.filter(s => s.visibility === "private");
+  }
+
+  if (query) {
+    list = list.filter(s => {
+      const titleMatch = (s.title || "").toLowerCase().includes(query);
+      const numMatch = s.hymnNumber ? String(s.hymnNumber).toLowerCase().includes(query) : false;
+      const keyMatch = (s.originalKey || s.key || "").toLowerCase().includes(query);
+      const bpmMatch = String(s.bpm || "").includes(query);
+      const diffMatch = (s.difficulty || "").toLowerCase().includes(query);
+      const artistMatch = (s.artist || "").toLowerCase().includes(query);
+      return titleMatch || numMatch || keyMatch || bpmMatch || diffMatch || artistMatch;
+    });
+  }
+
+  return list.sort((a, b) => {
+    if (a.hymnNumber && b.hymnNumber) {
+      return Number(a.hymnNumber) - Number(b.hymnNumber);
+    }
+    if (a.hymnNumber) return -1;
+    if (b.hymnNumber) return 1;
+    return (b.createdAt || "").localeCompare(a.createdAt || "");
+  });
+}
+
+window.getFilteredPrivateBandSongs = getFilteredPrivateBandSongs;
+
+window.setLibraryDivision = (division) => {
+  libraryDivision = division === "private" ? "private" : "public";
+  if (libraryDivision === "private") {
+    window.loadPrivateBandSongs();
+  }
+  renderCurrentScreen();
+};
+
+window.loadPrivateBandSongs = async () => {
+  try {
+    const curBand = activeBand || (bandsList && bandsList[0]) || { id: "band-alianca-v2", name: "Ministério Aliança", adminId: currentUser?.uid || "offline-user" };
+    const songs = await PrivateBandSongsService.getBandSongs(curBand.id);
+    privateBandSongsList = songs || [];
+    renderCurrentScreen();
+  } catch (err) {
+    console.warn("Virtuo: erro ao carregar repertório privado da banda:", err);
+  }
+};
+
+window.handlePrivateSearch = (query) => {
+  privateSearchQuery = query || "";
+  renderCurrentScreen();
+  const input = document.getElementById("private-song-search-input");
+  if (input) {
+    input.focus();
+    input.selectionStart = input.selectionEnd = input.value.length;
+  }
+};
+
+window.setPrivateFilterCategory = (category) => {
+  privateFilterCategory = category;
+  renderCurrentScreen();
+};
+
+window.openPrivateSongById = (songId) => {
+  const song = privateBandSongsList.find(s => s.id === songId);
+  if (song) {
+    activeSong = song;
+    transposeOffset = 0;
+    isEasyPlay = false;
+    activeRehearsalHudOpen = false;
+    activeRehearsalSection = null;
+    currentScreen = "songDetail";
+    renderCurrentScreen();
+  }
+};
+
+window.openPrivateRepertoireFromSong = () => {
+  libraryDivision = "private";
+  show("library");
+};
+
+window.openAddPrivateSongModal = () => {
+  isAddPrivateSongModalOpen = true;
+  renderCurrentScreen();
+};
+
+window.closeAddPrivateSongModal = () => {
+  isAddPrivateSongModalOpen = false;
+  renderCurrentScreen();
+};
+
+window.openEditPrivateSongModal = (songId) => {
+  const song = privateBandSongsList.find(s => s.id === songId) || activeSong;
+  if (!song) return;
+  const curBand = activeBand || (bandsList && bandsList[0]) || { id: "band-alianca-v2", name: "Ministério Aliança", adminId: currentUser?.uid || "offline-user" };
+  const modalHtml = renderAddPrivateSongModal({ songToEdit: song, activeBand: curBand });
+  const existing = document.getElementById("private-song-modal-backdrop");
+  if (existing) existing.remove();
+  document.body.insertAdjacentHTML("beforeend", modalHtml);
+};
+
+window.savePrivateSong = async () => {
+  try {
+    const curBand = activeBand || (bandsList && bandsList[0]) || { id: "band-alianca-v2", name: "Ministério Aliança", adminId: currentUser?.uid || "offline-user" };
+    const idInput = document.getElementById("priv-song-id");
+    const numInput = document.getElementById("priv-song-number");
+    const titleInput = document.getElementById("priv-song-title");
+    const keyInput = document.getElementById("priv-song-key");
+    const bpmInput = document.getElementById("priv-song-bpm");
+    const timesigInput = document.getElementById("priv-song-timesig");
+    const capoInput = document.getElementById("priv-song-capo");
+    const diffInput = document.getElementById("priv-song-diff");
+    const catInput = document.getElementById("priv-song-category");
+    const structInput = document.getElementById("priv-song-structure");
+    const chordsInput = document.getElementById("priv-song-chords");
+    const lyricsInput = document.getElementById("priv-song-lyrics");
+    const notesInput = document.getElementById("priv-song-notes");
+
+    const title = titleInput ? titleInput.value.trim() : "";
+    if (!title) {
+      window.renderToast?.("Informe o título do louvor privado.", "error");
+      return;
+    }
+
+    const payload = {
+      title,
+      hymnNumber: numInput ? numInput.value.trim() : "",
+      originalKey: keyInput ? keyInput.value.trim() || "G" : "G",
+      key: keyInput ? keyInput.value.trim() || "G" : "G",
+      bpm: bpmInput ? Number(bpmInput.value) || 74 : 74,
+      timeSignature: timesigInput ? timesigInput.value.trim() || "4/4" : "4/4",
+      capo: capoInput ? Number(capoInput.value) || 0 : 0,
+      difficulty: diffInput ? diffInput.value : "Fácil",
+      category: catInput ? catInput.value : "harpa-crista",
+      structure: structInput ? structInput.value.trim() : "Intro • Verso • Refrão • Final",
+      chords: chordsInput ? chordsInput.value : "",
+      lyrics: lyricsInput ? lyricsInput.value : "",
+      sourceNote: notesInput ? notesInput.value.trim() : "",
+      // Segurança: flags privadas garantidas
+      visibility: "private",
+      contentScope: "band",
+      isDevelopmentContent: true,
+      publicLibrary: false,
+      bandId: curBand.id,
+      bandName: curBand.name,
+      ownerId: currentUser?.uid || "offline-user",
+      createdBy: currentUser?.uid || "offline-user"
+    };
+
+    const songId = idInput ? idInput.value : "";
+    if (songId) {
+      await PrivateBandSongsService.updateSong(songId, payload, currentUser?.uid);
+      window.renderToast?.("Louvor privado atualizado com sucesso!", "success");
+    } else {
+      await PrivateBandSongsService.createSong(payload, currentUser?.uid);
+      window.renderToast?.("Louvor privado salvo no repertório da banda!", "success");
+    }
+
+    window.closeAddPrivateSongModal();
+    const activeBackdrop = document.getElementById("private-song-modal-backdrop");
+    if (activeBackdrop) activeBackdrop.remove();
+
+    await window.loadPrivateBandSongs();
+    if (currentScreen === "songDetail" && songId) {
+      activeSong = privateBandSongsList.find(s => s.id === songId) || activeSong;
+      renderCurrentScreen();
+    }
+  } catch (err) {
+    console.error("Erro ao salvar música privada:", err);
+    window.renderToast?.("Falha ao salvar no repertório privado: " + (err.message || err), "error");
+  }
+};
+
+window.confirmDeletePrivateSong = async (songId) => {
+  if (!confirm("Tem certeza de que deseja remover esta música do repertório privado da banda?")) {
+    return;
+  }
+  try {
+    await PrivateBandSongsService.deleteSong(songId, currentUser?.uid);
+    window.renderToast?.("Música removida do repertório privado com sucesso.", "success");
+    await window.loadPrivateBandSongs();
+    if (activeSong && activeSong.id === songId) {
+      activeSong = null;
+      libraryDivision = "private";
+      show("library");
+    } else {
+      renderCurrentScreen();
+    }
+  } catch (err) {
+    console.error("Erro ao excluir louvor privado:", err);
+    window.renderToast?.("Erro ao excluir: " + (err.message || err), "error");
+  }
+};
+
+window.openImportPrivateModal = () => {
+  isImportPrivateModalOpen = true;
+  renderCurrentScreen();
+};
+
+window.closeImportPrivateModal = () => {
+  isImportPrivateModalOpen = false;
+  renderCurrentScreen();
+};
+
+window.setImportTab = (tab) => {
+  const btnJson = document.getElementById("tab-import-json");
+  const btnCsv = document.getElementById("tab-import-csv");
+  const btnTpl = document.getElementById("tab-import-template");
+  const textarea = document.getElementById("private-import-data");
+
+  if (btnJson) btnJson.className = tab === "json" ? "tag-btn active" : "tag-btn";
+  if (btnCsv) btnCsv.className = tab === "csv" ? "tag-btn active" : "tag-btn";
+  if (btnTpl) btnTpl.className = tab === "template" ? "tag-btn active" : "tag-btn";
+
+  if (textarea && tab === "csv") {
+    textarea.placeholder = "Exemplo CSV (com cabeçalho):\nnumero;titulo;tom;bpm;dificuldade;estrutura\n001;Chuvas de Graça;G;74;Fácil;Intro • Verso 1 • Refrão • Final\n015;Foi na Cruz;D;68;Médio;Intro • Verso • Refrão";
+  } else if (textarea && tab === "json") {
+    textarea.placeholder = "Cole aqui seu JSON de hinos ou use o botão 'Modelo Harpa Cristã' para carregar a estrutura recomendada...";
+  }
+};
+
+window.loadHarpaBatchTemplate = () => {
+  const textarea = document.getElementById("private-import-data");
+  if (!textarea) return;
+
+  const template = [
+    {
+      "hymnNumber": "001",
+      "title": "Chuvas de Graça",
+      "originalKey": "G",
+      "bpm": 74,
+      "timeSignature": "4/4",
+      "difficulty": "Fácil",
+      "category": "harpa-crista",
+      "structure": "Intro • Verso 1 • Refrão • Verso 2 • Final",
+      "chords": "[Intro] G  C  G  D\n\nG                C             G\nChuvas de graça teremos, é a promessa de Deus;\n                D                G\nTempos benditos veremos, chuvas de bênçãos dos céus.\n\n[Refrão]\nG             C\nChuvas de graça, chuvas pedimos a Ti;\n  G              D                    G\nE manda-nos já, ó Deus Santo, bênçãos que vêm lá de Ti.",
+      "lyrics": "Chuvas de graça teremos, é a promessa de Deus;\nTempos benditos veremos, chuvas de bênçãos dos céus."
+    },
+    {
+      "hymnNumber": "015",
+      "title": "Foi na Cruz",
+      "originalKey": "D",
+      "bpm": 68,
+      "timeSignature": "4/4",
+      "difficulty": "Médio",
+      "category": "harpa-crista",
+      "structure": "Intro • Verso • Refrão • Final",
+      "chords": "[Intro] D  G  A  D\n\nD             G            A           D\nOh! Quão cego eu andei e perdido vaguei,\n           G         A        D\nLonge, longe do meu Salvador!",
+      "lyrics": "Oh! Quão cego eu andei e perdido vaguei, longe, longe do meu Salvador!"
+    }
+  ];
+
+  textarea.value = JSON.stringify(template, null, 2);
+  window.setImportTab("template");
+};
+
+window.handleBatchImportPrivate = async () => {
+  const textarea = document.getElementById("private-import-data");
+  const rawData = textarea ? textarea.value.trim() : "";
+  if (!rawData) {
+    window.renderToast?.("Cole os dados ou use o Modelo Harpa Cristã antes de confirmar.", "error");
+    return;
+  }
+
+  const curBand = activeBand || (bandsList && bandsList[0]) || { id: "band-alianca-v2", name: "Ministério Aliança", adminId: currentUser?.uid || "offline-user" };
+  let itemsToImport = [];
+
+  try {
+    if (rawData.startsWith("[") || rawData.startsWith("{")) {
+      const parsed = JSON.parse(rawData);
+      itemsToImport = Array.isArray(parsed) ? parsed : [parsed];
+    } else {
+      // Parser CSV estruturado com separador ';'
+      const lines = rawData.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+      if (lines.length > 0) {
+        const hasHeader = lines[0].toLowerCase().includes("titulo") || lines[0].toLowerCase().includes("title");
+        const dataLines = hasHeader ? lines.slice(1) : lines;
+        itemsToImport = dataLines.map((line, idx) => {
+          const cols = line.split(";").map(c => c.trim());
+          return {
+            hymnNumber: cols[0] || String(idx + 1).padStart(3, "0"),
+            title: cols[1] || `Hino ${cols[0] || idx + 1}`,
+            originalKey: cols[2] || "G",
+            bpm: Number(cols[3]) || 74,
+            difficulty: cols[4] || "Fácil",
+            structure: cols[5] || "Intro • Verso • Refrão • Final",
+            category: "harpa-crista"
+          };
+        });
+      }
+    }
+
+    if (itemsToImport.length === 0) {
+      window.renderToast?.("Nenhum hino identificado no formato fornecido.", "error");
+      return;
+    }
+
+    const result = await PrivateBandSongsService.batchImportSongs(curBand.id, itemsToImport, currentUser?.uid);
+    window.renderToast?.(`Sucesso! ${result.imported} hino(s) importados no repertório privado da banda.`, "success");
+    window.closeImportPrivateModal();
+    await window.loadPrivateBandSongs();
+  } catch (err) {
+    console.error("Erro na importação em lote privada:", err);
+    window.renderToast?.("Erro ao processar importação: " + (err.message || err), "error");
+  }
+};
+
+window.exportPrivateRepertoireJson = () => {
+  if (privateBandSongsList.length === 0) {
+    window.renderToast?.("Não há músicas cadastradas no repertório privado para exportar.", "info");
+    return;
+  }
+  const curBand = activeBand || (bandsList && bandsList[0]) || { name: "Banda" };
+  const exportPayload = {
+    appName: "VIRTUO",
+    contentScope: "private_band_repertoire",
+    bandName: curBand.name,
+    exportedAt: new Date().toISOString(),
+    songsCount: privateBandSongsList.length,
+    songs: privateBandSongsList
+  };
+
+  const blob = new Blob([JSON.stringify(exportPayload, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `repertorio_privado_${curBand.name.toLowerCase().replace(/\s+/g, '_')}_backup.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  window.renderToast?.("Backup do repertório privado exportado em JSON!", "success");
+};
+
+window.seedSamplePrivateHymn = async () => {
+  const curBand = activeBand || (bandsList && bandsList[0]) || { id: "band-alianca-v2", name: "Ministério Aliança", adminId: currentUser?.uid || "offline-user" };
+  const sample = {
+    hymnNumber: "001",
+    title: "Chuvas de Graça",
+    originalKey: "G",
+    key: "G",
+    bpm: 74,
+    timeSignature: "4/4",
+    difficulty: "Fácil",
+    category: "harpa-crista",
+    structure: "Intro • Verso 1 • Refrão • Verso 2 • Final",
+    chords: "[Intro] G  C  G  D\n\nG                C             G\nChuvas de graça teremos, é a promessa de Deus;\n                D                G\nTempos benditos veremos, chuvas de bênçãos dos céus.\n\n[Refrão]\nG             C\nChuvas de graça, chuvas pedimos a Ti;\n  G              D                    G\nE manda-nos já, ó Deus Santo, bênçãos que vêm lá de Ti.",
+    lyrics: "Chuvas de graça teremos, é a promessa de Deus;\nTempos benditos veremos, chuvas de bênçãos dos céus.",
+    sourceNote: "Ensaio com violão acústico e dinâmica crescente no refrão.",
+    visibility: "private",
+    contentScope: "band",
+    isDevelopmentContent: true,
+    publicLibrary: false,
+    bandId: curBand.id,
+    bandName: curBand.name,
+    ownerId: currentUser?.uid || "offline-user"
+  };
+
+  await PrivateBandSongsService.createSong(sample, currentUser?.uid);
+  window.renderToast?.("Exemplo de Hino carregado no repertório privado!", "success");
+  await window.loadPrivateBandSongs();
+};
+
+window.toggleRehearsalHud = () => {
+  activeRehearsalHudOpen = !activeRehearsalHudOpen;
+  renderCurrentScreen();
+};
+
+window.toggleMetronomeFromHud = () => {
+  if (virtuoMetronome.isPlaying) {
+    virtuoMetronome.stop();
+  } else {
+    const targetBpm = activeSong?.bpm || bpm || 74;
+    virtuoMetronome.setBpm(targetBpm);
+    virtuoMetronome.start();
+  }
+  renderCurrentScreen();
+};
+
+window.setSongModeFromHud = (isEasy) => {
+  isEasyPlay = isEasy;
+  renderCurrentScreen();
+};
+
+window.changeSongBpm = (delta) => {
+  if (activeSong) {
+    activeSong.bpm = Math.max(40, Math.min(240, (activeSong.bpm || 74) + delta));
+    if (virtuoMetronome.isPlaying) {
+      virtuoMetronome.setBpm(activeSong.bpm);
+    }
+    renderCurrentScreen();
+  }
+};
+
+window.resetToneOffset = () => {
+  transposeOffset = 0;
+  renderCurrentScreen();
+};
+
+window.setRehearsalSection = (sec) => {
+  activeRehearsalSection = sec;
+  renderCurrentScreen();
+};
+
+window.addPrivateSongToActiveMission = async (songId) => {
+  const song = privateBandSongsList.find(s => s.id === songId) || activeSong;
+  if (!song) return;
+
+  const missionSongItem = {
+    id: song.id,
+    title: song.title,
+    artist: song.artist || "Repertório da Banda",
+    hymnNumber: song.hymnNumber || null,
+    key: song.originalKey || song.key || "G",
+    originalKey: song.originalKey || song.key || "G",
+    bpm: song.bpm || 74,
+    difficulty: song.difficulty || "Fácil",
+    capo: song.capo || 0,
+    structure: song.structure || "Intro • Verso • Refrão • Final",
+    chords: song.chords || "",
+    easyChords: song.easyChords || "",
+    lyrics: song.lyrics || "",
+    // Preservação estrita das flags privadas (Requirement 11)
+    visibility: "private",
+    contentScope: "band",
+    isDevelopmentContent: true,
+    publicLibrary: false,
+    status: "studying"
+  };
+
+  try {
+    let active = missionsController.activeMission || (allMissions && allMissions[0]);
+    if (!active) {
+      active = await missionsController.createMission({
+        title: `Ensaio ${activeBand?.name || "Banda"}`,
+        theme: "Ensaio e Aperfeiçoamento",
+        date: new Date().toISOString().slice(0, 10),
+        time: "19:30",
+        type: "rehearsal",
+        directorId: currentUser?.uid || "offline-user",
+        directorName: userProfile?.name || "Líder de Louvor",
+        songs: [missionSongItem]
+      });
+      missionsController.activeMission = active;
+    } else {
+      const existingSongs = Array.isArray(active.songs) ? [...active.songs] : [];
+      if (!existingSongs.some(s => s.id === song.id)) {
+        existingSongs.push(missionSongItem);
+        active.songs = existingSongs;
+        if (missionsRepository && typeof missionsRepository.update === "function") {
+          await missionsRepository.update(active.id, { songs: existingSongs });
+        }
+      }
+    }
+    window.renderToast?.("Louvor privado integrado à missão com sucesso!", "success");
+    show("missionDetail");
+  } catch (err) {
+    console.error("Erro ao adicionar à missão:", err);
+    window.renderToast?.("Erro ao adicionar à missão: " + err.message, "error");
+  }
+};
+
+window.sendPrivateSongToLiveStage = (songId) => {
+  const song = privateBandSongsList.find(s => s.id === songId) || activeSong;
+  if (!song) return;
+  activeSong = song;
+  show("live");
+};
+
+window.attemptPublishPrivateSong = (songId) => {
+  const song = privateBandSongsList.find(s => s.id === songId) || activeSong;
+  if (!song) return;
+  pendingPublishSong = song;
+  isPublishWarningModalOpen = true;
+  renderCurrentScreen();
+};
+
+window.closePublishWarningModal = () => {
+  isPublishWarningModalOpen = false;
+  pendingPublishSong = null;
+  renderCurrentScreen();
+};
+
+window.confirmAccidentalPublish = async (songId) => {
+  const chk = document.getElementById("confirm-publish-checkbox");
+  if (!chk || !chk.checked) {
+    window.renderToast?.("Marque a caixa de confirmação consciente antes de publicar.", "error");
+    return;
+  }
+  const curBand = activeBand || (bandsList && bandsList[0]) || { name: "Banda" };
+  if (!isUserAdmin(currentUser, userProfile) && curBand?.adminId !== currentUser?.uid && curBand?.ownerId !== currentUser?.uid) {
+    window.renderToast?.("Apenas o Owner ou Administrador pode autorizar a publicação pública.", "error");
+    return;
+  }
+  const song = privateBandSongsList.find(s => s.id === songId) || pendingPublishSong;
+  if (song) {
+    song.visibility = "public";
+    song.publicLibrary = true;
+    song.isDevelopmentContent = false;
+    await SongsRepository.saveSong({
+      ...song,
+      publishedAt: new Date().toISOString()
+    }, currentUser?.uid || "admin");
+    window.renderToast?.("Música publicada conscientemente na Biblioteca Pública.", "success");
+  }
+  window.closePublishWarningModal();
+  show("library");
+};
+
+// Exposição global de utilitários de erro e UI de upload
+window.renderUploadErrorUI = renderUploadErrorUI;
+window.clearUploadErrorUI = clearUploadErrorUI;
+window.getUploadErrorHint = getUploadErrorHint;
+window.STORAGE_ERROR_MESSAGES = STORAGE_ERROR_MESSAGES;
+window.getStorageErrorMessage = getStorageErrorMessage;
+window.uploadImage = uploadImage;
+window.uploadVideo = uploadVideo;
+window.uploadAudio = uploadAudio;
+window.uploadMediaWithResumable = uploadMediaWithResumable;
+window.savePendingUpload = savePendingUpload;
+window.getPendingUploads = getPendingUploads;
+window.processPendingUploads = processPendingUploads;
+
+// Carregamento inicial do repertório privado
+setTimeout(() => {
+  window.loadPrivateBandSongs();
+}, 400);
+

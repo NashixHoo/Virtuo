@@ -239,6 +239,71 @@ service cloud.firestore {
       );
     }
 
+    // Private Band Songs Collection: private band repertoire strictly isolated from public library
+    match /private_band_songs/{songId} {
+      allow read: if isAuthenticated() && (
+        resource.data.ownerId == request.auth.uid ||
+        resource.data.createdBy == request.auth.uid ||
+        (resource.data.allowedMemberUids is list && request.auth.uid in resource.data.allowedMemberUids) ||
+        (
+          resource.data.bandId != null &&
+          exists(/databases/$(database)/documents/bands/$(resource.data.bandId)) &&
+          (
+            get(/databases/$(database)/documents/bands/$(resource.data.bandId)).data.ownerId == request.auth.uid ||
+            get(/databases/$(database)/documents/bands/$(resource.data.bandId)).data.adminId == request.auth.uid ||
+            (get(/databases/$(database)/documents/bands/$(resource.data.bandId)).data.members is list &&
+             request.auth.uid in get(/databases/$(database)/documents/bands/$(resource.data.bandId)).data.members)
+          )
+        ) ||
+        isAdmin()
+      );
+
+      allow create: if isAuthenticated() && (
+        request.resource.data.ownerId == request.auth.uid ||
+        request.resource.data.createdBy == request.auth.uid ||
+        isAdmin()
+      ) &&
+      request.resource.data.visibility == 'private' &&
+      request.resource.data.contentScope == 'band' &&
+      request.resource.data.isDevelopmentContent == true &&
+      request.resource.data.publicLibrary == false;
+
+      allow update: if isAuthenticated() && (
+        resource.data.ownerId == request.auth.uid ||
+        resource.data.createdBy == request.auth.uid ||
+        isAdmin() ||
+        (
+          resource.data.bandId != null &&
+          exists(/databases/$(database)/documents/bands/$(resource.data.bandId)) &&
+          (
+            get(/databases/$(database)/documents/bands/$(resource.data.bandId)).data.ownerId == request.auth.uid ||
+            get(/databases/$(database)/documents/bands/$(resource.data.bandId)).data.adminId == request.auth.uid
+          )
+        )
+      ) &&
+      // Cannot alter immutable security boundaries
+      request.resource.data.ownerId == resource.data.ownerId &&
+      request.resource.data.bandId == resource.data.bandId &&
+      request.resource.data.visibility == 'private' &&
+      request.resource.data.contentScope == 'band' &&
+      request.resource.data.isDevelopmentContent == true &&
+      request.resource.data.publicLibrary == false;
+
+      allow delete: if isAuthenticated() && (
+        resource.data.ownerId == request.auth.uid ||
+        resource.data.createdBy == request.auth.uid ||
+        isAdmin() ||
+        (
+          resource.data.bandId != null &&
+          exists(/databases/$(database)/documents/bands/$(resource.data.bandId)) &&
+          (
+            get(/databases/$(database)/documents/bands/$(resource.data.bandId)).data.ownerId == request.auth.uid ||
+            get(/databases/$(database)/documents/bands/$(resource.data.bandId)).data.adminId == request.auth.uid
+          )
+        )
+      );
+    }
+
     // Missions Collection: stage & presentation missions with RBAC & Live Sync
     match /missions/{missionId} {
       allow read: if isAuthenticated() && (

@@ -159,7 +159,14 @@ export const CommunityService = {
   async createPost({
     content,
     imageUrl,
+    videoUrl,
+    audioUrl,
+    audioTitle,
     mediaUrl,
+    storagePath,
+    mediaType,
+    mediaCategory,
+    mediaReference,
     type = "texto",
     instrument = "",
     songId = null,
@@ -172,6 +179,17 @@ export const CommunityService = {
     const ctx = await getFirestoreCtx();
     const currentUid = userUid || (ctx && ctx.auth && ctx.auth.currentUser ? ctx.auth.currentUser.uid : "guest-musician");
     
+    const resolvedMediaType = mediaType || (videoUrl ? "video" : (audioUrl ? "audio" : (imageUrl ? "foto" : type)));
+    const primaryUrl = imageUrl || videoUrl || audioUrl || mediaUrl || "";
+    
+    const formattedReference = mediaReference || (storagePath ? {
+      storagePath: (storagePath || "").trim(),
+      downloadUrl: primaryUrl,
+      mediaType: resolvedMediaType,
+      categoria: mediaCategory || (resolvedMediaType === "foto" ? "foto" : resolvedMediaType === "video" ? "video" : "audio"),
+      audioTitle: (audioTitle || "").trim()
+    } : null);
+
     const newPost = {
       authorId: currentUid,
       authorName: authorName || "Músico Virtuoso",
@@ -181,7 +199,14 @@ export const CommunityService = {
       instrument: instrument || "",
       content: (content || "").trim(),
       imageUrl: (imageUrl || "").trim(),
-      mediaUrl: (mediaUrl || "").trim(),
+      videoUrl: (videoUrl || "").trim(),
+      audioUrl: (audioUrl || "").trim(),
+      audioTitle: (audioTitle || "").trim(),
+      mediaUrl: (mediaUrl || primaryUrl).trim(),
+      storagePath: (storagePath || (formattedReference ? formattedReference.storagePath : "")).trim(),
+      mediaType: resolvedMediaType,
+      mediaCategory: mediaCategory || (formattedReference ? formattedReference.categoria : ""),
+      mediaReference: formattedReference,
       songId: songId || null,
       songTitle: songTitle || null,
       visibility: visibility || "public",

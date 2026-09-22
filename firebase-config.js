@@ -332,15 +332,201 @@ export async function deleteSongFromLibrary(songId) {
   }
 }
 
-// Firebase Storage helper for audio or sheet music
+// Formata mensagens amigáveis para falhas de upload e gravação no Firebase
+export function getMediaUploadErrorMessage(error) {
+  if (!error) return "Erro desconhecido no upload.";
+  if (typeof error === "string") {
+    if (error.includes("storage/unauthorized") || error.includes("permission-denied")) return "Você não tem permissão para enviar este arquivo.";
+    if (error.includes("storage/canceled")) return "Upload cancelado.";
+    if (error.includes("storage/quota-exceeded")) return "Espaço do Storage esgotado.";
+    if (error.includes("storage/retry-limit-exceeded")) return "Verifique sua conexão.";
+    if (error.includes("storage/object-not-found")) return "Arquivo não encontrado.";
+    return error;
+  }
+  
+  let code = error.code || (error.originalError && error.originalError.code) || "";
+  const rawMsg = String(error.message || "");
+  const msg = rawMsg.toLowerCase();
+
+  if (!code) {
+    const storageCodeMatch = rawMsg.match(/storage\/[a-z0-9_-]+/i);
+    if (storageCodeMatch) {
+      code = storageCodeMatch[0].toLowerCase();
+    } else {
+      const fsCodeMatch = rawMsg.match(/\b(permission-denied|resource-exhausted|unavailable|unauthenticated|deadline-exceeded|not-found)\b/i);
+      if (fsCodeMatch) {
+        code = fsCodeMatch[0].toLowerCase();
+      }
+    }
+  }
+
+  // Mapeamentos específicos do Firebase Storage:
+  // storage/unauthorized -> Você não tem permissão para enviar este arquivo.
+  // storage/canceled -> Upload cancelado.
+  // storage/quota-exceeded -> Espaço do Storage esgotado.
+  // storage/retry-limit-exceeded -> Verifique sua conexão.
+  // storage/object-not-found -> Arquivo não encontrado.
+  if (code === "storage/unauthorized" || msg.includes("unauthorized") || msg.includes("permission") || msg.includes("permissão") || msg.includes("denied")) {
+    return "Você não tem permissão para enviar este arquivo.";
+  }
+  if (code === "storage/canceled" || msg.includes("canceled") || msg.includes("cancel") || error.name === "AbortError") {
+    return "Upload cancelado.";
+  }
+  if (code === "storage/quota-exceeded" || msg.includes("quota-exceeded")) {
+    return "Espaço do Storage esgotado.";
+  }
+  if (code === "storage/retry-limit-exceeded" || code === "storage/network-failed" || msg.includes("network") || msg.includes("timeout") || msg.includes("offline")) {
+    return "Verifique sua conexão.";
+  }
+  if (code === "storage/object-not-found" || msg.includes("object-not-found") || msg.includes("não encontrado")) {
+    return "Arquivo não encontrado.";
+  }
+  if (code === "storage/bucket-not-found") {
+    return "Servidor de armazenamento não encontrado.";
+  }
+  if (code === "storage/project-not-found") {
+    return "Projeto do Firebase não encontrado.";
+  }
+  if (code === "storage/unauthenticated") {
+    return "Sessão expirada. Faça login novamente para enviar arquivos.";
+  }
+  if (code === "storage/invalid-checksum") {
+    return "Falha na integridade do arquivo durante o envio. Tente novamente.";
+  }
+  if (code === "storage/cannot-slice-blob") {
+    return "O arquivo original foi alterado ou está inacessível.";
+  }
+  if (code === "storage/server-file-wrong-size") {
+    return "Erro na transmissão do arquivo. O tamanho recebido não confere.";
+  }
+  if (code === "storage/invalid-argument") {
+    return "Arquivo ou formato inválido para upload.";
+  }
+  if (code === "storage/unknown") {
+    return "Erro inesperado no servidor de armazenamento. Tente em instantes.";
+  }
+
+  // Mapeamentos específicos do Firestore (associação e salvamento de metadados)
+  if (code === "permission-denied") {
+    return "Você não tem permissão para salvar no banco de dados.";
+  }
+  if (code === "unavailable") {
+    return "Serviço temporariamente indisponível. Verifique sua conexão.";
+  }
+  if (code === "resource-exhausted") {
+    return "Limite de operações no Firestore atingido. Tente novamente mais tarde.";
+  }
+  if (code === "unauthenticated") {
+    return "Sessão expirada. Faça login novamente para continuar.";
+  }
+
+  if (typeof navigator !== "undefined" && !navigator.onLine) {
+    return "Verifique sua conexão.";
+  }
+  if (msg.includes("size") || msg.includes("grande") || msg.includes("too large") || msg.includes("excede")) {
+    return "Arquivo muito grande. O arquivo excede o limite máximo permitido.";
+  }
+  return error.message || "Falha no envio do arquivo.";
+}
+
+// Sanitiza nome do arquivo
+function sanitizeStorageFileName(name) {
+  if (!name) return "arquivo";
+  return name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9._-]/g, "_");
+}
+
+// Firebase Storage helper for audio or sheet music (resumable)
 export async function uploadAudioFile(file, path) {
   try {
-    const fileRef = storageRef(storage, path || `audios/${Date.now()}_${file.name}`);
-    const snapshot = await uploadBytes(fileRef, file);
-    const downloadURL = await getDownloadURL(snapshot.ref);
-    return downloadURL;
+    const uid = auth.currentUser ? auth.currentUser.uid : "anonymous";
+    const cleanName = sanitizeStorageFileName(file.name);
+    const targetPath = path || `audio/${uid}/${Date.now()}_${cleanName}`;
+    const fileRef = storageRef(storage, targetPath);
+    const uploadTask = uploadBytesResumable(fileRef, file, {
+      contentType: file.type || "audio/mpeg"
+    });
+
+    return await new Promise((resolve, reject) => {
+      uploadTask.on(
+        'state_changed',
+        null,
+        (error) => reject(new Error(getMediaUploadErrorMessage(error))),
+        async () => {
+          try {
+            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+            resolve(downloadURL);
+          } catch (err) {
+            reject(new Error(getMediaUploadErrorMessage(err)));
+          }
+        }
+      );
+    });
   } catch (err) {
     console.error("Error uploading audio to Firebase Storage:", err);
+    throw err;
+  }
+}
+
+// Firebase Storage helper for community images and photos (resumable)
+export async function uploadImageFile(file, path) {
+  try {
+    const uid = auth.currentUser ? auth.currentUser.uid : "anonymous";
+    const cleanName = sanitizeStorageFileName(file.name);
+    const targetPath = path || `photos/${uid}/${Date.now()}_${cleanName}`;
+    const fileRef = storageRef(storage, targetPath);
+    const uploadTask = uploadBytesResumable(fileRef, file, {
+      contentType: file.type || "image/jpeg"
+    });
+
+    return await new Promise((resolve, reject) => {
+      uploadTask.on(
+        'state_changed',
+        null,
+        (error) => reject(new Error(getMediaUploadErrorMessage(error))),
+        async () => {
+          try {
+            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+            resolve(downloadURL);
+          } catch (err) {
+            reject(new Error(getMediaUploadErrorMessage(err)));
+          }
+        }
+      );
+    });
+  } catch (err) {
+    console.error("Error uploading image to Firebase Storage:", err);
+    throw err;
+  }
+}
+
+// Firebase Storage helper for video files (resumable)
+export async function uploadVideoFile(file, path) {
+  try {
+    const uid = auth.currentUser ? auth.currentUser.uid : "anonymous";
+    const cleanName = sanitizeStorageFileName(file.name);
+    const targetPath = path || `videos/${uid}/${Date.now()}_${cleanName}`;
+    const fileRef = storageRef(storage, targetPath);
+    const uploadTask = uploadBytesResumable(fileRef, file, {
+      contentType: file.type || "video/mp4"
+    });
+
+    return await new Promise((resolve, reject) => {
+      uploadTask.on(
+        'state_changed',
+        null,
+        (error) => reject(new Error(getMediaUploadErrorMessage(error))),
+        async () => {
+          try {
+            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+            resolve(downloadURL);
+          } catch (err) {
+            reject(new Error(getMediaUploadErrorMessage(err)));
+          }
+        }
+      );
+    });
+  } catch (err) {
+    console.error("Error uploading video to Firebase Storage:", err);
     throw err;
   }
 }
@@ -424,19 +610,6 @@ export async function compressImageFile(file, maxWidth = 1280, maxHeight = 1280,
     reader.onerror = () => resolve(file);
     reader.readAsDataURL(file);
   });
-}
-
-// Firebase Storage helper for community images and photos
-export async function uploadImageFile(file, path) {
-  try {
-    const fileRef = storageRef(storage, path || `community/${Date.now()}_${file.name}`);
-    const snapshot = await uploadBytes(fileRef, file);
-    const downloadURL = await getDownloadURL(snapshot.ref);
-    return downloadURL;
-  } catch (err) {
-    console.error("Error uploading image to Firebase Storage:", err);
-    throw err;
-  }
 }
 
 /**

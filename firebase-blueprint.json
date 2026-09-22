@@ -407,6 +407,35 @@
         "lastPracticedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["userId", "currentLevel", "completedLessons"]
+    },
+    "PrivateBandSong": {
+      "title": "PrivateBandSong",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "hymnNumber": { "type": "string" },
+        "category": { "type": "string" },
+        "visibility": { "type": "string", "enum": ["private"] },
+        "contentScope": { "type": "string", "enum": ["band"] },
+        "bandId": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "originalKey": { "type": "string" },
+        "bpm": { "type": "number" },
+        "timeSignature": { "type": "string" },
+        "capo": { "type": "number" },
+        "difficulty": { "type": "string" },
+        "chords": { "type": "string" },
+        "easyChords": { "type": "string" },
+        "lyrics": { "type": "string" },
+        "structure": { "type": "string" },
+        "sourceType": { "type": "string" },
+        "sourceNote": { "type": "string" },
+        "isDevelopmentContent": { "type": "boolean" },
+        "publicLibrary": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "bandId", "ownerId", "visibility", "contentScope", "isDevelopmentContent", "publicLibrary"]
     }
   },
   "firestore": {
@@ -501,6 +530,10 @@
     "/user_academy_progress/{userId}": {
       "schema": "UserAcademyProgress",
       "description": "Student progression, completed lessons, scores and practice time"
+    },
+    "/private_band_songs/{songId}": {
+      "schema": "PrivateBandSong",
+      "description": "Private band repertoire strictly isolated from public library for rehearsals and internal development"
     }
   }
 }

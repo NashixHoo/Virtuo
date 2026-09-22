@@ -285,8 +285,23 @@ export function renderEditProfileModal(profile) {
           </div>
 
           <div>
-            <label style="font-size:11px; color:#94a3b8; display:block; margin-bottom:4px;">URL da Foto de Perfil</label>
-            <input type="url" id="prof-photo-url" class="form-input" value="${escapeHtml(profile?.photoURL || '')}" placeholder="https://..." />
+            <label style="font-size:11px; color:#94a3b8; display:block; margin-bottom:4px;">Foto de Perfil</label>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <input type="url" id="prof-photo-url" class="form-input" value="${escapeHtml(profile?.photoURL || '')}" placeholder="https://..." style="flex:1;" />
+              <button type="button" class="button secondary" style="font-size:11px; padding:7px 10px; white-space:nowrap;" onclick="document.getElementById('prof-photo-file-input').click()">
+                📷 Do Dispositivo
+              </button>
+              <input type="file" id="prof-photo-file-input" accept="image/*" style="display:none;" onchange="window.handleCommunityProfilePhotoUpload(this)" />
+            </div>
+            <div id="prof-photo-upload-prog" style="display:none; margin-top:6px; padding:6px; background:rgba(0,0,0,0.3); border-radius:6px;">
+              <div style="display:flex; justify-content:space-between; font-size:10px; color:#7EE7FF; margin-bottom:2px;">
+                <span>Enviando foto:</span>
+                <span id="prof-photo-pct">0%</span>
+              </div>
+              <div style="width:100%; height:4px; background:rgba(255,255,255,0.1); border-radius:2px; overflow:hidden;">
+                <div id="prof-photo-bar" style="width:0%; height:100%; background:#7EE7FF; transition:width 0.2s;"></div>
+              </div>
+            </div>
           </div>
 
           <div>

@@ -990,13 +990,11 @@ class SongManagerController {
     this.requestRender();
 
     try {
-      const fbConfig = await import("../../../firebase-config.js");
-      const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-      const path = `audios/${Date.now()}_${sanitizedName}`;
-
-      this.audioUploadTask = fbConfig.uploadFileWithProgress({
+      const { uploadMediaFile, getFriendlyErrorMessage } = await import("../../services/media-upload.js");
+      const uploadResult = await uploadMediaFile({
         file,
-        path,
+        uid: userUid || "admin",
+        mediaType: "audio",
         onProgress: (percent, bytesTransferred, totalBytes) => {
           this.audioUploadProgress = {
             percent: Math.round(percent),
@@ -1005,23 +1003,18 @@ class SongManagerController {
             filename: file.name
           };
           this.requestRender();
-        },
-        onError: (err) => {
-          this.audioUploadError = `Falha no upload: ${err.message || 'Erro desconhecido'}`;
-          this.audioUploadProgress = null;
-          this.audioUploadTask = null;
-          this.requestRender();
-        },
-        onComplete: (downloadUrl) => {
-          this.formData.audioUrl = downloadUrl;
-          this.audioUploadProgress = null;
-          this.audioUploadTask = null;
-          this.setNotification("success", "Áudio de referência enviado com sucesso!");
-          this.requestRender();
         }
       });
+
+      this.formData.audioUrl = uploadResult.downloadUrl;
+      this.audioUploadProgress = null;
+      this.audioUploadTask = null;
+      this.setNotification("success", "Áudio de referência enviado com sucesso!");
+      this.requestRender();
     } catch (err) {
-      this.audioUploadError = `Erro ao iniciar upload: ${err.message}`;
+      const { getFriendlyErrorMessage } = await import("../../services/media-upload.js").catch(() => ({}));
+      const friendlyMsg = getFriendlyErrorMessage ? getFriendlyErrorMessage(err) : (err.message || 'Falha no upload');
+      this.audioUploadError = `Falha no upload: ${friendlyMsg}`;
       this.audioUploadProgress = null;
       this.audioUploadTask = null;
       this.requestRender();

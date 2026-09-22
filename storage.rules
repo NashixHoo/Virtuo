@@ -1,7 +1,41 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    // User profile pictures
+    // Photos: User-isolated upload folder
+    match /photos/{userId}/{fileName} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+    match /foto/{userId}/{fileName} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+    match /fotos/{userId}/{fileName} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Videos: User-isolated upload folder
+    match /videos/{userId}/{fileName} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+    match /video/{userId}/{fileName} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Audio: User-isolated upload folder
+    match /audio/{userId}/{fileName} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+    match /audios/{userId}/{fileName} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // User profile pictures legacy path
     match /users/{userId}/{allPaths=**} {
       allow read: if true;
       allow write: if request.auth != null && request.auth.uid == userId
@@ -9,7 +43,7 @@ service firebase.storage {
         && request.resource.contentType.matches('image/.*');
     }
 
-    // Community post images from camera or gallery
+    // Community post images legacy path
     match /community/{allPaths=**} {
       allow read: if true;
       allow write: if request.auth != null
@@ -17,7 +51,7 @@ service firebase.storage {
         && request.resource.contentType.matches('image/.*');
     }
 
-    // Song audio tracks and rehearsal recordings
+    // Song audio tracks legacy path
     match /audios/{allPaths=**} {
       allow read: if true;
       allow write: if request.auth != null
@@ -32,4 +66,5 @@ service firebase.storage {
     }
   }
 }
+
 

@@ -210,21 +210,127 @@ function renderFeedTab({ posts, filterPostType, currentUser, commentsMap, expand
         </div>
       </div>
 
-      <div style="margin-top:10px; display:flex; flex-direction:column; gap:6px;">
-        <input 
-          type="file" 
-          id="community-post-file" 
-          accept="image/*" 
-          class="form-input" 
-          style="padding:6px 10px; font-size:12px; cursor:pointer;"
-        />
-        <input 
-          type="url" 
-          id="community-post-media-url" 
-          class="form-input" 
-          placeholder="Ou link de imagem/vídeo externo (YouTube, Instagram, etc.)" 
-          style="font-size:12px;"
-        />
+      <!-- Seletor de Anexos de Mídia (Fotos, Vídeos e Músicas) -->
+      <div style="margin-top:12px; padding:10px 12px; background:rgba(0,0,0,0.25); border-radius:12px; border:1px solid rgba(255,255,255,0.06);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <span style="font-size:11px; font-weight:700; color:#7EE7FF;">Anexar Mídia do Dispositivo:</span>
+          <span style="font-size:10px; color:#94a3b8;">iPhone • Android • Desktop</span>
+        </div>
+
+        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+          <!-- Botão Foto -->
+          <button 
+            type="button" 
+            class="button secondary" 
+            style="font-size:12px; padding:6px 12px; display:inline-flex; align-items:center; gap:6px;" 
+            onclick="document.getElementById('community-post-photo').click()"
+          >
+            <span>📷</span>
+            <span>Foto</span>
+          </button>
+          <input 
+            type="file" 
+            id="community-post-photo" 
+            accept="image/*" 
+            capture="environment"
+            style="display:none;" 
+            onchange="window.handleCommunityMediaSelected(this, 'photo')"
+          />
+
+          <!-- Botão Vídeo -->
+          <button 
+            type="button" 
+            class="button secondary" 
+            style="font-size:12px; padding:6px 12px; display:inline-flex; align-items:center; gap:6px;" 
+            onclick="document.getElementById('community-post-video').click()"
+          >
+            <span>🎬</span>
+            <span>Vídeo</span>
+          </button>
+          <input 
+            type="file" 
+            id="community-post-video" 
+            accept="video/*" 
+            style="display:none;" 
+            onchange="window.handleCommunityMediaSelected(this, 'video')"
+          />
+
+          <!-- Botão Música -->
+          <button 
+            type="button" 
+            class="button secondary" 
+            style="font-size:12px; padding:6px 12px; display:inline-flex; align-items:center; gap:6px;" 
+            onclick="document.getElementById('community-post-audio').click()"
+          >
+            <span>🎧</span>
+            <span>Música</span>
+          </button>
+          <input 
+            type="file" 
+            id="community-post-audio" 
+            accept="audio/*" 
+            style="display:none;" 
+            onchange="window.handleCommunityMediaSelected(this, 'audio')"
+          />
+        </div>
+
+        <!-- Container de Pré-Visualização Dinâmica (URL.createObjectURL) -->
+        <div id="community-media-preview-container" style="display:none; margin-top:10px; padding:10px; background:rgba(255,255,255,0.03); border-radius:10px; border:1px solid rgba(126,231,255,0.2);">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <span id="community-preview-title" style="font-size:11px; font-weight:700; color:#7EE7FF;">Pré-visualização</span>
+            <button type="button" class="tag-btn" style="color:#ef4444; font-size:11px; padding:2px 8px;" onclick="window.clearCommunityMediaAttachment()">
+              ✕ Remover Mídia
+            </button>
+          </div>
+          <!-- Preview da Foto -->
+          <div id="community-preview-photo-wrap" style="display:none; text-align:center;">
+            <img id="community-preview-photo-img" style="max-height:220px; max-width:100%; border-radius:8px; object-fit:contain; border:1px solid rgba(255,255,255,0.1);" alt="Prévia da foto" />
+          </div>
+          <!-- Preview do Vídeo -->
+          <div id="community-preview-video-wrap" style="display:none;">
+            <video id="community-preview-video-player" controls playsinline muted style="width:100%; max-height:220px; border-radius:8px; background:#000;"></video>
+          </div>
+          <!-- Preview do Áudio / Música -->
+          <div id="community-preview-audio-wrap" style="display:none;">
+            <div id="community-preview-audio-name" style="font-size:12px; color:#e2e8f0; font-weight:600; margin-bottom:6px; word-break:break-all;"></div>
+            <audio id="community-preview-audio-player" controls style="width:100%; height:36px;"></audio>
+          </div>
+          <div id="community-preview-meta" style="font-size:11px; color:#94a3b8; margin-top:6px;"></div>
+        </div>
+
+        <!-- Barra de Progresso de Upload Premium (Glass + Glow Azul + 0% 25% 50% 75% 100%) -->
+        <div id="community-upload-progress-wrap" style="display:none; margin-top:10px; padding:12px 14px; background:rgba(15,23,42,0.75); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); border-radius:12px; border:1px solid rgba(126,231,255,0.4); box-shadow:0 0 20px rgba(56,189,248,0.25);">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <span style="font-size:12px; font-weight:700; color:#7EE7FF; text-shadow:0 0 8px rgba(126,231,255,0.5);" id="community-upload-status-text">Enviando mídia...</span>
+            <span style="font-size:12px; font-weight:800; color:#7EE7FF; text-shadow:0 0 8px rgba(126,231,255,0.6);" id="community-upload-percent-text">0%</span>
+          </div>
+          <!-- Linha com Milestones Visuais 0% 25% 50% 75% 100% -->
+          <div style="display:flex; justify-content:space-between; font-size:10px; color:#94a3b8; margin-bottom:6px; font-weight:600;">
+            <span id="milestone-0">0%</span>
+            <span id="milestone-25">25%</span>
+            <span id="milestone-50">50%</span>
+            <span id="milestone-75">75%</span>
+            <span id="milestone-100">100%</span>
+          </div>
+          <!-- Barra gráfica com Glow Azul -->
+          <div style="width:100%; height:8px; background:rgba(0,0,0,0.5); border-radius:4px; overflow:hidden; border:1px solid rgba(255,255,255,0.08); box-shadow:inset 0 1px 3px rgba(0,0,0,0.5);">
+            <div id="community-upload-progress-bar" style="width:0%; height:100%; background:linear-gradient(90deg, #38bdf8, #7EE7FF); box-shadow:0 0 10px rgba(126,231,255,0.8); transition:width 0.2s ease;"></div>
+          </div>
+        </div>
+
+        <!-- Alerta de Erros Reais (Mapeamento humano elegante de Storage e Firestore) -->
+        <div id="community-upload-error-box" role="alert" aria-live="polite" style="display:none; margin-top:10px;"></div>
+
+        <!-- Campo alternativo de link externo -->
+        <div style="margin-top:10px;">
+          <input 
+            type="url" 
+            id="community-post-media-url" 
+            class="form-input" 
+            placeholder="Ou insira um link externo (YouTube, Vimeo, etc.)" 
+            style="font-size:12px;"
+          />
+        </div>
       </div>
 
       <div style="margin-top:12px; display:flex; justify-content:space-between; align-items:center;">
@@ -335,11 +441,43 @@ function renderPostCard({ post, currentUser, commentsMap, isExpandedComments, is
       <!-- Conteúdo do Post -->
       <div class="community-content-text" style="font-size:13px; color:#e2e8f0; line-height:1.5; margin:10px 0; white-space:pre-wrap;">${escapeHtml(post.content || "")}</div>
 
-      <!-- Mídia / Foto / Vídeo -->
+      <!-- Mídia / Foto / Vídeo / Música -->
       ${post.imageUrl ? `
         <div style="margin:10px 0; border-radius:12px; overflow:hidden; border:1px solid rgba(255,255,255,0.08); max-height:360px;">
-          <img src="${escapeHtml(post.imageUrl)}" style="width:100%; height:auto; object-fit:cover; display:block;" alt="Publicação" loading="lazy" />
+          <img src="${escapeHtml(post.imageUrl)}" style="width:100%; height:auto; object-fit:cover; display:block;" alt="Foto da publicação" loading="lazy" />
         </div>
+      ` : ''}
+
+      ${post.videoUrl ? `
+        <div style="margin:10px 0; border-radius:12px; overflow:hidden; border:1px solid rgba(255,255,255,0.08); max-height:360px; background:#000;">
+          <video controls playsinline preload="metadata" style="width:100%; max-height:360px; display:block; outline:none;" src="${escapeHtml(post.videoUrl)}"></video>
+        </div>
+      ` : ''}
+
+      ${post.audioUrl ? `
+        <div style="margin:10px 0; padding:10px 14px; background:rgba(126,231,255,0.06); border:1px solid rgba(126,231,255,0.2); border-radius:12px;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+            <span>🎧</span>
+            <span style="font-size:12px; font-weight:700; color:#7EE7FF;">${escapeHtml(post.audioTitle || "Faixa de Áudio Virtuo")}</span>
+          </div>
+          <audio controls preload="none" style="width:100%; height:36px; outline:none;" src="${escapeHtml(post.audioUrl)}"></audio>
+        </div>
+      ` : ''}
+
+      ${!post.imageUrl && !post.videoUrl && !post.audioUrl && post.mediaUrl ? `
+        ${/\.(mp4|mov|webm)$/i.test(post.mediaUrl) || post.mediaUrl.includes('/videos/') ? `
+          <div style="margin:10px 0; border-radius:12px; overflow:hidden; border:1px solid rgba(255,255,255,0.08); max-height:360px; background:#000;">
+            <video controls playsinline preload="metadata" style="width:100%; max-height:360px; display:block; outline:none;" src="${escapeHtml(post.mediaUrl)}"></video>
+          </div>
+        ` : /\.(mp3|wav|m4a|aac|ogg)$/i.test(post.mediaUrl) || post.mediaUrl.includes('/audio/') ? `
+          <div style="margin:10px 0; padding:10px 14px; background:rgba(126,231,255,0.06); border:1px solid rgba(126,231,255,0.2); border-radius:12px;">
+            <audio controls preload="none" style="width:100%; height:36px; outline:none;" src="${escapeHtml(post.mediaUrl)}"></audio>
+          </div>
+        ` : `
+          <div style="margin:10px 0; border-radius:12px; overflow:hidden; border:1px solid rgba(255,255,255,0.08); max-height:360px;">
+            <img src="${escapeHtml(post.mediaUrl)}" style="width:100%; height:auto; object-fit:cover; display:block;" alt="Mídia da publicação" loading="lazy" />
+          </div>
+        `}
       ` : ''}
 
       <!-- Anexo de Música / Cifra (se houver) -->
