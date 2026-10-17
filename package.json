@@ -4,14 +4,26 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node server.js",
-    "start": "node server.js",
-    "build": "echo 'Build complete'",
-    "lint": "node -c server.js && node -c app.js",
-    "test": "node test-music-database.js && node test-musical-engine.js && node test-minister-mode.js && node test-metronome-engine.js && node test-rehearsal-mode.js && node test-community-and-band.js && node test-admin-song-manager.js && node test-performance-benchmark.js && node test-music-intelligence-v2.js && node test-vocal-performance.js && node test-vocal-pro.js && node test-band-engine-v2.js && node test-experience-system.js && node test-tuner-pro.js && node test-academy.js && node test-chord-engine.js && node test-real-band-engine.js && node test-real-sound-engine.js && node test-branding-kit-v3.js && node test-virtuo-conductor.js && node test-band-musical-accompaniment.js && node test-real-band-engine-2.js && node test-v2-2-production-integration.js && node test-premium-ui-components.js && node test-private-band-repertoire.js && node test-media-upload-premium.js && node test-navigation-debug.js && node test-core-interaction-recovery.js && node test-resilience-core.js && node test-community-v2-5.js"
+    "dev": "tsx server.ts",
+    "start": "tsx server.ts",
+    "build": "vite build",
+    "lint": "tsc --noEmit"
   },
   "dependencies": {
     "@google/genai": "^2.22.0",
-    "express": "^4.21.2"
+    "express": "^4.21.2",
+    "firebase": "^13.0.0",
+    "lucide-react": "^1.58.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.4"
   }
 }
