@@ -26,7 +26,7 @@ export default defineConfig({
   },
   server: {
     host: '0.0.0.0',
-    port: Number(process.env.VITE_PORT) || 3000,
+    port: Number(process.env.VITE_PORT) || 4000,
     strictPort: false,
   },
 });
