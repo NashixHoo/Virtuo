@@ -1,0 +1,134 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="100%" height="100%">
+  <defs>
+    <!-- Gradiente do Palco Escuro -->
+    <linearGradient id="cineStageBg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#040914"/>
+      <stop offset="45%" stop-color="#07101F"/>
+      <stop offset="68%" stop-color="#0E1B35"/>
+      <stop offset="72%" stop-color="#0A1428"/>
+      <stop offset="100%" stop-color="#030812"/>
+    </linearGradient>
+
+    <!-- Luz Azul do Horizonte -->
+    <radialGradient id="cineHorizonLight" cx="50%" cy="68%" r="45%">
+      <stop offset="0%" stop-color="#7EE7FF" stop-opacity="0.32"/>
+      <stop offset="25%" stop-color="#7EE7FF" stop-opacity="0.18"/>
+      <stop offset="60%" stop-color="#0E1B35" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="#07101F" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Feixe Superior Suave -->
+    <linearGradient id="cineTopSpot" x1="50%" y1="0%" x2="50%" y2="70%">
+      <stop offset="0%" stop-color="#7EE7FF" stop-opacity="0.12"/>
+      <stop offset="40%" stop-color="#7EE7FF" stop-opacity="0.04"/>
+      <stop offset="100%" stop-color="#7EE7FF" stop-opacity="0"/>
+    </linearGradient>
+
+    <!-- Névoa do Palco -->
+    <radialGradient id="cineStageMist" cx="50%" cy="72%" r="50%">
+      <stop offset="0%" stop-color="#7EE7FF" stop-opacity="0.09"/>
+      <stop offset="45%" stop-color="#0E1B35" stop-opacity="0.05"/>
+      <stop offset="100%" stop-color="#07101F" stop-opacity="0"/>
+    </radialGradient>
+
+    <filter id="cineMistBlur" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="24"/>
+    </filter>
+  </defs>
+
+  <rect width="1920" height="1080" fill="url(#cineStageBg)"/>
+
+  <!-- Linhas Sutis de Perspectiva do Piso do Palco -->
+  <g stroke="#7EE7FF" stroke-width="0.8" opacity="0.06">
+    <line x1="960" y1="730" x2="0" y2="1080"/>
+    <line x1="960" y1="730" x2="380" y2="1080"/>
+    <line x1="960" y1="730" x2="720" y2="1080"/>
+    <line x1="960" y1="730" x2="960" y2="1080"/>
+    <line x1="960" y1="730" x2="1200" y2="1080"/>
+    <line x1="960" y1="730" x2="1540" y2="1080"/>
+    <line x1="960" y1="730" x2="1920" y2="1080"/>
+    <line x1="600" y1="780" x2="1320" y2="780"/>
+    <line x1="450" y1="850" x2="1470" y2="850"/>
+    <line x1="250" y1="950" x2="1670" y2="950"/>
+  </g>
+
+  <!-- Feixes de Luz Spot do Topo -->
+  <polygon points="900,0 1020,0 1350,750 570,750" fill="url(#cineTopSpot)"/>
+  <polygon points="550,0 650,0 850,750 350,750" fill="url(#cineTopSpot)" opacity="0.6"/>
+  <polygon points="1270,0 1370,0 1570,750 1070,750" fill="url(#cineTopSpot)" opacity="0.6"/>
+
+  <!-- Luz Azul no Horizonte -->
+  <ellipse cx="960" cy="710" rx="720" ry="160" fill="url(#cineHorizonLight)"/>
+  <ellipse cx="960" cy="715" rx="380" ry="65" fill="#7EE7FF" opacity="0.14" filter="url(#cineMistBlur)"/>
+
+  <!-- Silhuetas da Banda Oficial (Opacidade 6.5%) -->
+  <g fill="#02050D" opacity="0.065">
+    <!-- Violonista -->
+    <g transform="translate(420, 560) scale(1.05)">
+      <ellipse cx="40" cy="30" rx="14" ry="17"/>
+      <path d="M 28 47 C 22 70, 18 110, 20 180 L 62 180 C 64 110, 60 70, 54 47 Z"/>
+      <path d="M 24 58 C 8 80, -10 105, 5 125 C 18 115, 28 95, 30 75 Z"/>
+      <path d="M 52 58 C 65 75, 78 95, 68 118 C 55 110, 48 90, 44 75 Z"/>
+      <path d="M 25 100 C 10 90, -5 105, 5 125 C -5 145, 12 165, 35 160 C 55 156, 62 135, 52 118 C 45 105, 35 98, 25 100 Z"/>
+      <path d="M 12 106 L -40 78 L -36 70 L 16 98 Z"/>
+      <polygon points="-40,78 -52,72 -48,64 -36,70"/>
+      <path d="M 24 180 L 18 275 L 30 275 L 36 180 Z"/>
+      <path d="M 46 180 L 52 275 L 64 275 L 56 180 Z"/>
+    </g>
+
+    <!-- Guitarrista Elétrico -->
+    <g transform="translate(680, 545) scale(1.1)">
+      <ellipse cx="42" cy="28" rx="14" ry="17"/>
+      <path d="M 30 45 C 24 70, 20 110, 22 185 L 64 185 C 66 110, 62 70, 56 45 Z"/>
+      <path d="M 26 55 C 5 70, -25 75, -20 95 C -5 90, 15 80, 28 70 Z"/>
+      <path d="M 15 110 C 2 105, -5 120, 8 135 C 0 150, 18 165, 40 155 C 58 148, 60 130, 48 115 C 38 105, 25 102, 15 110 Z"/>
+      <path d="M 10 112 L -55 60 L -50 54 L 15 106 Z"/>
+      <polygon points="-55,60 -70,48 -64,42 -50,54"/>
+      <path d="M 24 185 L 10 285 L 24 285 L 36 185 Z"/>
+      <path d="M 48 185 L 66 285 L 80 285 L 58 185 Z"/>
+      <rect x="-80" y="210" width="55" height="75" rx="3"/>
+    </g>
+
+    <!-- Baterista Central -->
+    <g transform="translate(960, 520)">
+      <ellipse cx="-110" cy="55" rx="42" ry="7"/>
+      <line x1="-110" y1="55" x2="-110" y2="210" stroke="#02050D" stroke-width="4"/>
+      <ellipse cx="110" cy="50" rx="45" ry="7"/>
+      <line x1="110" y1="50" x2="110" y2="210" stroke="#02050D" stroke-width="4"/>
+      <ellipse cx="-75" cy="80" rx="28" ry="6"/>
+      <line x1="-75" y1="80" x2="-75" y2="210" stroke="#02050D" stroke-width="3"/>
+      <ellipse cx="-85" cy="115" rx="24" ry="5"/>
+      <line x1="-85" y1="115" x2="-85" y2="225" stroke="#02050D" stroke-width="3"/>
+      <circle cx="0" cy="190" r="54"/>
+      <circle cx="0" cy="190" r="48" fill="none" stroke="#02050D" stroke-width="3"/>
+      <ellipse cx="-32" cy="125" rx="22" ry="9"/>
+      <ellipse cx="32" cy="122" rx="22" ry="9"/>
+      <ellipse cx="-52" cy="148" rx="24" ry="8"/>
+      <ellipse cx="62" cy="165" rx="26" ry="10"/>
+      <ellipse cx="0" cy="65" rx="16" ry="19"/>
+      <path d="M -14 85 C -20 105, -18 135, -15 155 L 15 155 C 18 135, 20 105, 14 85 Z"/>
+      <path d="M -12 92 L -45 68 L -38 60 L -6 85 Z"/>
+      <line x1="-45" y1="68" x2="-70" y2="45" stroke="#02050D" stroke-width="3.5" stroke-linecap="round"/>
+      <path d="M 12 92 L 48 65 L 55 72 L 18 98 Z"/>
+      <line x1="48" y1="65" x2="80" y2="40" stroke="#02050D" stroke-width="3.5" stroke-linecap="round"/>
+      <rect x="-160" y="240" width="320" height="25" rx="4"/>
+    </g>
+
+    <!-- Baixista -->
+    <g transform="translate(1220, 545) scale(1.1)">
+      <ellipse cx="38" cy="28" rx="14" ry="17"/>
+      <path d="M 26 45 C 20 70, 18 110, 20 185 L 60 185 C 62 110, 58 70, 52 45 Z"/>
+      <path d="M 22 55 C 8 75, -2 95, 12 115 C 22 105, 30 85, 32 70 Z"/>
+      <path d="M 50 55 C 64 75, 76 95, 65 118 C 52 110, 46 90, 42 75 Z"/>
+      <path d="M 18 110 C 5 105, -2 120, 10 135 C 2 152, 20 168, 44 158 C 62 150, 64 130, 52 115 C 42 105, 28 102, 18 110 Z"/>
+      <path d="M 14 112 L -68 55 L -62 48 L 20 105 Z"/>
+      <polygon points="-68,55 -88,40 -82,32 -62,48"/>
+      <path d="M 22 185 L 14 285 L 28 285 L 36 185 Z"/>
+      <path d="M 46 185 L 58 285 L 72 285 L 56 185 Z"/>
+      <rect x="90" y="195" width="60" height="90" rx="3"/>
+    </g>
+  </g>
+
+  <!-- Camada Atmosférica de Névoa -->
+  <ellipse cx="960" cy="740" rx="900" ry="120" fill="url(#cineStageMist)" filter="url(#cineMistBlur)"/>
+</svg>
