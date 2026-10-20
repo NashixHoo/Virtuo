@@ -15,9 +15,10 @@ import {
   deleteDoc, 
   query, 
   orderBy, 
+  where,
   serverTimestamp 
 } from 'firebase/firestore';
-import { Song, DEMO_SONGS } from '../music/demo-songs';
+import { Song, DEMO_SONGS } from '../music/demo-songs.ts';
 
 const OFFLINE_KEY = 'virtuo_offline_songs_cache_v2';
 
@@ -43,15 +44,40 @@ export const SongsRepository = {
 
   async getAllSongs(): Promise<Song[]> {
     try {
-      const q = query(collection(db, 'songs'), orderBy('createdAt', 'desc'));
-      const snap = await getDocs(q);
-      if (snap.empty) {
+      const publicSongsQuery = query(
+        collection(db, 'songs'),
+        where('status', '==', 'published'),
+        where('visibility', '==', 'public'),
+        orderBy('createdAt', 'desc')
+      );
+      const snapshots = [await getDocs(publicSongsQuery)];
+      if (auth.currentUser) {
+        const ownSongsQuery = query(
+          collection(db, 'songs'),
+          where('createdBy', '==', auth.currentUser.uid)
+        );
+        snapshots.push(await getDocs(ownSongsQuery));
+      }
+
+      const songsById = new Map<string, Song>();
+      for (const snapshot of snapshots) {
+        for (const songDocument of snapshot.docs) {
+          songsById.set(songDocument.id, {
+            id: songDocument.id,
+            ...(songDocument.data() as any)
+          });
+        }
+      }
+
+      const firestoreSongs = [...songsById.values()];
+      if (firestoreSongs.length === 0) {
         return this.getOfflineSongs();
       }
-      const firestoreSongs: Song[] = snap.docs.map(d => ({
-        id: d.id,
-        ...(d.data() as any)
-      }));
+      firestoreSongs.sort((left, right) => {
+        const leftTime = left.createdAt?.toMillis?.() ?? 0;
+        const rightTime = right.createdAt?.toMillis?.() ?? 0;
+        return rightTime - leftTime;
+      });
       // Merge with default demo songs if needed
       const ids = new Set(firestoreSongs.map(s => s.id));
       const titles = new Set(firestoreSongs.map(s => (s.title || '').toLowerCase()));

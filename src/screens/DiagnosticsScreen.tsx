@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { testConnection } from '../firebase';
 
 export const DiagnosticsScreen: React.FC = () => {
-  const [fbStatus, setFbStatus] = useState<{ ok: boolean; message: string }>({ ok: true, message: 'Testando...' });
+  const [fbStatus, setFbStatus] = useState<{ ok: boolean; message: string }>({ ok: false, message: 'Verificando conexão...' });
   const [latency, setLatency] = useState<number | null>(null);
 
   useEffect(() => {
@@ -27,10 +27,10 @@ export const DiagnosticsScreen: React.FC = () => {
         <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px' }}>
           <div className="tile" style={{ padding: '16px' }}>
             <span style={{ fontSize: '11px', color: '#94a3b8' }}>Cloud Firestore</span>
-            <h3 style={{ fontSize: '18px', color: fbStatus.ok ? '#4ade80' : '#f87171', margin: '6px 0' }}>
-              {fbStatus.ok ? '🟢 Ativo' : '🟡 Local'}
+            <h3 style={{ fontSize: '18px', color: fbStatus.ok ? '#4ade80' : fbStatus.message.startsWith('Verificando') ? '#7EE7FF' : '#f87171', margin: '6px 0' }}>
+              {fbStatus.ok ? '🟢 Ativo' : fbStatus.message.startsWith('Verificando') ? 'Verificando...' : fbStatus.message.toLowerCase().includes('permissão') ? '🟠 Sem permissão' : '🟡 Indisponível'}
             </h3>
-            <p style={{ fontSize: '11px', color: '#64748b' }}>virtuo-7e01b</p>
+            <p style={{ fontSize: '11px', color: '#64748b' }}>{fbStatus.message}</p>
           </div>
 
           <div className="tile" style={{ padding: '16px' }}>

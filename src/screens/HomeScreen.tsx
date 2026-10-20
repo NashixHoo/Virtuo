@@ -170,7 +170,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           <div>
             <span style={{ fontSize: '11px', color: '#7EE7FF', fontWeight: 700 }}>CLUSTERS & CONEXÃO</span>
             <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#A9BDD8' }}>
-              Firebase: <strong>virtuo-7e01b</strong> ({firebaseStatus.connected ? '🟢 Conectado' : '🟡 Modo Local/Offline'})
+              Firebase: <strong>virtuo-7e01b</strong> ({firebaseStatus.connected ? '🟢 Conectado' : `🟡 ${firebaseStatus.message}`})
             </p>
           </div>
           <button 

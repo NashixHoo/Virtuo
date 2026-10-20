@@ -27,7 +27,8 @@ import {
   orderBy, 
   serverTimestamp, 
   onSnapshot, 
-  getDocFromServer,
+  getDocsFromServer,
+  limit,
   where
 } from 'firebase/firestore';
 import { 
@@ -97,13 +98,21 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
 
 export async function testConnection(): Promise<{ ok: boolean; message: string }> {
   try {
-    await getDocFromServer(doc(db, 'test', 'connection'));
+    await getDocsFromServer(query(
+      collection(db, 'songs'),
+      where('status', '==', 'published'),
+      where('visibility', '==', 'public'),
+      limit(1)
+    ));
     return { ok: true, message: 'Conectado ao Firebase com sucesso.' };
   } catch (error: any) {
-    if (error && error.message && error.message.includes('client is offline')) {
-      return { ok: false, message: 'Modo offline ativo' };
+    if (error?.code === 'permission-denied') {
+      return { ok: false, message: 'Sem permissão para consultar músicas públicas. Verifique as regras do Firestore.' };
     }
-    return { ok: true, message: 'Conectado ao Firebase.' };
+    if (error?.code === 'unavailable' || error?.message?.includes('client is offline')) {
+      return { ok: false, message: 'Firestore indisponível; modo local ativo.' };
+    }
+    return { ok: false, message: 'Falha ao conectar ao Firestore.' };
   }
 }
 

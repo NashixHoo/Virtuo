@@ -52,9 +52,11 @@
 # 1. Instalar as dependências
 npm install
 
-# 2. Iniciar servidor de desenvolvimento (porta 3000)
+# 2. Iniciar o app, API Express e Vite (porta 3000 ou próxima livre)
 npm run dev
 
 # 3. Compilar para produção
 npm run build
 ```
+
+O comando `npm run dev` inicia o backend e o frontend juntos. Se a porta 3000 estiver ocupada, o servidor escolhe a próxima disponível. Para usar o Gemini, defina `GEMINI_API_KEY` no ambiente; sem ela, o Davi responde pelo mecanismo musical local.

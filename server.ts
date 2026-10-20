@@ -1,4 +1,5 @@
 import express, { Request, Response } from 'express';
+import { createServer } from 'node:http';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -6,7 +7,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = 3000;
+const PORT = Number(process.env.PORT) || 3000;
 
 app.use(express.json());
 
@@ -353,10 +354,11 @@ Responda em JSON com o formato:
 // Mount Vite middleware in development, or serve dist in production
 async function startServer() {
   const isProd = process.env.NODE_ENV === 'production';
+  const httpServer = createServer(app);
   if (!isProd) {
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: { middlewareMode: true, ws: { server: httpServer } },
       appType: 'spa',
     });
     app.use(vite.middlewares);
@@ -367,9 +369,22 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Virtuo React server running on http://0.0.0.0:${PORT}`);
-  });
+  const listen = (port: number) => {
+    httpServer.once('error', (error: any) => {
+      if (error.code === 'EADDRINUSE' && process.env.PORT === undefined) {
+        console.warn(`Port ${port} is in use; trying ${port + 1}...`);
+        listen(port + 1);
+        return;
+      }
+      console.error(`Could not start Virtuo server on port ${port}:`, error.message);
+      process.exit(1);
+    });
+    httpServer.listen(port, '0.0.0.0', () => {
+      console.log(`Virtuo React server running on http://0.0.0.0:${port}`);
+    });
+  };
+
+  listen(PORT);
 }
 
 startServer();

@@ -50,7 +50,7 @@ body {
   background-image: 
     linear-gradient(180deg, rgba(7, 16, 31, 0.90) 0%, rgba(7, 16, 31, 0.96) 100%),
     url("../../assets/backgrounds/virtuo-background-home.svg"),
-    url("../assets/virtuo-cinematic-background.svg");
+    url("../../assets/virtuo-cinematic-background.svg");
   background-size: cover;
   background-position: center bottom;
   background-attachment: fixed;

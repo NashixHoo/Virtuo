@@ -1,29 +1,29 @@
-import React, { useState, useEffect } from 'react';
+import React, { Suspense, lazy, useState, useEffect } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth, db, testConnection, syncUserProfile } from './firebase';
 import { doc, getDoc } from 'firebase/firestore';
-import { Song, DEMO_SONGS } from './music/demo-songs';
+import { Song, DEMO_SONGS } from './music/demo-songs.ts';
 import { SongsRepository } from './services/songs-repository';
 
 import { Header } from './components/Header';
 import { Tabbar } from './components/Tabbar';
-import { DaviAiModal } from './components/DaviAiModal';
 
-import { HomeScreen } from './screens/HomeScreen';
-import { LibraryScreen } from './screens/LibraryScreen';
-import { SongDetailScreen } from './screens/SongDetailScreen';
-import { LiveStageScreen } from './screens/LiveStageScreen';
-import { BandScreen } from './screens/BandScreen';
-import { EnsaioScreen } from './screens/EnsaioScreen';
-import { ComunidadeScreen } from './screens/ComunidadeScreen';
-import { ProfileScreen } from './screens/ProfileScreen';
-import { TunerScreen } from './screens/TunerScreen';
-import { VocalScreen } from './screens/VocalScreen';
-import { AcademyScreen } from './screens/AcademyScreen';
-import { CoachScreen } from './screens/CoachScreen';
-import { MinisterScreen } from './screens/MinisterScreen';
-import { DiagnosticsScreen } from './screens/DiagnosticsScreen';
-import { NotificationsScreen } from './screens/NotificationsScreen';
+const DaviAiModal = lazy(() => import('./components/DaviAiModal').then(module => ({ default: module.DaviAiModal })));
+const HomeScreen = lazy(() => import('./screens/HomeScreen').then(module => ({ default: module.HomeScreen })));
+const LibraryScreen = lazy(() => import('./screens/LibraryScreen').then(module => ({ default: module.LibraryScreen })));
+const SongDetailScreen = lazy(() => import('./screens/SongDetailScreen').then(module => ({ default: module.SongDetailScreen })));
+const LiveStageScreen = lazy(() => import('./screens/LiveStageScreen').then(module => ({ default: module.LiveStageScreen })));
+const BandScreen = lazy(() => import('./screens/BandScreen').then(module => ({ default: module.BandScreen })));
+const EnsaioScreen = lazy(() => import('./screens/EnsaioScreen').then(module => ({ default: module.EnsaioScreen })));
+const ComunidadeScreen = lazy(() => import('./screens/ComunidadeScreen').then(module => ({ default: module.ComunidadeScreen })));
+const ProfileScreen = lazy(() => import('./screens/ProfileScreen').then(module => ({ default: module.ProfileScreen })));
+const TunerScreen = lazy(() => import('./screens/TunerScreen').then(module => ({ default: module.TunerScreen })));
+const VocalScreen = lazy(() => import('./screens/VocalScreen').then(module => ({ default: module.VocalScreen })));
+const AcademyScreen = lazy(() => import('./screens/AcademyScreen').then(module => ({ default: module.AcademyScreen })));
+const CoachScreen = lazy(() => import('./screens/CoachScreen').then(module => ({ default: module.CoachScreen })));
+const MinisterScreen = lazy(() => import('./screens/MinisterScreen').then(module => ({ default: module.MinisterScreen })));
+const DiagnosticsScreen = lazy(() => import('./screens/DiagnosticsScreen').then(module => ({ default: module.DiagnosticsScreen })));
+const NotificationsScreen = lazy(() => import('./screens/NotificationsScreen').then(module => ({ default: module.NotificationsScreen })));
 
 export const App: React.FC = () => {
   const [currentScreen, setCurrentScreen] = useState<string>('home');
@@ -32,8 +32,8 @@ export const App: React.FC = () => {
   const [songs, setSongs] = useState<Song[]>(DEMO_SONGS);
   const [activeSong, setActiveSong] = useState<Song | null>(DEMO_SONGS[0]);
   const [firebaseStatus, setFirebaseStatus] = useState<{ connected: boolean; message: string }>({
-    connected: true,
-    message: 'Conectando ao Firebase virtuo-7e01b...'
+    connected: false,
+    message: 'Verificando conexão com o Firebase...'
   });
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
 
@@ -63,6 +63,7 @@ export const App: React.FC = () => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
       if (user) {
+        loadSongs();
         try {
           const userDoc = await getDoc(doc(db, 'users', user.uid));
           if (userDoc.exists()) {
@@ -76,6 +77,7 @@ export const App: React.FC = () => {
         }
       } else {
         setUserProfile(null);
+        loadSongs();
       }
     });
 
@@ -128,6 +130,7 @@ export const App: React.FC = () => {
 
       {/* Main Content Area */}
       <main id="app" className="screen-transition-enter">
+        <Suspense fallback={<div role="status" aria-live="polite">Carregando tela...</div>}>
         {currentScreen === 'home' && (
           <HomeScreen
             currentUser={currentUser}
@@ -228,6 +231,7 @@ export const App: React.FC = () => {
             onClearAll={() => setNotifications([])}
           />
         )}
+        </Suspense>
       </main>
 
       {/* Tabbar Navigation */}
@@ -237,13 +241,17 @@ export const App: React.FC = () => {
       />
 
       {/* Davi AI Modal */}
-      <DaviAiModal
-        isOpen={isAiModalOpen}
-        onClose={() => setIsAiModalOpen(false)}
-        activeSong={activeSong}
-        currentKey={activeSong?.originalKey || 'G'}
-        bpm={activeSong?.bpm || 74}
-      />
+      {isAiModalOpen && (
+        <Suspense fallback={null}>
+          <DaviAiModal
+            isOpen={isAiModalOpen}
+            onClose={() => setIsAiModalOpen(false)}
+            activeSong={activeSong}
+            currentKey={activeSong?.originalKey || 'G'}
+            bpm={activeSong?.bpm || 74}
+          />
+        </Suspense>
+      )}
     </div>
   );
 };
