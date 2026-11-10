@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <!-- Versão Branca Oficial para Fundo Escuro -->
+  <path d="M 126 120 L 186 120 L 256 370 L 212 370 Z" fill="#F8FAFC" fill-opacity="0.95"/>
+  <path d="M 386 120 L 326 120 C 300 186, 278 252, 256 370 L 300 370 C 328 265, 356 186, 386 120 Z" fill="#F8FAFC" fill-opacity="0.85"/>
+  <polygon points="212,370 256,370 300,370 256,404" fill="#FFFFFF"/>
+  <path d="M 126 120 L 256 404 L 386 120" fill="none" stroke="#FFFFFF" stroke-width="2" opacity="0.9"/>
+</svg>

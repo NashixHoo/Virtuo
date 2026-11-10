@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <!-- Versão Monocromática Oficial (Sólida com contraste) -->
+  <!-- Haste Esquerda Reta -->
+  <path d="M 126 120 L 186 120 L 256 370 L 212 370 Z" fill="#0E1B35"/>
+  <!-- Haste Direita com Leve Curva Interna -->
+  <path d="M 386 120 L 326 120 C 300 186, 278 252, 256 370 L 300 370 C 328 265, 356 186, 386 120 Z" fill="#07101F"/>
+  <!-- Vértice Chanfrado -->
+  <polygon points="212,370 256,370 300,370 256,404" fill="#0E1B35"/>
+  <path d="M 126 120 L 256 404 L 386 120" fill="none" stroke="#0E1B35" stroke-width="3"/>
+</svg>

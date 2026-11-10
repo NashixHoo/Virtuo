@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="100%" height="100%">
+  <defs>
+    <linearGradient id="tunerGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="60%" stop-color="#7EE7FF"/>
+      <stop offset="100%" stop-color="#1A4363"/>
+    </linearGradient>
+  </defs>
+  <!-- Base do Afinador Diapasão Metálico -->
+  <path d="M 28 36 L 28 54 C 28 56, 36 56, 36 54 L 36 36 Z" fill="url(#tunerGrad)"/>
+  <!-- Haste U com Estilo V Virtuo -->
+  <path d="M 20 12 L 26 12 L 26 30 C 26 34, 38 34, 38 30 L 38 12 L 44 12 L 44 30 C 44 40, 20 40, 20 30 Z" fill="url(#tunerGrad)"/>
+  <!-- Ondas de Frequência Afinação Perfeita -->
+  <path d="M 14 18 C 10 24, 10 32, 14 38" fill="none" stroke="#7EE7FF" stroke-width="2.5" stroke-linecap="round" opacity="0.8"/>
+  <path d="M 50 18 C 54 24, 54 32, 50 38" fill="none" stroke="#7EE7FF" stroke-width="2.5" stroke-linecap="round" opacity="0.8"/>
+  <circle cx="32" cy="18" r="2.5" fill="#FFFFFF"/>
+</svg>

@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="100%" height="100%">
+  <defs>
+    <linearGradient id="vocalGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="50%" stop-color="#7EE7FF"/>
+      <stop offset="100%" stop-color="#1A4363"/>
+    </linearGradient>
+  </defs>
+  <!-- Cápsula do Microfone -->
+  <rect x="24" y="10" width="16" height="26" rx="8" fill="url(#vocalGrad)"/>
+  <!-- Grelha Metálica -->
+  <line x1="24" y1="20" x2="40" y2="20" stroke="#0E1B35" stroke-width="1.5"/>
+  <line x1="24" y1="26" x2="40" y2="26" stroke="#0E1B35" stroke-width="1.5"/>
+  <!-- Suporte em U Celestial -->
+  <path d="M 18 24 C 18 38, 46 38, 46 24" fill="none" stroke="#7EE7FF" stroke-width="3" stroke-linecap="round"/>
+  <!-- Haste e Base -->
+  <line x1="32" y1="38" x2="32" y2="52" stroke="#7EE7FF" stroke-width="3" stroke-linecap="round"/>
+  <line x1="22" y1="52" x2="42" y2="52" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round"/>
+  <!-- Ondas Vocais -->
+  <path d="M 10 20 C 6 26, 6 34, 10 40" fill="none" stroke="#7EE7FF" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
+  <path d="M 54 20 C 58 26, 58 34, 54 40" fill="none" stroke="#7EE7FF" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
+</svg>
